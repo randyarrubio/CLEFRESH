@@ -1,0 +1,675 @@
+{% extends 'base.html' %}
+{% block title %}Rider Onboarding - CLEFRESH{% endblock %}
+
+{% block extra_head %}
+<style>
+  .rider-onboarding { min-height: calc(100vh - 68px); padding: 28px 16px 64px; background: #eef6fb; }
+  .rider-shell { max-width: 520px; margin: 0 auto; }
+  .rider-card { background: #fff; border: 1px solid #dce8ef; border-radius: 12px; padding: 16px 18px; margin-bottom: 12px; box-shadow: 0 12px 28px rgba(15,47,72,.06); }
+  .rider-title-row { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+  .rider-icon { width: 36px; height: 36px; border-radius: 9px; background: #eaf3de; display: flex; align-items: center; justify-content: center; color: #27500a; font-size: 18px; }
+  .rider-title { font-size: 15px; font-weight: 800; color: #263746; }
+  .rider-subtitle { font-size: 12px; color: #6c7d8b; margin-top: 2px; }
+  .step-bar { display: flex; align-items: center; margin-bottom: 12px; }
+  .step-dot { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; flex-shrink: 0; }
+  .step-line { flex: 1; height: 1px; background: #d7e3ea; }
+  .step-active { background: #185fa5; color: #fff; }
+  .step-done { background: #eaf3de; color: #27500a; border: 1px solid #c0dd97; }
+  .step-todo { background: #f4f7f9; color: #94a3af; border: 1px solid #d7e3ea; }
+  .step-line-done { background: #97c459; }
+  .step-label-row { display: flex; justify-content: space-between; margin-bottom: 14px; }
+  .step-lbl-item { font-size: 11px; color: #8a98a5; text-align: center; width: 44px; }
+  .step-lbl-item.cur { color: #185fa5; font-weight: 800; }
+  .progress-wrap { background: #eef3f7; border-radius: 20px; height: 4px; overflow: hidden; }
+  .progress-fill { height: 100%; background: #185fa5; border-radius: 20px; transition: width .3s ease; }
+  .step-page { display: none; }
+  .step-page.active { display: block; animation: riderStepIn .24s ease; }
+  @keyframes riderStepIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+  .section-head { font-size: 13px; font-weight: 800; color: #263746; margin-bottom: 10px; }
+  .field-row { margin-bottom: 12px; }
+  .field-row:last-child { margin-bottom: 0; }
+  .rider-lbl { font-size: 12px; color: #586b7a; margin-bottom: 5px; font-weight: 700; }
+  .rider-onboarding input, .rider-onboarding textarea, .rider-onboarding select { font-size: 13px; border-radius: 8px; }
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .avatar-row { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+  .avatar-circle { width: 58px; height: 58px; border-radius: 50%; background: #e6f1fb; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 800; color: #0c447c; border: 2px dashed #b5d4f4; flex-shrink: 0; }
+  .upload-hint, .note { font-size: 12px; color: #7a8894; line-height: 1.5; }
+  .note { background: #f4f7f9; border-radius: 10px; padding: 8px 10px; margin-top: 8px; }
+  .vehicle-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
+  .v-card { border: 1px solid #d7e3ea; border-radius: 10px; padding: 12px 8px; text-align: center; cursor: pointer; user-select: none; background: #fff; color: #8a98a5; }
+  .v-card input { display: none; }
+  .v-card.sel { border-color: #185fa5; background: #e6f1fb; color: #185fa5; }
+  .v-card i { font-size: 25px; display: block; margin-bottom: 7px; }
+  .v-card-lbl { font-size: 12px; font-weight: 800; color: #263746; }
+  .v-card.sel .v-card-lbl { color: #0c447c; }
+  .avail-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin-bottom: 10px; }
+  .day-box, .zone-chip { border: 1px solid #d7e3ea; cursor: pointer; user-select: none; background: #fff; color: #586b7a; }
+  .day-box { border-radius: 8px; padding: 8px 4px; text-align: center; font-size: 11px; }
+  .zone-chip { border-radius: 20px; padding: 6px 14px; font-size: 12px; }
+  .day-box.sel, .zone-chip.sel { border-color: #185fa5; background: #e6f1fb; color: #0c447c; font-weight: 800; }
+  .tag-row { display: flex; flex-wrap: wrap; gap: 6px; }
+  .toggle-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #edf2f5; gap: 10px; }
+  .toggle-row:last-child { border-bottom: 0; }
+  .toggle-row input { width: auto; }
+  .doc-row { display: flex; gap: 8px; }
+  .doc-upload { flex: 1; border: 1px dashed #c9d7e0; border-radius: 10px; padding: 12px; text-align: center; margin-bottom: 8px; }
+  .doc-upload i { color: #8a98a5; font-size: 20px; display: block; margin-bottom: 6px; }
+  .doc-upload-lbl { font-size: 12px; color: #586b7a; font-weight: 800; margin-bottom: 5px; }
+  .doc-on-file { display: inline-block; margin-left: 4px; padding: 1px 7px; border-radius: 999px; background: #eaf6e2; color: #2f6717; font-size: 10px; }
+  .review-kv { display: flex; justify-content: space-between; gap: 10px; padding: 7px 0; border-bottom: 1px solid #edf2f5; font-size: 13px; }
+  .review-kv:last-child { border-bottom: 0; }
+  .review-kv span:first-child { color: #6c7d8b; }
+  .review-kv span:last-child { color: #263746; font-weight: 800; text-align: right; max-width: 64%; }
+  .stat-row { display: flex; gap: 8px; }
+  .stat { background: #f4f7f9; border-radius: 10px; padding: 10px 12px; flex: 1; min-width: 0; }
+  .stat-val { font-size: 17px; font-weight: 800; color: #263746; }
+  .stat-lbl { font-size: 11px; color: #7a8894; margin-top: 2px; }
+  .cta, .cta-back { width: 100%; border-radius: 10px; font-size: 14px; cursor: pointer; }
+  .cta { padding: 12px; border: 0; background: #185fa5; color: #fff; font-weight: 800; margin-top: 4px; }
+  .cta-back { padding: 11px; background: transparent; border: 1px solid #c9d7e0; color: #263746; margin-bottom: 8px; }
+  .rider-success-note { background: #eaf3de; border: 1px solid #c0dd97; border-radius: 10px; padding: 10px 14px; margin-bottom: 12px; font-size: 12px; color: #27500a; line-height: 1.5; }
+  @media (max-width: 620px) {
+    .rider-onboarding { padding: 16px 10px 44px; }
+    .rider-card { padding: 14px; }
+    .two-col, .vehicle-grid { grid-template-columns: 1fr; }
+    .avail-grid { grid-template-columns: repeat(4, 1fr); }
+    .doc-row { flex-direction: column; gap: 0; }
+    .step-lbl-item { width: 38px; font-size: 10px; }
+  }
+  /* ── Per-step validation styling ─────────────────────────── */
+  .step-error-banner {
+    display: none;
+    background: #fdecec;
+    border: 1px solid #f5c2c2;
+    border-radius: 10px;
+    padding: 10px 12px;
+    margin-bottom: 12px;
+    color: #8a1f1f;
+    font-size: 12px;
+    line-height: 1.5;
+  }
+  .step-error-banner.is-visible { display: block; }
+  .step-error-banner strong { display: block; font-size: 12px; margin-bottom: 4px; }
+  .step-error-banner ul { margin: 4px 0 0; padding-left: 18px; }
+  .step-error-banner li { margin: 2px 0; }
+  .rider-onboarding input.cf-invalid,
+  .rider-onboarding select.cf-invalid,
+  .rider-onboarding textarea.cf-invalid {
+    border-color: #dc3545 !important;
+    box-shadow: 0 0 0 3px rgba(220,53,69,.10) !important;
+  }
+  .rider-onboarding .doc-upload.cf-invalid {
+    border-color: #dc3545 !important;
+    background: #fdecec;
+  }
+  .rider-onboarding .day-box.cf-invalid,
+  .rider-onboarding .zone-chip.cf-invalid {
+    border-color: #dc3545 !important;
+    background: #fdecec;
+    color: #8a1f1f;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="rider-onboarding">
+  <form class="rider-shell" method="post" enctype="multipart/form-data" id="riderOnboardingForm">
+    {% csrf_token %}
+    <div class="rider-card">
+      <div class="rider-title-row">
+        <div class="rider-icon"><i class="bi bi-bicycle"></i></div>
+        <div>
+          <div class="rider-title">Become a rider</div>
+          <div class="rider-subtitle">Deliver for laundry shops near you</div>
+        </div>
+      </div>
+      <div class="step-bar">
+        <div class="step-dot step-active" id="d1">1</div><div class="step-line" id="l12"></div>
+        <div class="step-dot step-todo" id="d2">2</div><div class="step-line" id="l23"></div>
+        <div class="step-dot step-todo" id="d3">3</div><div class="step-line" id="l34"></div>
+        <div class="step-dot step-todo" id="d4">4</div><div class="step-line" id="l45"></div>
+        <div class="step-dot step-todo" id="d5">5</div>
+      </div>
+      <div class="step-label-row">
+        <div class="step-lbl-item cur" id="lbl1">Info</div>
+        <div class="step-lbl-item" id="lbl2">Vehicle</div>
+        <div class="step-lbl-item" id="lbl3">Zones</div>
+        <div class="step-lbl-item" id="lbl4">Docs</div>
+        <div class="step-lbl-item" id="lbl5">Review</div>
+      </div>
+      <div class="progress-wrap"><div class="progress-fill" id="progressFill" style="width:20%"></div></div>
+    </div>
+
+    <div class="step-page active" id="page1">
+      <div class="rider-card">
+        <div class="section-head">Personal details</div>
+        <div class="avatar-row">
+          <div class="avatar-circle" id="avatarCircle">?</div>
+          <div>
+            <div class="upload-hint">Profile photo<br>Clear face photo - JPG or PNG</div>
+            <input type="file" name="profile_picture" accept="image/*" style="margin-top:6px">
+          </div>
+        </div>
+        <div class="two-col">
+          <div class="field-row"><div class="rider-lbl">First name</div><input type="text" name="first_name" id="firstName" required value="{{ user.first_name }}" placeholder="Juan"></div>
+          <div class="field-row"><div class="rider-lbl">Last name</div><input type="text" name="last_name" id="lastName" required value="{{ user.last_name }}" placeholder="dela Cruz"></div>
+        </div>
+        <div class="field-row"><div class="rider-lbl">Date of birth</div><input type="date" name="date_of_birth" value="{{ profile.date_of_birth|date:'Y-m-d' }}"></div>
+        <div class="field-row"><div class="rider-lbl">Gender</div><select name="gender" id="gender"><option value="">Select</option>{% for g in gender_choices %}<option {% if profile.gender == g %}selected{% endif %}>{{ g }}</option>{% endfor %}</select></div>
+      </div>
+
+      <div class="rider-card">
+        <div class="section-head">Contact & address</div>
+        <div class="field-row"><div class="rider-lbl">Mobile number</div><input type="tel" name="contact_number" id="contactNumber" value="{{ user.contact_number }}" placeholder="+63 9XX XXX XXXX"></div>
+        <div class="field-row"><div class="rider-lbl">Email address</div><input type="email" value="{{ user.email }}" disabled></div>
+        <div class="field-row"><div class="rider-lbl">Home address</div><input type="text" name="home_address" id="homeAddress" value="{{ addr_home }}" placeholder="Street, Barangay"></div>
+        <div class="two-col">
+          <div class="field-row"><div class="rider-lbl">City</div><input type="text" name="city" id="city" value="{{ addr_city }}" placeholder="Cantilan"></div>
+          <div class="field-row"><div class="rider-lbl">Province</div><input type="text" name="province" id="province" value="{{ addr_province }}" placeholder="Surigao del Sur"></div>
+        </div>
+      </div>
+
+      <div class="rider-card">
+        <div class="section-head">Emergency contact</div>
+        <div class="field-row"><div class="rider-lbl">Full name</div><input type="text" name="emergency_contact_name" id="emergencyName" value="{{ profile.emergency_contact_name }}" placeholder="Contact person's name"></div>
+        <div class="two-col">
+          <div class="field-row"><div class="rider-lbl">Relationship</div><select name="emergency_contact_relationship" id="emergencyRelationship"><option value="">Select</option>{% for r in relationship_choices %}<option {% if profile.emergency_contact_relationship == r %}selected{% endif %}>{{ r }}</option>{% endfor %}</select></div>
+          <div class="field-row"><div class="rider-lbl">Mobile number</div><input type="tel" name="emergency_contact_number" id="emergencyNumber" value="{{ profile.emergency_contact_number }}" placeholder="+63 9XX XXX XXXX"></div>
+        </div>
+      </div>
+      <button class="cta" type="button" data-next="2">Next: vehicle details</button>
+    </div>
+
+    <div class="step-page" id="page2">
+      <div class="rider-card">
+        <div class="section-head">Vehicle type</div>
+        <div class="vehicle-grid">
+          <label class="v-card {% if selected_vehicle == 'motorcycle' %}sel{% endif %}"><input type="radio" name="vehicle_type" value="motorcycle" {% if selected_vehicle == 'motorcycle' %}checked{% endif %}><i class="bi bi-scooter"></i><div class="v-card-lbl">Motorcycle</div></label>
+          <label class="v-card {% if selected_vehicle == 'car' %}sel{% endif %}"><input type="radio" name="vehicle_type" value="car" {% if selected_vehicle == 'car' %}checked{% endif %}><i class="bi bi-car-front"></i><div class="v-card-lbl">Car</div></label>
+          <label class="v-card {% if selected_vehicle == 'bicycle' %}sel{% endif %}"><input type="radio" name="vehicle_type" value="bicycle" {% if selected_vehicle == 'bicycle' %}checked{% endif %}><i class="bi bi-bicycle"></i><div class="v-card-lbl">Bicycle</div></label>
+        </div>
+      </div>
+      <div class="rider-card">
+        <div class="section-head">Vehicle information</div>
+        <div class="field-row"><div class="rider-lbl">Make & model</div><input type="text" name="vehicle_make_model" id="vehicleMakeModel" value="{{ profile.vehicle_make_model }}" placeholder="e.g. Honda Click 125i"></div>
+        <div class="two-col">
+          <div class="field-row"><div class="rider-lbl">Year</div><input type="number" name="vehicle_year" id="vehicleYear" value="{{ profile.vehicle_year|default_if_none:'' }}" placeholder="2021" min="1950" max="{{ max_vehicle_year }}"></div>
+          <div class="field-row"><div class="rider-lbl">Color</div><input type="text" name="vehicle_color" id="vehicleColor" value="{{ profile.vehicle_color }}" placeholder="e.g. Black"></div>
+        </div>
+        <div class="field-row"><div class="rider-lbl">Plate number</div><input type="text" name="plate_number" id="plateNumber" value="{{ profile.plate_number }}" placeholder="e.g. ABC 1234" style="text-transform:uppercase"></div>
+      </div>
+      <div class="rider-card">
+        <div class="section-head">Availability</div>
+        <div class="upload-hint" style="margin-bottom:8px">Which days are you available to deliver?</div>
+        <div class="avail-grid">
+          {% for day in day_choices %}
+            <label class="day-box {% if day in selected_days %}sel{% endif %}"><input type="checkbox" name="available_days" value="{{ day }}" {% if day in selected_days %}checked{% endif %} hidden>{{ day }}</label>
+          {% endfor %}
+        </div>
+        <div class="two-col">
+          <div class="field-row"><div class="rider-lbl">Shift start</div><input type="time" name="shift_start" id="shiftStart" value="{{ profile.shift_start|time:'H:i'|default:'08:00' }}"></div>
+          <div class="field-row"><div class="rider-lbl">Shift end</div><input type="time" name="shift_end" id="shiftEnd" value="{{ profile.shift_end|time:'H:i'|default:'18:00' }}"></div>
+        </div>
+      </div>
+      <div class="rider-card">
+        <div class="section-head">Preferences</div>
+        <label class="toggle-row"><span><strong>Accept cash on delivery</strong><br><small>Collect payment from customers</small></span><input type="checkbox" name="accepts_cod" {% if pref_cod %}checked{% endif %}></label>
+        <label class="toggle-row"><span><strong>Multiple drop-offs per trip</strong><br><small>Batch deliveries in one route</small></span><input type="checkbox" name="allows_multiple_dropoffs" {% if pref_multi %}checked{% endif %}></label>
+        <label class="toggle-row"><span><strong>Notify me for new nearby jobs</strong><br><small>Alerts when orders appear</small></span><input type="checkbox" name="nearby_job_alerts" {% if pref_alerts %}checked{% endif %}></label>
+      </div>
+      <button class="cta-back" type="button" data-next="1">Back</button>
+      <button class="cta" type="button" data-next="3">Next: delivery zones</button>
+    </div>
+
+    <div class="step-page" id="page3">
+      <div class="rider-card">
+        <div class="section-head">Service area</div>
+        <div class="note" style="margin-bottom:10px">Select the areas where you are willing to pick up and deliver laundry.</div>
+        <div class="tag-row">
+          {% for zone in zone_choices %}
+            <label class="zone-chip {% if zone in selected_zones %}sel{% endif %}"><input type="checkbox" name="coverage_areas" value="{{ zone }}" {% if zone in selected_zones %}checked{% endif %} hidden>{{ zone }}</label>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="rider-card">
+        <div class="section-head">Max delivery radius</div>
+        <div style="display:flex;align-items:center;gap:14px;margin-bottom:6px">
+          <input type="range" min="1" max="15" value="{{ profile.max_radius_km|default:5 }}" name="max_radius_km" id="radiusSlider" style="flex:1">
+          <div style="font-size:16px;font-weight:800;color:#263746;min-width:52px;text-align:right" id="radiusVal">{{ profile.max_radius_km|default:5 }} km</div>
+        </div>
+        <div class="note">Orders beyond this radius will not be prioritized for you.</div>
+      </div>
+      <div class="rider-card">
+        <div class="section-head">Estimated earnings</div>
+        <div class="stat-row">
+          <div class="stat"><div class="stat-val">₱60</div><div class="stat-lbl">base per trip</div></div>
+          <div class="stat"><div class="stat-val">+₱10</div><div class="stat-lbl">per km after 3 km</div></div>
+          <div class="stat"><div class="stat-val">Daily</div><div class="stat-lbl">payout schedule</div></div>
+        </div>
+      </div>
+      <button class="cta-back" type="button" data-next="2">Back</button>
+      <button class="cta" type="button" data-next="4">Next: documents</button>
+    </div>
+
+    <div class="step-page" id="page4">
+      {% if docs_on_file %}
+        <div class="note" style="margin-bottom:12px"><i class="bi bi-info-circle"></i> Documents marked "On file" are already saved. Upload again only to replace them.</div>
+      {% endif %}
+      <div class="rider-card">
+        <div class="section-head">Government ID</div>
+        <div class="upload-hint" style="margin-bottom:10px">Any valid government-issued ID (PhilSys, passport, UMID, postal ID). Required for all riders.</div>
+        <div class="doc-row">
+          <label class="doc-upload"><i class="bi bi-person-badge"></i><div class="doc-upload-lbl">Front side{% if 'government_id_front' in docs_on_file %} <span class="doc-on-file">On file</span>{% endif %}</div><input type="file" name="government_id_front" accept="image/*,.pdf" data-has-file="{% if 'government_id_front' in docs_on_file %}1{% endif %}"></label>
+          <label class="doc-upload"><i class="bi bi-person-badge"></i><div class="doc-upload-lbl">Back side{% if 'government_id_back' in docs_on_file %} <span class="doc-on-file">On file</span>{% endif %}</div><input type="file" name="government_id_back" accept="image/*,.pdf" data-has-file="{% if 'government_id_back' in docs_on_file %}1{% endif %}"></label>
+        </div>
+      </div>
+      <div class="rider-card">
+        <div class="section-head">Driver's license</div>
+        <div class="upload-hint" style="margin-bottom:10px">Required for motorcycle and car riders. Bicycle riders may skip this.</div>
+        <div class="doc-row">
+          <label class="doc-upload"><i class="bi bi-person-vcard"></i><div class="doc-upload-lbl">Front side{% if 'drivers_license_front' in docs_on_file %} <span class="doc-on-file">On file</span>{% endif %}</div><input type="file" name="drivers_license_front" data-has-file="{% if 'drivers_license_front' in docs_on_file %}1{% endif %}" accept="image/*,.pdf"></label>
+          <label class="doc-upload"><i class="bi bi-person-vcard"></i><div class="doc-upload-lbl">Back side{% if 'drivers_license_back' in docs_on_file %} <span class="doc-on-file">On file</span>{% endif %}</div><input type="file" name="drivers_license_back" data-has-file="{% if 'drivers_license_back' in docs_on_file %}1{% endif %}" accept="image/*,.pdf"></label>
+        </div>
+      </div>
+      <div class="rider-card">
+        <div class="section-head">Vehicle documents</div>
+        <label class="doc-upload"><i class="bi bi-file-earmark-text"></i><div class="doc-upload-lbl">Certificate of Registration (CR){% if 'vehicle_cr' in docs_on_file %} <span class="doc-on-file">On file</span>{% endif %}</div><input type="file" name="vehicle_cr" data-has-file="{% if 'vehicle_cr' in docs_on_file %}1{% endif %}" accept="image/*,.pdf"></label>
+        <label class="doc-upload"><i class="bi bi-receipt"></i><div class="doc-upload-lbl">Official Receipt (OR){% if 'vehicle_or' in docs_on_file %} <span class="doc-on-file">On file</span>{% endif %}</div><input type="file" name="vehicle_or" data-has-file="{% if 'vehicle_or' in docs_on_file %}1{% endif %}" accept="image/*,.pdf"></label>
+      </div>
+      <div class="rider-card">
+        <div class="section-head">Selfie verification</div>
+        <label class="doc-upload"><i class="bi bi-camera"></i><div class="doc-upload-lbl">Selfie + ID photo{% if 'selfie_with_id' in docs_on_file %} <span class="doc-on-file">On file</span>{% endif %}</div><input type="file" name="selfie_with_id" data-has-file="{% if 'selfie_with_id' in docs_on_file %}1{% endif %}" accept="image/*"></label>
+        <div class="note">Documents are used only for identity verification. Not shared with shops or customers.</div>
+      </div>
+      <button class="cta-back" type="button" data-next="3">Back</button>
+      <button class="cta" type="button" data-next="5">Review & submit</button>
+    </div>
+
+    <div class="step-page" id="page5">
+      <div class="rider-card">
+        <div class="section-head">Personal details</div>
+        <div class="review-kv"><span>Full name</span><span data-review="name">-</span></div>
+        <div class="review-kv"><span>Mobile</span><span data-review="mobile">-</span></div>
+        <div class="review-kv"><span>Address</span><span data-review="address">-</span></div>
+        <div class="review-kv"><span>Emergency contact</span><span data-review="emergency">-</span></div>
+      </div>
+      <div class="rider-card">
+        <div class="section-head">Vehicle & availability</div>
+        <div class="review-kv"><span>Vehicle</span><span data-review="vehicle">-</span></div>
+        <div class="review-kv"><span>Make / model</span><span data-review="model">-</span></div>
+        <div class="review-kv"><span>Plate number</span><span data-review="plate">-</span></div>
+        <div class="review-kv"><span>Available days</span><span data-review="days">-</span></div>
+        <div class="review-kv"><span>Shift hours</span><span data-review="shift">-</span></div>
+      </div>
+      <div class="rider-card">
+        <div class="section-head">Delivery zones</div>
+        <div class="review-kv"><span>Coverage areas</span><span data-review="zones">-</span></div>
+        <div class="review-kv"><span>Max radius</span><span data-review="radius">-</span></div>
+      </div>
+      <div class="rider-card">
+        <label style="display:flex;gap:10px;align-items:flex-start;font-size:13px;color:#586b7a;line-height:1.5;cursor:pointer">
+          <input type="checkbox" required style="width:auto;margin-top:2px">
+          <span>I confirm that all information is accurate, my documents are valid, and I agree to the Rider Terms of Service and Code of Conduct.</span>
+        </label>
+      </div>
+      <div class="rider-success-note"><strong style="display:block;margin-bottom:2px">What happens next?</strong>Our team will verify your documents within 1-2 business days. Once approved, you can start accepting deliveries.</div>
+      <button class="cta-back" type="button" data-next="4">Back</button>
+      <button class="cta" type="submit">Submit application</button>
+    </div>
+  </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  (function () {
+    let current = 1;
+    const total = 5;
+    const form = document.getElementById('riderOnboardingForm');
+    const firstName = document.getElementById('firstName');
+    const lastName = document.getElementById('lastName');
+
+    function checkedLabels(selector) {
+      return Array.from(document.querySelectorAll(selector))
+        .filter((input) => input.checked)
+        .map((input) => input.closest('label').innerText.trim());
+    }
+
+    function updateSelectableCards() {
+      document.querySelectorAll('.v-card, .day-box, .zone-chip').forEach((card) => {
+        const input = card.querySelector('input');
+        if (input) card.classList.toggle('sel', input.checked);
+      });
+    }
+
+    function updateAvatar() {
+      const initials = `${firstName.value[0] || ''}${lastName.value[0] || ''}`.toUpperCase();
+      document.getElementById('avatarCircle').textContent = initials || '?';
+    }
+
+    function updateReview() {
+      document.querySelector('[data-review="name"]').textContent = `${firstName.value} ${lastName.value}`.trim() || '-';
+      document.querySelector('[data-review="mobile"]').textContent = document.getElementById('contactNumber').value || '-';
+      document.querySelector('[data-review="address"]').textContent = [document.getElementById('homeAddress').value, document.getElementById('city').value, document.getElementById('province').value].filter(Boolean).join(', ') || '-';
+      document.querySelector('[data-review="emergency"]').textContent = [document.getElementById('emergencyName').value, document.getElementById('emergencyRelationship').value].filter(Boolean).join(' - ') || '-';
+      document.querySelector('[data-review="vehicle"]').textContent = checkedLabels('input[name="vehicle_type"]')[0] || '-';
+      document.querySelector('[data-review="model"]').textContent = [document.getElementById('vehicleMakeModel').value, document.getElementById('vehicleYear').value].filter(Boolean).join(' - ') || '-';
+      document.querySelector('[data-review="plate"]').textContent = document.getElementById('plateNumber').value || '-';
+      document.querySelector('[data-review="days"]').textContent = checkedLabels('input[name="available_days"]').join(', ') || '-';
+      document.querySelector('[data-review="shift"]').textContent = `${document.getElementById('shiftStart').value} - ${document.getElementById('shiftEnd').value}`;
+      document.querySelector('[data-review="zones"]').textContent = checkedLabels('input[name="coverage_areas"]').join(', ') || '-';
+      document.querySelector('[data-review="radius"]').textContent = `${document.getElementById('radiusSlider').value} km`;
+      document.getElementById('radiusVal').textContent = `${document.getElementById('radiusSlider').value} km`;
+    }
+
+    // ── Per-step validation ───────────────────────────────────
+    const PH_PHONE_RE = /^(?:\+63|0)9\d{9}$/;
+    const NAME_RE = /^[A-Za-zÀ-ÿñÑ' \-]{1,50}$/;
+    const PLATE_RE = /^[A-Z0-9][A-Z0-9 \-]{1,9}$/;
+    const TODAY = new Date();
+    const MIN_DOB = new Date(TODAY.getFullYear() - 18, TODAY.getMonth(), TODAY.getDate());
+    const CURRENT_YEAR = TODAY.getFullYear();
+
+    function ensureBanner(stepPage) {
+      let b = stepPage.querySelector(':scope > .step-error-banner');
+      if (!b) {
+        b = document.createElement('div');
+        b.className = 'step-error-banner';
+        b.setAttribute('role', 'alert');
+        b.innerHTML = '<strong>Please fix the following:</strong><ul></ul>';
+        stepPage.insertBefore(b, stepPage.firstElementChild);
+      }
+      return b;
+    }
+
+    function clearStepErrors(step) {
+      const stepPage = document.getElementById('page' + step);
+      const b = stepPage.querySelector(':scope > .step-error-banner');
+      if (b) {
+        b.classList.remove('is-visible');
+        b.querySelector('ul').innerHTML = '';
+      }
+      stepPage.querySelectorAll('.cf-invalid').forEach((el) => el.classList.remove('cf-invalid'));
+    }
+
+    function showStepErrors(step, errors) {
+      const stepPage = document.getElementById('page' + step);
+      const b = ensureBanner(stepPage);
+      const ul = b.querySelector('ul');
+      ul.innerHTML = '';
+      errors.forEach((err) => {
+        const li = document.createElement('li');
+        li.textContent = err.msg;
+        ul.appendChild(li);
+        if (err.input) {
+          if (err.input.type === 'file' && err.input.closest('.doc-upload')) {
+            err.input.closest('.doc-upload').classList.add('cf-invalid');
+          } else if (err.input.closest('.day-box')) {
+            stepPage.querySelectorAll('.day-box').forEach((c) => c.classList.add('cf-invalid'));
+          } else if (err.input.closest('.zone-chip')) {
+            stepPage.querySelectorAll('.zone-chip').forEach((c) => c.classList.add('cf-invalid'));
+          } else {
+            err.input.classList.add('cf-invalid');
+          }
+        }
+      });
+      b.classList.add('is-visible');
+      const firstFocusable = errors.find((err) => err.input && typeof err.input.focus === 'function');
+      if (firstFocusable) {
+        try { firstFocusable.input.focus({ preventScroll: true }); } catch (e) { firstFocusable.input.focus(); }
+      }
+    }
+
+    function pushRequired(input, label, errors, opts) {
+      opts = opts || {};
+      const v = (input.value || '').trim();
+      if (!v) { errors.push({ input, msg: label + ' is required.' }); return false; }
+      if (opts.pattern && !opts.pattern.test(v)) {
+        errors.push({ input, msg: opts.patternMsg || (label + ' is invalid.') });
+        return false;
+      }
+      if (opts.maxLength && v.length > opts.maxLength) {
+        errors.push({ input, msg: label + ' is too long.' });
+        return false;
+      }
+      return true;
+    }
+
+    const stepValidators = {
+      1: function () {
+        const errors = [];
+        pushRequired(firstName, 'First name', errors, { pattern: NAME_RE, patternMsg: 'First name contains invalid characters.', maxLength: 50 });
+        pushRequired(lastName, 'Last name', errors, { pattern: NAME_RE, patternMsg: 'Last name contains invalid characters.', maxLength: 50 });
+
+        const dob = form.querySelector('input[name="date_of_birth"]');
+        if (dob) {
+          if (!dob.value) {
+            errors.push({ input: dob, msg: 'Date of birth is required.' });
+          } else {
+            const d = new Date(dob.value);
+            if (isNaN(d.getTime())) {
+              errors.push({ input: dob, msg: 'Enter a valid date of birth.' });
+            } else if (d > MIN_DOB) {
+              errors.push({ input: dob, msg: 'You must be at least 18 years old to register as a rider.' });
+            }
+          }
+        }
+
+        const gender = form.querySelector('select[name="gender"]');
+        if (gender && !gender.value) errors.push({ input: gender, msg: 'Gender is required.' });
+
+        const mobile = document.getElementById('contactNumber');
+        const mv = (mobile.value || '').replace(/[\s\-]/g, '');
+        if (!mv) errors.push({ input: mobile, msg: 'Mobile number is required.' });
+        else if (!PH_PHONE_RE.test(mv)) errors.push({ input: mobile, msg: 'Enter a valid PH mobile number (e.g. 09171234567 or +639171234567).' });
+
+        pushRequired(document.getElementById('homeAddress'), 'Home address', errors, { maxLength: 200 });
+        pushRequired(document.getElementById('city'), 'City', errors, { maxLength: 80 });
+        pushRequired(document.getElementById('province'), 'Province', errors, { maxLength: 80 });
+
+        pushRequired(document.getElementById('emergencyName'), 'Emergency contact name', errors, { maxLength: 80 });
+        const eRel = document.getElementById('emergencyRelationship');
+        if (!eRel.value) errors.push({ input: eRel, msg: 'Emergency contact relationship is required.' });
+        const eNum = document.getElementById('emergencyNumber');
+        const en = (eNum.value || '').replace(/[\s\-]/g, '');
+        if (!en) errors.push({ input: eNum, msg: 'Emergency contact number is required.' });
+        else if (!PH_PHONE_RE.test(en)) errors.push({ input: eNum, msg: 'Enter a valid PH mobile number for emergency contact.' });
+
+        return errors;
+      },
+
+      2: function () {
+        const errors = [];
+        const checkedVehicle = form.querySelector('input[name="vehicle_type"]:checked');
+        if (!checkedVehicle) {
+          errors.push({ input: form.querySelector('input[name="vehicle_type"]'), msg: 'Select a vehicle type.' });
+        }
+        const isMotor = checkedVehicle && (checkedVehicle.value === 'motorcycle' || checkedVehicle.value === 'car');
+
+        const makeModel = document.getElementById('vehicleMakeModel');
+        const year = document.getElementById('vehicleYear');
+        const color = document.getElementById('vehicleColor');
+        const plate = document.getElementById('plateNumber');
+
+        if (isMotor) {
+          pushRequired(makeModel, 'Vehicle make & model', errors, { maxLength: 100 });
+          const yv = (year.value || '').trim();
+          if (!yv) {
+            errors.push({ input: year, msg: 'Vehicle year is required.' });
+          } else {
+            const yi = parseInt(yv, 10);
+            if (isNaN(yi) || yi < 1990 || yi > CURRENT_YEAR + 1) {
+              errors.push({ input: year, msg: 'Vehicle year must be between 1990 and ' + (CURRENT_YEAR + 1) + '.' });
+            }
+          }
+          pushRequired(color, 'Vehicle color', errors, { maxLength: 40 });
+          const pv = (plate.value || '').trim().toUpperCase();
+          if (!pv) errors.push({ input: plate, msg: 'Plate number is required.' });
+          else if (!PLATE_RE.test(pv)) errors.push({ input: plate, msg: 'Plate number contains invalid characters.' });
+        }
+
+        const days = form.querySelectorAll('input[name="available_days"]:checked');
+        if (days.length === 0) {
+          errors.push({ input: form.querySelector('input[name="available_days"]'), msg: 'Select at least one available day.' });
+        }
+
+        const ss = document.getElementById('shiftStart');
+        const se = document.getElementById('shiftEnd');
+        if (!ss.value) errors.push({ input: ss, msg: 'Shift start time is required.' });
+        if (!se.value) errors.push({ input: se, msg: 'Shift end time is required.' });
+        if (ss.value && se.value && ss.value >= se.value) {
+          errors.push({ input: se, msg: 'Shift end must be later than shift start.' });
+        }
+
+        return errors;
+      },
+
+      3: function () {
+        const errors = [];
+        const zones = form.querySelectorAll('input[name="coverage_areas"]:checked');
+        if (zones.length === 0) {
+          errors.push({ input: form.querySelector('input[name="coverage_areas"]'), msg: 'Select at least one delivery zone.' });
+        }
+        const radius = document.getElementById('radiusSlider');
+        const rv = parseInt(radius.value, 10);
+        if (isNaN(rv) || rv < 1 || rv > 15) {
+          errors.push({ input: radius, msg: 'Max delivery radius must be between 1 and 15 km.' });
+        }
+        return errors;
+      },
+
+      4: function () {
+        const errors = [];
+        const checkedVehicle = form.querySelector('input[name="vehicle_type"]:checked');
+        const isMotor = checkedVehicle && (checkedVehicle.value === 'motorcycle' || checkedVehicle.value === 'car');
+
+        function requireFile(name, label) {
+          const input = form.querySelector('input[name="' + name + '"]');
+          if (!input) return;
+          const hasExisting = input.dataset.hasFile === '1';
+          if ((!input.files || input.files.length === 0) && !hasExisting) {
+            errors.push({ input, msg: label + ' is required.' });
+          }
+        }
+
+        if (isMotor) {
+          requireFile('drivers_license_front', "Driver's license (front)");
+          requireFile('drivers_license_back', "Driver's license (back)");
+          requireFile('vehicle_cr', 'Certificate of Registration (CR)');
+          requireFile('vehicle_or', 'Official Receipt (OR)');
+        }
+        requireFile('government_id_front', 'Government ID (front)');
+        requireFile('government_id_back', 'Government ID (back)');
+        requireFile('selfie_with_id', 'Selfie with valid ID');
+
+        return errors;
+      },
+
+      5: function () {
+        const errors = [];
+        const tos = document.querySelector('#page5 input[type="checkbox"][required]');
+        if (tos && !tos.checked) {
+          errors.push({ input: tos, msg: 'You must agree to the Rider Terms of Service to submit.' });
+        }
+        return errors;
+      }
+    };
+
+    function validateStep(step) {
+      clearStepErrors(step);
+      const fn = stepValidators[step];
+      if (!fn) return true;
+      const errors = fn();
+      if (errors.length) {
+        showStepErrors(step, errors);
+        return false;
+      }
+      return true;
+    }
+
+    // Clear invalid styling as the user corrects fields
+    form.addEventListener('input', (e) => {
+      const t = e.target;
+      if (t && t.classList) t.classList.remove('cf-invalid');
+    });
+    form.addEventListener('change', (e) => {
+      const t = e.target;
+      if (!t || !t.classList) return;
+      t.classList.remove('cf-invalid');
+      const docUpload = t.closest && t.closest('.doc-upload');
+      if (docUpload && t.files && t.files.length > 0) docUpload.classList.remove('cf-invalid');
+      if (t.name === 'available_days') {
+        document.querySelectorAll('.day-box.cf-invalid').forEach((c) => c.classList.remove('cf-invalid'));
+      }
+      if (t.name === 'coverage_areas') {
+        document.querySelectorAll('.zone-chip.cf-invalid').forEach((c) => c.classList.remove('cf-invalid'));
+      }
+    });
+
+    // Final submit pass: re-validate every step and jump to the first invalid one
+    form.addEventListener('submit', function (e) {
+      for (let step = 1; step <= total; step++) {
+        const errors = stepValidators[step]();
+        if (errors.length) {
+          e.preventDefault();
+          e.stopPropagation();
+          if (current !== step) {
+            document.getElementById('page' + current).classList.remove('active');
+            current = step;
+            document.getElementById('page' + current).classList.add('active');
+            updateSelectableCards();
+            updateReview();
+            updateStepper();
+          }
+          showStepErrors(step, errors);
+          document.querySelector('.rider-onboarding').scrollIntoView({ behavior: 'smooth', block: 'start' });
+          return;
+        }
+      }
+    });
+
+    function updateStepper() {
+      for (let i = 1; i <= total; i++) {
+        const dot = document.getElementById(`d${i}`);
+        const lbl = document.getElementById(`lbl${i}`);
+        dot.className = 'step-dot';
+        lbl.className = 'step-lbl-item';
+        if (i < current) {
+          dot.classList.add('step-done');
+          dot.textContent = '✓';
+        } else if (i === current) {
+          dot.classList.add('step-active');
+          dot.textContent = i;
+          lbl.classList.add('cur');
+        } else {
+          dot.classList.add('step-todo');
+          dot.textContent = i;
+        }
+      }
+      for (let i = 1; i < total; i++) {
+        document.getElementById(`l${i}${i + 1}`).className = 'step-line' + (i < current ? ' step-line-done' : '');
+      }
+      document.getElementById('progressFill').style.width = `${Math.round((current / total) * 100)}%`;
+    }
+
+    function goTo(next) {
+      if (next > current && !validateStep(current)) return;
+      document.getElementById(`page${current}`).classList.remove('active');
+      current = next;
+      document.getElementById(`page${current}`).classList.add('active');
+      updateSelectableCards();
+      updateReview();
+      updateStepper();
+      document.querySelector('.rider-onboarding').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    document.querySelectorAll('[data-next]').forEach((button) => button.addEventListener('click', () => goTo(Number(button.dataset.next))));
+    document.querySelectorAll('.v-card, .day-box, .zone-chip').forEach((card) => card.addEventListener('click', () => window.setTimeout(() => { updateSelectableCards(); updateReview(); }, 0)));
+    form.addEventListener('input', () => { updateAvatar(); updateReview(); });
+    form.addEventListener('change', () => { updateSelectableCards(); updateReview(); });
+    updateAvatar();
+    updateSelectableCards();
+    updateReview();
+  })();
+</script>
+{% endblock %}

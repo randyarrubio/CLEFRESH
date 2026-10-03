@@ -1,0 +1,889 @@
+{% load static socialaccount %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}CLEFRESH{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  {# Fonts use display=swap, so loading their CSS without blocking first paint only lets text show sooner. #}
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=DM+Sans:wght@400;500;600&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=DM+Sans:wght@400;500;600&display=swap"></noscript>
+  {# Bootstrap Icons 1.11.3, self-hosted: no extra third-party connection before first paint #}
+  <link rel="stylesheet" href="{% static 'vendor/bootstrap-icons-1.11.3/bootstrap-icons.min.css' %}">
+  <link rel="icon" type="image/png" sizes="32x32" href="{% static 'img/favicon-32.png' %}">
+  <link rel="apple-touch-icon" href="{% static 'img/favicon-180.png' %}">
+  <link rel="stylesheet" href="{% static 'css/style.css' %}">
+  <style>
+    .global-login-modal {
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      z-index: 3000;
+    }
+    .global-login-modal.is-open { display: flex; }
+    .global-login-backdrop {
+      position: absolute;
+      inset: 0;
+      background: rgba(12, 27, 43, .55);
+      backdrop-filter: blur(8px);
+    }
+    .global-login-card {
+      position: relative;
+      z-index: 1;
+      width: min(560px, calc(100vw - 32px));
+      max-height: calc(100vh - 44px);
+      overflow: hidden;
+      display: flex;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      box-shadow: 0 24px 70px rgba(12, 27, 43, .24);
+    }
+    .gl-form-side { flex: 1; overflow-y: auto; min-width: 0; }
+    .gl-image-side {
+      flex: 0 0 170px;
+      background: url("{% static 'img/login.webp' %}") center/cover no-repeat;
+    }
+    .gl-form-content { padding: 28px 26px 28px; }
+    .gl-logo { font-size: 19px; font-weight: 900; font-family: 'Open Sans', sans-serif; letter-spacing: -.03em; display: block; margin-bottom: 12px; }
+    .gl-title { font-size: 22px; font-weight: 800; color: #0b1f33; margin: 0 0 4px; line-height: 1.2; }
+    .gl-subtitle { font-size: 12px; color: #7a96aa; margin: 0 0 18px; }
+    .global-login-close {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      z-index: 10;
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      border: 1px solid rgba(255,255,255,.35);
+      background: rgba(0,0,0,.18);
+      color: rgba(255,255,255,.9);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: background .2s, transform .2s;
+      font-size: 13px;
+    }
+    .global-login-close:hover { background: rgba(0,0,0,.3); transform: rotate(90deg); }
+    @media (max-width: 540px) {
+      .global-login-modal { align-items: start; padding-top: 72px; }
+      .global-login-card { flex-direction: column; width: calc(100vw - 24px); }
+      .gl-image-side { display: none; }
+      .global-login-close { background: rgba(0,0,0,.06); border-color: rgba(0,0,0,.1); color: #567083; }
+    }
+    .global-register-card .gl-form-side { max-height: calc(100vh - 44px); overflow-y: auto; }
+    body.global-login-open { overflow: hidden; }
+    .rider-message-modal {
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      z-index: 3200;
+    }
+    .rider-message-modal.is-open { display: flex; }
+    .rider-message-backdrop {
+      position: absolute;
+      inset: 0;
+      background: rgba(12, 27, 43, .54);
+      backdrop-filter: blur(8px);
+    }
+    .rider-message-card {
+      position: relative;
+      z-index: 1;
+      width: min(430px, 100%);
+      background: rgba(255,255,255,.98);
+      border: 1px solid rgba(18,135,217,.14);
+      border-radius: 14px;
+      box-shadow: 0 24px 70px rgba(12, 27, 43, .22);
+      padding: 28px;
+      text-align: center;
+    }
+    .rider-message-icon {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 14px;
+      background: #e6f4fb;
+      color: #1287d9;
+      font-size: 26px;
+    }
+    .rider-message-icon.success { background: #eaf6e2; color: #2f6717; }
+    .rider-message-icon.error,
+    .rider-message-icon.danger { background: #fde8e6; color: #7b1d1d; }
+    .rider-message-icon.warning { background: #fff6d7; color: #8a6410; }
+    .rider-message-card h2 {
+      font-size: 22px;
+      margin-bottom: 8px;
+      color: #172033;
+    }
+    .rider-message-list {
+      display: grid;
+      gap: 8px;
+      margin: 0 0 20px;
+      color: #5d7187;
+      font-size: 14px;
+      line-height: 1.55;
+      list-style: none;
+    }
+    body.rider-message-open { overflow: hidden; }
+    @media (max-width: 640px) {
+      .rider-message-modal { align-items: start; padding-top: 88px; }
+      .rider-message-card { padding: 24px 18px; }
+    }
+  </style>
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+  <a href="#main-content" class="skip-link">Skip to main content</a>
+  <div class="site-water-bg" aria-hidden="true">
+    <span class="site-bubble site-bubble-1"></span>
+    <span class="site-bubble site-bubble-2"></span>
+    <span class="site-bubble site-bubble-3"></span>
+    <span class="site-bubble site-bubble-4"></span>
+    <span class="site-bubble site-bubble-5"></span>
+    <span class="site-bubble site-bubble-6"></span>
+  </div>
+
+  <header class="topbar{% if user.is_authenticated and user.role != 'customer' %}{% if is_shop_owner_area or is_shop_owner_home or user.role == 'admin' or user.is_superuser %} topbar--long-nav{% endif %}{% endif %}">
+    <a href="/" class="topbar-logo" aria-label="CLEFRESH — home">
+      <img src="{% static 'img/logo.webp' %}" alt="" class="topbar-logo-img" aria-hidden="true">
+      <div class="topbar-logo-text">
+        <span class="brand-name"><span class="brand-cle">CLE</span><span class="brand-fresh">FRESH</span></span>
+        <span>Your One-Stop Shop for Laundry Care</span>
+      </div>
+    </a>
+
+    <nav class="topbar-nav" id="topbarNav" aria-label="Main navigation">
+      {% block topbar_nav %}
+      {% if user.is_authenticated and user.role == 'customer' %}
+        <a href="{% url 'home' %}"{% if request.resolver_match.url_name == 'home' %} aria-current="page" class="active-nav"{% endif %}>Home</a>
+        <a href="{% url 'order_list' %}"{% if request.resolver_match.url_name == 'order_list' %} aria-current="page" class="active-nav"{% endif %}>My Orders</a>
+      {% elif is_shop_owner_area or is_shop_owner_home %}
+        <a href="{% url 'shop_dashboard' %}"{% if request.resolver_match.url_name == 'shop_dashboard' %} aria-current="page" class="active-nav"{% endif %}><i class="bi bi-speedometer2 topbar-nav-icon" aria-hidden="true"></i>Dashboard</a>
+        <a href="{% url 'shop_dashboard_orders' %}"{% if request.resolver_match.url_name == 'shop_dashboard_orders' %} aria-current="page" class="active-nav"{% endif %}><i class="bi bi-clipboard-check topbar-nav-icon" aria-hidden="true"></i>Orders</a>
+        <a href="{% url 'shop_dashboard_slots' %}"{% if request.resolver_match.url_name == 'shop_dashboard_slots' %} aria-current="page" class="active-nav"{% endif %}><i class="bi bi-calendar3 topbar-nav-icon" aria-hidden="true"></i>Delivery Slots</a>
+        <a href="{% url 'shop_dashboard_services' %}"{% if request.resolver_match.url_name == 'shop_dashboard_services' %} aria-current="page" class="active-nav"{% endif %}><i class="bi bi-basket topbar-nav-icon" aria-hidden="true"></i>Services</a>
+        <a href="{% url 'shop_dashboard_promos' %}"{% if request.resolver_match.url_name == 'shop_dashboard_promos' %} aria-current="page" class="active-nav"{% endif %}><i class="bi bi-megaphone topbar-nav-icon" aria-hidden="true"></i>Promos</a>
+        <a href="{% url 'shop_dashboard_analytics' %}"{% if request.resolver_match.url_name == 'shop_dashboard_analytics' %} aria-current="page" class="active-nav"{% endif %}><i class="bi bi-bar-chart topbar-nav-icon" aria-hidden="true"></i>Analytics</a>
+        <a href="{% url 'shop_dashboard_payments' %}"{% if request.resolver_match.url_name == 'shop_dashboard_payments' %} aria-current="page" class="active-nav"{% endif %}><i class="bi bi-credit-card topbar-nav-icon" aria-hidden="true"></i>Payments</a>
+      {% elif user.is_authenticated and user.role == 'rider' %}
+      {% elif user.is_authenticated and user.role == 'admin' %}
+        <a href="{% url 'admin_dashboard' %}"{% if request.resolver_match.url_name == 'admin_dashboard' %} aria-current="page" class="active-nav"{% endif %}><i class="bi bi-speedometer2 topbar-nav-icon" aria-hidden="true"></i>Dashboard</a>
+        <a href="{% url 'admin_shops' %}"{% if request.resolver_match.url_name == 'admin_shops' %} aria-current="page" class="active-nav"{% endif %}><i class="bi bi-shop topbar-nav-icon" aria-hidden="true"></i>Shops</a>
+        <a href="{% url 'admin_users' %}"{% if request.resolver_match.url_name == 'admin_users' %} aria-current="page" class="active-nav"{% endif %}><i class="bi bi-people topbar-nav-icon" aria-hidden="true"></i>Users</a>
+        <a href="{% url 'admin_orders' %}"{% if request.resolver_match.url_name == 'admin_orders' %} aria-current="page" class="active-nav"{% endif %}><i class="bi bi-clipboard-check topbar-nav-icon" aria-hidden="true"></i>Orders</a>
+        <a href="{% url 'admin_transactions' %}"{% if request.resolver_match.url_name == 'admin_transactions' %} aria-current="page" class="active-nav"{% endif %}><i class="bi bi-credit-card topbar-nav-icon" aria-hidden="true"></i>Transactions</a>
+        <a href="{% url 'admin_analytics' %}"{% if request.resolver_match.url_name == 'admin_analytics' %} aria-current="page" class="active-nav"{% endif %}><i class="bi bi-bar-chart topbar-nav-icon" aria-hidden="true"></i>Analytics</a>
+        <a href="#" data-broadcast-modal><i class="bi bi-megaphone topbar-nav-icon" aria-hidden="true"></i>Broadcast</a>
+      {% elif user.is_authenticated and user.is_superuser %}
+        <a href="{% url 'admin_dashboard' %}"{% if request.resolver_match.url_name == 'admin_dashboard' %} aria-current="page" class="active-nav"{% endif %}><i class="bi bi-speedometer2 topbar-nav-icon" aria-hidden="true"></i>Dashboard</a>
+        <a href="{% url 'admin_shops' %}"{% if request.resolver_match.url_name == 'admin_shops' %} aria-current="page" class="active-nav"{% endif %}><i class="bi bi-shop topbar-nav-icon" aria-hidden="true"></i>Shops</a>
+        <a href="{% url 'admin_users' %}"{% if request.resolver_match.url_name == 'admin_users' %} aria-current="page" class="active-nav"{% endif %}><i class="bi bi-people topbar-nav-icon" aria-hidden="true"></i>Users</a>
+        <a href="{% url 'admin_orders' %}"{% if request.resolver_match.url_name == 'admin_orders' %} aria-current="page" class="active-nav"{% endif %}><i class="bi bi-clipboard-check topbar-nav-icon" aria-hidden="true"></i>Orders</a>
+        <a href="{% url 'admin_transactions' %}"{% if request.resolver_match.url_name == 'admin_transactions' %} aria-current="page" class="active-nav"{% endif %}><i class="bi bi-credit-card topbar-nav-icon" aria-hidden="true"></i>Transactions</a>
+        <a href="{% url 'admin_analytics' %}"{% if request.resolver_match.url_name == 'admin_analytics' %} aria-current="page" class="active-nav"{% endif %}><i class="bi bi-bar-chart topbar-nav-icon" aria-hidden="true"></i>Analytics</a>
+        <a href="#" data-broadcast-modal><i class="bi bi-megaphone topbar-nav-icon" aria-hidden="true"></i>Broadcast</a>
+      {% elif is_shop_site and shop %}
+        <a href="{% url 'shop_detail' shop.id %}">{{ shop.name|truncatechars:18 }}</a>
+        <a href="{% url 'shop_site_services' shop.id %}">Services</a>
+        <a href="{% url 'shop_site_how_it_works' shop.id %}">How It Works</a>
+        <a href="{% url 'shop_site_about' shop.id %}">About Us</a>
+      {% else %}
+        <a href="{% url 'home' %}"{% if request.resolver_match.url_name == 'home' %} aria-current="page" class="active-nav"{% endif %}>Home</a>
+        <a href="{% url 'home' %}#services">Services</a>
+        <a href="{% url 'home' %}#how-it-works">How It Works</a>
+        <a href="{% url 'home' %}#about-us">About Us</a>
+      {% endif %}
+      {% if user.is_authenticated and user.role == 'rider' %}
+        <a href="{% url 'rider_dashboard' %}"{% if request.resolver_match.url_name == 'rider_dashboard' %} aria-current="page" class="active-nav"{% endif %}>My Tasks</a>
+      {% endif %}
+      {% endblock topbar_nav %}
+    </nav>
+
+    <div class="topbar-right">
+      {% if user.is_authenticated %}
+        <div class="notif-wrapper">
+          <button class="notif-btn" id="notifBtn" onclick="toggleNotifDropdown()" aria-label="Notifications" aria-expanded="false" aria-controls="notifDropdown" aria-haspopup="true">
+            <i class="bi bi-bell" aria-hidden="true"></i>
+            <span class="notif-badge" id="notifBadge" style="display:none" aria-hidden="true">0</span>
+            <span class="sr-only" id="notifCount"></span>
+          </button>
+          <div class="notif-dropdown" id="notifDropdown" style="display:none" role="region" aria-label="Notifications" aria-live="polite">
+            <div class="notif-header">
+              <strong>Notifications</strong>
+              <button onclick="markAllRead()" class="btn-link">Mark all read</button>
+            </div>
+            <div id="notifList"><p class="notif-empty"><i class="bi bi-bell-slash" aria-hidden="true" style="display:block;font-size:28px;margin-bottom:6px;"></i>No notifications</p></div>
+          </div>
+        </div>
+        <a href="{% url 'profile' %}" class="topbar-avatar">
+          {{ user.first_name|first|upper|default:user.email|first|upper }}{{ user.last_name|first|upper|default:"" }}
+        </a>
+        <a href="{% url 'logout' %}" class="btn btn-ghost btn-sm" data-logout>Logout</a>
+      {% else %}
+        <a href="{% url 'login' %}" class="btn btn-ghost btn-sm" data-login-modal>Login</a>
+        <a href="{% url 'register' %}" class="btn btn-sm topbar-register" data-register-modal>Register</a>
+      {% endif %}
+      <button class="hamburger-btn" id="hamburgerBtn" onclick="toggleMobileMenu()" aria-label="Toggle navigation menu" aria-expanded="false" aria-controls="mobileMenu">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </header>
+
+  <div class="mobile-menu-backdrop" id="mobileBackdrop" aria-hidden="true"></div>
+
+  <nav class="mobile-menu" id="mobileMenu" aria-label="Mobile navigation" aria-hidden="true">
+    <div class="mobile-menu-header">
+      <span class="mobile-menu-logo"><span class="brand-cle">CLE</span><span class="brand-fresh">FRESH</span></span>
+      <button class="mobile-menu-close" onclick="toggleMobileMenu()" aria-label="Close navigation"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
+    </div>
+    {% if user.is_authenticated %}
+      <div class="mobile-menu-user">
+        <span class="mobile-menu-avatar" aria-hidden="true">{{ user.first_name|first|upper|default:user.email|first|upper }}{{ user.last_name|first|upper|default:"" }}</span>
+        <span class="mobile-menu-user-text">
+          <strong>{{ user.get_full_name|default:user.email }}</strong>
+          <span>{% if user.role %}{{ user.get_role_display }}{% elif user.is_superuser %}Administrator{% endif %}</span>
+        </span>
+      </div>
+    {% endif %}
+    <div class="mobile-menu-label" aria-hidden="true">Menu</div>
+    {% if user.is_authenticated and user.role == 'customer' %}
+      <a href="{% url 'home' %}" onclick="toggleMobileMenu()"{% if request.resolver_match.url_name == 'home' %} class="active-nav" aria-current="page"{% endif %}><i class="bi bi-house" aria-hidden="true"></i> Home</a>
+      <a href="{% url 'order_list' %}" onclick="toggleMobileMenu()"{% if request.resolver_match.url_name == 'order_list' %} class="active-nav" aria-current="page"{% endif %}><i class="bi bi-bag-check" aria-hidden="true"></i> My Orders</a>
+    {% elif is_shop_owner_area or is_shop_owner_home %}
+      <a href="{% url 'shop_dashboard' %}" onclick="toggleMobileMenu()"{% if request.resolver_match.url_name == 'shop_dashboard' %} class="active-nav"{% endif %}><i class="bi bi-speedometer2" aria-hidden="true"></i> Dashboard</a>
+      <a href="{% url 'shop_dashboard_orders' %}" onclick="toggleMobileMenu()"{% if request.resolver_match.url_name == 'shop_dashboard_orders' %} class="active-nav"{% endif %}><i class="bi bi-clipboard-check" aria-hidden="true"></i> Orders</a>
+      <a href="{% url 'shop_dashboard_slots' %}" onclick="toggleMobileMenu()"{% if request.resolver_match.url_name == 'shop_dashboard_slots' %} class="active-nav"{% endif %}><i class="bi bi-calendar3" aria-hidden="true"></i> Delivery Slots</a>
+      <a href="{% url 'shop_dashboard_services' %}" onclick="toggleMobileMenu()"{% if request.resolver_match.url_name == 'shop_dashboard_services' %} class="active-nav"{% endif %}><i class="bi bi-basket" aria-hidden="true"></i> Services</a>
+      <a href="{% url 'shop_dashboard_promos' %}" onclick="toggleMobileMenu()"{% if request.resolver_match.url_name == 'shop_dashboard_promos' %} class="active-nav"{% endif %}><i class="bi bi-megaphone" aria-hidden="true"></i> Promos</a>
+      <a href="{% url 'shop_dashboard_analytics' %}" onclick="toggleMobileMenu()"{% if request.resolver_match.url_name == 'shop_dashboard_analytics' %} class="active-nav"{% endif %}><i class="bi bi-bar-chart" aria-hidden="true"></i> Analytics</a>
+      <a href="{% url 'shop_dashboard_payments' %}" onclick="toggleMobileMenu()"{% if request.resolver_match.url_name == 'shop_dashboard_payments' %} class="active-nav"{% endif %}><i class="bi bi-credit-card" aria-hidden="true"></i> Payments</a>
+    {% elif user.is_authenticated and user.role == 'rider' %}
+    {% elif user.is_authenticated and user.role == 'admin' %}
+      <a href="{% url 'admin_dashboard' %}" onclick="toggleMobileMenu()"{% if request.resolver_match.url_name == 'admin_dashboard' %} class="active-nav"{% endif %}><i class="bi bi-speedometer2" aria-hidden="true"></i> Dashboard</a>
+      <a href="{% url 'admin_shops' %}" onclick="toggleMobileMenu()"{% if request.resolver_match.url_name == 'admin_shops' %} class="active-nav"{% endif %}><i class="bi bi-shop" aria-hidden="true"></i> Shops</a>
+      <a href="{% url 'admin_users' %}" onclick="toggleMobileMenu()"{% if request.resolver_match.url_name == 'admin_users' %} class="active-nav"{% endif %}><i class="bi bi-people" aria-hidden="true"></i> Users</a>
+      <a href="{% url 'admin_orders' %}" onclick="toggleMobileMenu()"{% if request.resolver_match.url_name == 'admin_orders' %} class="active-nav"{% endif %}><i class="bi bi-clipboard-check" aria-hidden="true"></i> Orders</a>
+      <a href="{% url 'admin_transactions' %}" onclick="toggleMobileMenu()"{% if request.resolver_match.url_name == 'admin_transactions' %} class="active-nav"{% endif %}><i class="bi bi-credit-card" aria-hidden="true"></i> Transactions</a>
+      <a href="{% url 'admin_analytics' %}" onclick="toggleMobileMenu()"{% if request.resolver_match.url_name == 'admin_analytics' %} class="active-nav"{% endif %}><i class="bi bi-bar-chart" aria-hidden="true"></i> Analytics</a>
+      <a href="#" data-broadcast-modal onclick="toggleMobileMenu()"><i class="bi bi-megaphone" aria-hidden="true"></i> Broadcast</a>
+    {% elif user.is_authenticated and user.is_superuser %}
+      <a href="{% url 'admin_dashboard' %}" onclick="toggleMobileMenu()"{% if request.resolver_match.url_name == 'admin_dashboard' %} class="active-nav"{% endif %}><i class="bi bi-speedometer2" aria-hidden="true"></i> Dashboard</a>
+      <a href="{% url 'admin_shops' %}" onclick="toggleMobileMenu()"{% if request.resolver_match.url_name == 'admin_shops' %} class="active-nav"{% endif %}><i class="bi bi-shop" aria-hidden="true"></i> Shops</a>
+      <a href="{% url 'admin_users' %}" onclick="toggleMobileMenu()"{% if request.resolver_match.url_name == 'admin_users' %} class="active-nav"{% endif %}><i class="bi bi-people" aria-hidden="true"></i> Users</a>
+      <a href="{% url 'admin_orders' %}" onclick="toggleMobileMenu()"{% if request.resolver_match.url_name == 'admin_orders' %} class="active-nav"{% endif %}><i class="bi bi-clipboard-check" aria-hidden="true"></i> Orders</a>
+      <a href="{% url 'admin_transactions' %}" onclick="toggleMobileMenu()"{% if request.resolver_match.url_name == 'admin_transactions' %} class="active-nav"{% endif %}><i class="bi bi-credit-card" aria-hidden="true"></i> Transactions</a>
+      <a href="{% url 'admin_analytics' %}" onclick="toggleMobileMenu()"{% if request.resolver_match.url_name == 'admin_analytics' %} class="active-nav"{% endif %}><i class="bi bi-bar-chart" aria-hidden="true"></i> Analytics</a>
+      <a href="#" data-broadcast-modal onclick="toggleMobileMenu()"><i class="bi bi-megaphone" aria-hidden="true"></i> Broadcast</a>
+    {% elif is_shop_site and shop %}
+      <a href="{% url 'shop_detail' shop.id %}" onclick="toggleMobileMenu()"><i class="bi bi-shop" aria-hidden="true"></i> {{ shop.name|truncatechars:24 }}</a>
+      <a href="{% url 'shop_site_services' shop.id %}" onclick="toggleMobileMenu()"><i class="bi bi-basket" aria-hidden="true"></i> Services</a>
+      <a href="{% url 'shop_site_how_it_works' shop.id %}" onclick="toggleMobileMenu()"><i class="bi bi-list-check" aria-hidden="true"></i> How It Works</a>
+      <a href="{% url 'shop_site_about' shop.id %}" onclick="toggleMobileMenu()"><i class="bi bi-info-circle" aria-hidden="true"></i> About Us</a>
+    {% else %}
+      <a href="{% url 'home' %}" onclick="toggleMobileMenu()"{% if request.resolver_match.url_name == 'home' %} class="active-nav" aria-current="page"{% endif %}><i class="bi bi-house" aria-hidden="true"></i> Home</a>
+      <a href="{% url 'home' %}#services" onclick="toggleMobileMenu()"><i class="bi bi-basket" aria-hidden="true"></i> Services</a>
+      <a href="{% url 'home' %}#how-it-works" onclick="toggleMobileMenu()"><i class="bi bi-list-check" aria-hidden="true"></i> How It Works</a>
+      <a href="{% url 'home' %}#about-us" onclick="toggleMobileMenu()"><i class="bi bi-info-circle" aria-hidden="true"></i> About Us</a>
+    {% endif %}
+    <div class="mobile-menu-label" aria-hidden="true">Account</div>
+    {% if user.is_authenticated %}
+      {% if user.role == 'rider' %}
+        <a href="{% url 'rider_dashboard' %}" onclick="toggleMobileMenu()"{% if request.resolver_match.url_name == 'rider_dashboard' %} class="active-nav"{% endif %}><i class="bi bi-bicycle" aria-hidden="true"></i> My Tasks</a>
+      {% endif %}
+      <a href="{% url 'profile' %}" onclick="toggleMobileMenu()"{% if request.resolver_match.url_name == 'profile' %} class="active-nav"{% endif %}><i class="bi bi-person" aria-hidden="true"></i> Profile</a>
+      <a href="{% url 'logout' %}" class="mobile-menu-logout" data-logout><i class="bi bi-box-arrow-right" aria-hidden="true"></i> Logout</a>
+    {% else %}
+      <a href="{% url 'login' %}" onclick="toggleMobileMenu()" data-login-modal><i class="bi bi-box-arrow-in-right" aria-hidden="true"></i> Login</a>
+      <a href="{% url 'register' %}" onclick="toggleMobileMenu()" data-register-modal><i class="bi bi-person-plus" aria-hidden="true"></i> Register</a>
+    {% endif %}
+  </nav>
+
+  {% if messages and user.is_authenticated and user.role == 'rider' %}
+    <div class="rider-message-modal" id="riderMessageModal" aria-hidden="true">
+      <div class="rider-message-backdrop" data-rider-message-close></div>
+      <div class="rider-message-card" role="dialog" aria-modal="true" aria-label="Rider message">
+        <div class="rider-message-icon info">
+          <i class="bi bi-info-circle"></i>
+        </div>
+        <ul class="rider-message-list">
+          {% for message in messages %}
+            <li>{{ message }}</li>
+          {% endfor %}
+        </ul>
+        <button type="button" class="btn btn-primary btn-full" data-rider-message-close>OK</button>
+      </div>
+    </div>
+  {% elif messages %}
+    <div class="message-shell" role="alert" aria-live="polite" id="globalAlertShell">
+      {% for message in messages %}
+        <div class="alert alert-{{ message.tags }}" data-auto-dismiss>
+          <i class="bi {% if message.tags == 'success' %}bi-check-circle-fill{% elif message.tags == 'error' or message.tags == 'danger' %}bi-exclamation-octagon-fill{% elif message.tags == 'warning' %}bi-exclamation-triangle-fill{% else %}bi-info-circle-fill{% endif %}" aria-hidden="true"></i>
+          <span class="alert-text"><strong class="alert-title">{% if message.tags == 'success' %}Success{% elif message.tags == 'error' or message.tags == 'danger' %}Error{% elif message.tags == 'warning' %}Warning{% else %}Note{% endif %}</strong> {{ message }}</span>
+          <button type="button" class="alert-close" aria-label="Dismiss message" onclick="this.closest('.alert').remove()"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  <main id="main-content">{% block content %}{% endblock %}</main>
+
+  <footer class="footer">
+    <div class="footer-shell">
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <a href="/" class="footer-logo"><span class="brand-cle">CLE</span><span class="brand-fresh">FRESH</span></a>
+          <p>Laundry operations software for marketplace booking, shop fulfillment, rider handoff, and customer order visibility.</p>
+          <div class="footer-badges">
+            <span>Pickup and Delivery</span>
+            <span>Local Shops</span>
+            <span>Cashless or COD</span>
+          </div>
+        </div>
+
+        <div class="footer-col">
+          <h3>Explore</h3>
+          <a href="{% url 'home' %}">Home</a>
+          <a href="{% url 'shop_list' %}">Shops</a>
+          <a href="{% url 'home' %}#how-it-works">How It Works</a>
+          <a href="{% url 'home' %}#about-us">About Us</a>
+        </div>
+
+        <div class="footer-col">
+          <h3>Workspace</h3>
+          {% if user.is_authenticated %}
+            {% if user.role == 'customer' %}
+              <a href="{% url 'order_list' %}">My Orders</a>
+            {% elif user.role == 'rider' %}
+              <a href="{% url 'rider_dashboard' %}">My Tasks</a>
+            {% elif user.role == 'admin' or user.is_superuser %}
+              <a href="{% url 'admin_dashboard' %}">Admin Panel</a>
+            {% endif %}
+            <a href="{% url 'profile' %}">Profile</a>
+            <a href="{% url 'logout' %}" data-logout>Logout</a>
+          {% else %}
+            <a href="{% url 'login' %}" data-login-modal>Login</a>
+            <a href="{% url 'register' %}" data-register-modal>Register</a>
+          {% endif %}
+        </div>
+
+        <div class="footer-col">
+          <h3>Support and Legal</h3>
+          <a href="/info/user-guide/">User Guide</a>
+          <a href="/info/help/">Help Center</a>
+          <a href="/info/privacy/">Privacy Policy</a>
+          <a href="/info/terms/">Terms of Service</a>
+          <a href="/info/refunds/">Refund and Cancellation</a>
+        </div>
+      </div>
+
+      <div class="footer-bottom">
+        <p>&copy; 2026 CLEFRESH. Built for local laundry operations.</p>
+      </div>
+    </div>
+  </footer>
+
+  {# Shared confirmation dialog: any <form data-confirm="..."> uses it (see script below). #}
+  <div class="app-modal" id="confirmDialog" aria-hidden="true">
+    <div class="app-modal-backdrop" data-confirm-dismiss></div>
+    <div class="app-modal-card" role="alertdialog" aria-modal="true" aria-labelledby="confirmDialogTitle" aria-describedby="confirmDialogText">
+      <div class="app-modal-icon" aria-hidden="true"><i class="bi bi-exclamation-triangle"></i></div>
+      <h2 class="app-modal-title" id="confirmDialogTitle">Are you sure?</h2>
+      <p class="app-modal-text" id="confirmDialogText"></p>
+      <div class="app-modal-actions">
+        <button type="button" class="btn btn-outline" data-confirm-dismiss id="confirmDialogCancel">Cancel</button>
+        <button type="button" class="btn btn-danger-solid" id="confirmDialogOk">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  {% if user.is_authenticated and user.role == 'admin' or user.is_authenticated and user.is_superuser %}
+    <div class="broadcast-modal" id="broadcastModal" aria-hidden="true">
+      <div class="broadcast-backdrop" id="broadcastBackdrop"></div>
+      <div class="broadcast-card" role="dialog" aria-modal="true" aria-labelledby="broadcastModalTitle">
+        <div class="broadcast-card-header">
+          <h3 id="broadcastModalTitle"><i class="bi bi-megaphone" aria-hidden="true"></i>Broadcast Notification</h3>
+          <button class="broadcast-close" id="broadcastClose" aria-label="Close broadcast modal">&times;</button>
+        </div>
+        <p class="broadcast-subtitle">Send a notification to platform users</p>
+        <form method="post" action="{% url 'admin_broadcast' %}">
+          {% csrf_token %}
+          <div class="form-group">
+            <label for="bc-role">Target Audience</label>
+            <select id="bc-role" name="role">
+              <option value="">All Users</option>
+              <option value="customer">Customers Only</option>
+              <option value="shop_owner">Shop Owners Only</option>
+              <option value="rider">Riders Only</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="bc-message">Message</label>
+            <textarea id="bc-message" name="message" rows="5" required placeholder="Enter your announcement or notification message..."></textarea>
+          </div>
+          <button type="submit" class="confirm-btn">Send Broadcast &rarr;</button>
+        </form>
+      </div>
+    </div>
+  {% endif %}
+
+  {% if not user.is_authenticated and request.resolver_match.url_name != 'home' %}
+    <div class="global-login-modal" id="globalLoginModal" aria-hidden="true">
+      <div class="global-login-backdrop" data-global-login-close></div>
+      <div class="global-login-card" role="dialog" aria-modal="true" aria-labelledby="globalLoginTitle">
+        <div class="gl-form-side">
+        <div class="gl-form-content">
+            <span class="gl-logo"><span class="brand-cle">CLE</span><span class="brand-fresh">FRESH</span></span>
+            <h2 class="gl-title" id="globalLoginTitle">Welcome back 👋</h2>
+            <p class="gl-subtitle">Sign in to continue to your account</p>
+            <a href="{% provider_login_url 'google' %}" class="lf-google-btn">
+              <svg width="20" height="20" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z" fill="#4285F4"/>
+                <path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34A853"/>
+                <path d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/>
+                <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
+              </svg>
+              Continue with Google
+            </a>
+            <div class="lf-divider"><span>or</span></div>
+            <form method="post" action="{% url 'login' %}?next={{ request.get_full_path|urlencode }}">
+              {% csrf_token %}
+              <div class="form-group">
+                <label for="g-login-email">Email address</label>
+                <div class="lf-input-wrap">
+                  <i class="bi bi-envelope lf-input-icon" aria-hidden="true"></i>
+                  <input id="g-login-email" type="email" name="username" required placeholder="you@example.com" autocomplete="email">
+                </div>
+              </div>
+              <div class="form-group" style="margin-top:14px;">
+                <div class="lf-label-row">
+                  <label for="g-login-password">Password</label>
+                  <a href="{% url 'forgot_password' %}" class="lf-forgot">Forgot password?</a>
+                </div>
+                <div class="lf-input-wrap lf-pw-wrap">
+                  <i class="bi bi-lock lf-input-icon" aria-hidden="true"></i>
+                  <input id="g-login-password" type="password" name="password" required placeholder="••••••••" autocomplete="current-password">
+                  <button type="button" class="lf-eye-btn" data-pw-toggle aria-label="Show password"><i class="bi bi-eye"></i></button>
+                </div>
+              </div>
+              <div class="lf-remember-row">
+                <input type="checkbox" name="remember_me" id="g-remember">
+                <label for="g-remember">Keep me signed in</label>
+              </div>
+              <button type="submit" class="lf-submit-btn">Sign In <i class="bi bi-arrow-right" aria-hidden="true"></i></button>
+            </form>
+            <p class="auth-footer" style="margin-top:16px;text-align:center;">Don't have an account? <a href="{% url 'register' %}?next={{ request.get_full_path|urlencode }}" style="font-weight:700;color:var(--primary);" data-register-modal>Register here</a></p>
+        </div>
+        </div>
+        <div class="gl-image-side" aria-hidden="true"></div>
+        <button type="button" class="global-login-close" data-global-login-close aria-label="Close login">
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+    </div>
+
+    <div class="global-login-modal" id="globalRegisterModal" aria-hidden="true">
+      <div class="global-login-backdrop" data-global-login-close></div>
+      <div class="global-login-card global-register-card" role="dialog" aria-modal="true" aria-labelledby="globalRegisterTitle">
+        <div class="gl-form-side">
+          <div class="gl-form-content">
+            <span class="gl-logo"><span class="brand-cle">CLE</span><span class="brand-fresh">FRESH</span></span>
+            <h2 class="gl-title" id="globalRegisterTitle">Create an account 👋</h2>
+            <p class="gl-subtitle">Join CLEFRESH and enjoy fresh laundry at your door</p>
+            <a href="{% provider_login_url 'google' process='signup' %}" class="lf-google-btn">
+              <svg width="20" height="20" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z" fill="#4285F4"/>
+                <path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34A853"/>
+                <path d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/>
+                <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
+              </svg>
+              Continue with Google
+            </a>
+            <div class="lf-divider"><span>or</span></div>
+            <form method="post" action="{% url 'register' %}?next={{ request.get_full_path|urlencode }}">
+              {% csrf_token %}
+              <div class="form-group">
+                <label for="g-reg-first">First name</label>
+                <input id="g-reg-first" type="text" name="first_name" required maxlength="50" autocomplete="given-name">
+              </div>
+              <div class="form-group">
+                <label for="g-reg-last">Last name</label>
+                <input id="g-reg-last" type="text" name="last_name" required maxlength="50" autocomplete="family-name">
+              </div>
+              <div class="form-group">
+                <label for="g-reg-email">Email address</label>
+                <input id="g-reg-email" type="email" name="email" required autocomplete="email">
+              </div>
+              <div class="form-group">
+                <label for="g-reg-role">Role</label>
+                <select id="g-reg-role" name="role" required>
+                  <option value="customer">Customer</option>
+                  <option value="shop_owner">Shop Owner</option>
+                  <option value="rider">Rider</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="g-reg-contact">Contact number</label>
+                <input id="g-reg-contact" type="text" name="contact_number" maxlength="20" autocomplete="tel">
+              </div>
+              <div class="form-group">
+                <label for="g-reg-pw1">Password</label>
+                <input id="g-reg-pw1" type="password" name="password1" required autocomplete="new-password">
+              </div>
+              <div class="form-group">
+                <label for="g-reg-pw2">Confirm password</label>
+                <input id="g-reg-pw2" type="password" name="password2" required autocomplete="new-password">
+              </div>
+              <button type="submit" class="lf-submit-btn">Create Account <i class="bi bi-arrow-right" aria-hidden="true"></i></button>
+            </form>
+            <p class="auth-footer" style="margin-top:16px;text-align:center;">Already have an account? <a href="{% url 'login' %}?next={{ request.get_full_path|urlencode }}" style="font-weight:700;color:var(--primary);" data-login-modal>Sign in</a></p>
+          </div>
+        </div>
+        <div class="gl-image-side" aria-hidden="true"></div>
+        <button type="button" class="global-login-close" data-global-login-close aria-label="Close register">
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+    </div>
+  {% endif %}
+
+  <script>
+  // ── Auto-dismiss alerts after 6 seconds ───────────────
+  (function () {
+    function dismissAlert(el) {
+      el.classList.add('is-dismissing');
+      el.addEventListener('animationend', () => el.remove(), { once: true });
+    }
+    document.querySelectorAll('[data-auto-dismiss]').forEach(function (el) {
+      setTimeout(function () { dismissAlert(el); }, 6000);
+    });
+  })();
+
+  // ── Confirm dialog for destructive forms (replaces browser confirm()) ─────
+  // Runs in the capture phase so it can stop the submit before the loading-state
+  // handler below disables the button; once confirmed, the same form is re-submitted.
+  (function () {
+    const dialog = document.getElementById('confirmDialog');
+    if (!dialog) return;
+    const title = document.getElementById('confirmDialogTitle');
+    const text = document.getElementById('confirmDialogText');
+    const ok = document.getElementById('confirmDialogOk');
+    const cancel = document.getElementById('confirmDialogCancel');
+    let pending = null;        // { form, submitter }
+    let returnFocus = null;
+
+    function open(form, submitter) {
+      pending = { form, submitter };
+      returnFocus = document.activeElement;
+      title.textContent = form.dataset.confirmTitle || 'Are you sure?';
+      text.textContent = form.dataset.confirm;
+      ok.textContent = form.dataset.confirmAction || 'Confirm';
+      cancel.textContent = form.dataset.confirmCancel || 'Cancel';
+      dialog.classList.add('is-open');
+      dialog.setAttribute('aria-hidden', 'false');
+      document.body.classList.add('app-modal-open');
+      cancel.focus();                                  // safe default for destructive actions
+    }
+    function close() {
+      dialog.classList.remove('is-open');
+      dialog.setAttribute('aria-hidden', 'true');
+      document.body.classList.remove('app-modal-open');
+      pending = null;
+      if (returnFocus && returnFocus.focus) returnFocus.focus();
+    }
+    document.addEventListener('submit', function (e) {
+      const form = e.target;
+      if (!form.dataset || !form.dataset.confirm) return;
+      if (form.dataset.confirmed === '1') { delete form.dataset.confirmed; return; }
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      open(form, e.submitter || null);
+    }, true);
+    ok.addEventListener('click', function () {
+      if (!pending) return;
+      const { form, submitter } = pending;
+      dialog.classList.remove('is-open');
+      dialog.setAttribute('aria-hidden', 'true');
+      document.body.classList.remove('app-modal-open');
+      pending = null;
+      form.dataset.confirmed = '1';
+      if (form.requestSubmit) form.requestSubmit(submitter || undefined); else form.submit();
+    });
+    dialog.querySelectorAll('[data-confirm-dismiss]').forEach((el) => el.addEventListener('click', close));
+    document.addEventListener('keydown', function (e) {
+      if (!dialog.classList.contains('is-open')) return;
+      if (e.key === 'Escape') { e.preventDefault(); close(); return; }
+      if (e.key === 'Tab') {                           // keep focus inside the dialog
+        const items = [cancel, ok];
+        const i = items.indexOf(document.activeElement);
+        e.preventDefault();
+        items[(i + (e.shiftKey ? -1 : 1) + items.length) % items.length].focus();
+      }
+    });
+  })();
+
+  // ── Global form submit: disable button + show spinner ─
+  (function () {
+    document.addEventListener('submit', function (e) {
+      var form = e.target;
+      if (e.defaultPrevented) return;   // validation stopped it: leave the button usable
+      if ('noLoadingState' in form.dataset) return;
+      var btn = (e.submitter && !e.submitter.hasAttribute('data-no-loading') && e.submitter)
+        || form.querySelector('[type="submit"]:not([data-no-loading])');
+      if (!btn || btn.disabled) return;
+      var original = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = '<i class="bi bi-hourglass-split" aria-hidden="true" style="animation:spin .8s linear infinite;display:inline-block;"></i> Please wait…';
+      // Re-enable after 12s as safety net for failed navigations
+      setTimeout(function () {
+        btn.disabled = false;
+        btn.innerHTML = original;
+      }, 12000);
+    });
+  })();
+
+  // ── Logout is POST-only (a GET link would let any site sign users out) ─
+  document.addEventListener('click', function (e) {
+    var link = e.target.closest && e.target.closest('a[data-logout]');
+    var form = document.getElementById('logoutForm');
+    if (!link || !form) return;
+    e.preventDefault();
+    form.submit();
+  });
+  </script>
+  {% if user.is_authenticated %}
+    <form id="logoutForm" method="post" action="{% url 'logout' %}" hidden>{% csrf_token %}</form>
+  {% endif %}
+  <style>
+  @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+  <script src="{% static 'js/main.js' %}"></script>
+  {% if not user.is_authenticated %}
+    <script src="{% static 'js/auth-validation.js' %}"></script>
+  {% endif %}
+  {% if GOOGLE_MAPS_API_KEY %}
+    <script src="{% static 'js/maps.js' %}"></script>{# defines the callback before Google can call it #}
+    <script>
+      // Load Google Maps only on pages that have a map, and only once it's about to scroll
+      // into view (the API is several hundred KB and each load counts against the quota).
+      (function () {
+        var maps = document.querySelectorAll('#shopsMap, #trackingMap, #riderNavMap');
+        if (!maps.length) return;
+        var loaded = false;
+        function load() {
+          if (loaded) return;
+          loaded = true;
+          var s = document.createElement('script');
+          s.src = 'https://maps.googleapis.com/maps/api/js?key={{ GOOGLE_MAPS_API_KEY|urlencode }}&callback=initMapsIfNeeded&loading=async';
+          s.async = true;
+          document.head.appendChild(s);
+        }
+        if (!('IntersectionObserver' in window)) return load();
+        var io = new IntersectionObserver(function (entries) {
+          if (entries.some(function (e) { return e.isIntersecting; })) { io.disconnect(); load(); }
+        }, {rootMargin: '400px'});
+        maps.forEach(function (el) { io.observe(el); });
+      })();
+    </script>
+  {% endif %}
+  <script>
+    (function () {
+      const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+      let activeModal = null;
+
+      function trapFocus(e) {
+        if (!activeModal || e.key !== 'Tab') return;
+        const els = Array.from(activeModal.querySelectorAll(FOCUSABLE));
+        if (!els.length) return;
+        const first = els[0];
+        const last = els[els.length - 1];
+        if (e.shiftKey) {
+          if (document.activeElement === first) { e.preventDefault(); last.focus(); }
+        } else {
+          if (document.activeElement === last) { e.preventDefault(); first.focus(); }
+        }
+      }
+
+      // ── Global login / register modals ───────────────────
+      const loginModal = document.getElementById('globalLoginModal');
+      const registerModal = document.getElementById('globalRegisterModal');
+
+      if (loginModal || registerModal) {
+        function closeModal(modal) {
+          if (!modal) return;
+          modal.classList.remove('is-open');
+          modal.setAttribute('aria-hidden', 'true');
+        }
+
+        function closeAllModals() {
+          closeModal(loginModal);
+          closeModal(registerModal);
+          document.body.classList.remove('global-login-open');
+          activeModal = null;
+        }
+
+        function openModal(modal, focusSelector, event) {
+          if (!modal) return;
+          if (event) event.preventDefault();
+          closeAllModals();
+          modal.classList.add('is-open');
+          modal.setAttribute('aria-hidden', 'false');
+          document.body.classList.add('global-login-open');
+          activeModal = modal;
+          window.setTimeout(() => {
+            const input = modal.querySelector(focusSelector);
+            if (input) input.focus();
+          }, 120);
+        }
+
+        document.querySelectorAll('[data-login-modal]').forEach((button) => {
+          button.addEventListener('click', (event) => openModal(loginModal, '#g-login-email', event));
+        });
+        document.querySelectorAll('[data-register-modal]').forEach((button) => {
+          button.addEventListener('click', (event) => openModal(registerModal, '#g-reg-first', event));
+        });
+        document.querySelectorAll('[data-global-login-close]').forEach((button) => {
+          button.addEventListener('click', closeAllModals);
+        });
+        document.addEventListener('keydown', (event) => {
+          if (event.key === 'Escape') closeAllModals();
+          trapFocus(event);
+        });
+        if (window.location.hash === '#login') openModal(loginModal, '#g-login-email');
+        if (window.location.hash === '#register') openModal(registerModal, '#g-reg-first');
+      }
+
+      // ── Rider message modal ───────────────────────────────
+      const riderModal = document.getElementById('riderMessageModal');
+      if (riderModal) {
+        function closeRiderMessage() {
+          riderModal.classList.remove('is-open');
+          riderModal.setAttribute('aria-hidden', 'true');
+          document.body.classList.remove('rider-message-open');
+          activeModal = null;
+        }
+
+        riderModal.classList.add('is-open');
+        riderModal.setAttribute('aria-hidden', 'false');
+        document.body.classList.add('rider-message-open');
+        activeModal = riderModal;
+        window.setTimeout(() => {
+          const btn = riderModal.querySelector('button[data-rider-message-close]');
+          if (btn) btn.focus();
+        }, 120);
+
+        document.querySelectorAll('[data-rider-message-close]').forEach((button) => {
+          button.addEventListener('click', closeRiderMessage);
+        });
+        document.addEventListener('keydown', (event) => {
+          if (event.key === 'Escape') closeRiderMessage();
+          trapFocus(event);
+        });
+      }
+
+      // ── Broadcast modal ───────────────────────────────────
+      const broadcastModal = document.getElementById('broadcastModal');
+      if (broadcastModal) {
+        function closeBroadcastModal() {
+          broadcastModal.classList.remove('is-open');
+          broadcastModal.setAttribute('aria-hidden', 'true');
+          activeModal = null;
+        }
+
+        function openBroadcastModal(event) {
+          if (event) event.preventDefault();
+          broadcastModal.classList.add('is-open');
+          broadcastModal.setAttribute('aria-hidden', 'false');
+          activeModal = broadcastModal;
+          window.setTimeout(() => {
+            const ta = broadcastModal.querySelector('textarea');
+            if (ta) ta.focus();
+          }, 120);
+        }
+
+        document.querySelectorAll('[data-broadcast-modal]').forEach((el) => {
+          el.addEventListener('click', openBroadcastModal);
+        });
+        document.getElementById('broadcastClose').addEventListener('click', closeBroadcastModal);
+        document.getElementById('broadcastBackdrop').addEventListener('click', closeBroadcastModal);
+        document.addEventListener('keydown', (event) => {
+          if (event.key === 'Escape' && activeModal === broadcastModal) closeBroadcastModal();
+        });
+      }
+
+    })();
+  </script>
+  <script>
+  // Scroll-spy for in-page nav links (e.g. /#services on the landing page): the server only
+  // knows the URL, so it always marked "Home" active. Highlight the section being viewed instead.
+  (function () {
+    const here = window.location.pathname;
+    const items = [...document.querySelectorAll('#topbarNav a[href], #mobileMenu a[href]')]
+      .map((a) => { const u = new URL(a.getAttribute('href'), window.location.href); return { a, path: u.pathname, hash: u.hash }; })
+      .filter((x) => x.path === here);
+    const sections = [...new Set(items.filter((x) => x.hash).map((x) => x.hash))]
+      .map((hash) => ({ hash, el: document.getElementById(decodeURIComponent(hash.slice(1))) }))
+      .filter((s) => s.el);
+    if (!sections.length) return;           // page has no in-page nav targets: leave server state alone
+
+    const topbar = document.querySelector('.topbar');
+    let current = null;
+    function setActive(hash) {              // '' = top of page -> the plain (hashless) link, i.e. Home
+      if (hash === current) return;
+      current = hash;
+      items.forEach((x) => {
+        const on = hash ? x.hash === hash : !x.hash;
+        x.a.classList.toggle('active-nav', on);
+        if (on) x.a.setAttribute('aria-current', hash ? 'location' : 'page');
+        else x.a.removeAttribute('aria-current');
+      });
+    }
+    function update() {
+      const line = (topbar ? topbar.getBoundingClientRect().height : 0) + 24;
+      let hash = '';
+      sections.forEach((s) => { if (s.el.getBoundingClientRect().top <= line) hash = s.hash; });
+      // Scrolled to the very bottom: the last section can't reach the line, so select it anyway.
+      if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 2) {
+        hash = sections.reduce((a, b) => (a.el.offsetTop > b.el.offsetTop ? a : b)).hash;
+      }
+      setActive(hash);
+    }
+    let queued = false;
+    window.addEventListener('scroll', () => {
+      if (queued) return;
+      queued = true;
+      requestAnimationFrame(() => { queued = false; update(); });
+    }, { passive: true });
+    window.addEventListener('hashchange', update);
+    window.addEventListener('load', update);
+    update();
+  })();
+
+  // Show/hide toggle for any password field marked with [data-pw-toggle] (global login modal).
+  document.querySelectorAll('[data-pw-toggle]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var inp = btn.parentElement.querySelector('input');
+      var icon = btn.querySelector('i');
+      if (!inp) return;
+      var show = inp.type === 'password';
+      inp.type = show ? 'text' : 'password';
+      if (icon) icon.className = show ? 'bi bi-eye-slash' : 'bi bi-eye';
+      btn.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+    });
+  });
+  </script>
+  {% block extra_js %}{% endblock %}
+</body>
+</html>

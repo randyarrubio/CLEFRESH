@@ -1,0 +1,249 @@
+{% extends 'base.html' %}
+{% load shop_extras %}
+{% block title %}Browse Shops — CLEFRESH{% endblock %}
+
+{% block extra_head %}
+<style>
+  /* ── Browse shops page (.sl-*) ─────────────────────────────────────── */
+  .sl-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; }
+  .sl-eyebrow { display: block; margin-bottom: 6px; color: #0b6fb5; font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
+  .sl-head h1 { font-size: clamp(1.6rem, 3vw, 2.2rem); font-weight: 800; line-height: 1.15; color: var(--text); letter-spacing: -.02em; }
+  .sl-head p { margin-top: 6px; color: var(--text-muted); font-size: 15px; max-width: 60ch; }
+
+  .sl-toolbar {
+    padding: 16px;
+    margin-bottom: 24px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--card-radius);
+    box-shadow: var(--shadow-sm);
+  }
+  .sl-toolbar-row { display: grid; grid-template-columns: minmax(0, 1fr) 190px auto auto; gap: 10px; align-items: center; }
+  .sl-search { position: relative; }
+  .sl-search .bi { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); color: #8397a9; pointer-events: none; }
+  .sl-search input { width: 100%; padding-left: 38px !important; }   /* type=search isn't in the global width:100% list */
+  .sl-open-toggle {
+    display: inline-flex; align-items: center; gap: 8px; min-height: var(--ctl-h); padding: 0 14px;
+    border: 1px solid var(--border-strong); border-radius: var(--ctl-radius); background: #fff;
+    font-size: 14px; font-weight: 600; color: #344b5f; cursor: pointer; white-space: nowrap;
+  }
+  .sl-open-toggle:has(input:checked) { border-color: #1f9d55; background: var(--success-bg); color: var(--success-fg); }
+  .sl-toolbar .btn { min-height: var(--ctl-h); }
+  .sl-chips { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+  .sl-chip {
+    display: inline-flex; align-items: center; min-height: 34px; padding: 0 14px;
+    border: 1px solid var(--border-strong); border-radius: 999px; background: #fff;
+    color: #385b78; font-size: 13px; font-weight: 600; white-space: nowrap;
+  }
+  .sl-chip:hover { border-color: #1287d9; color: #075c9a; }
+  .sl-chip.is-active { background: #1287d9; border-color: #1287d9; color: #fff; }
+
+  .sl-summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+  .sl-summary h2 { font-size: 17px; font-weight: 700; color: var(--text); }
+  .sl-summary a { font-size: 13.5px; font-weight: 600; }
+
+  .sl-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 18px; }
+  .sl-card {
+    position: relative; display: flex; flex-direction: column; overflow: hidden;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+    box-shadow: var(--shadow-sm); transition: transform .18s, box-shadow .18s, border-color .18s;
+  }
+  .sl-card:hover { transform: translateY(-3px); border-color: #bcdcf3; box-shadow: var(--shadow-md); }
+  .sl-card:focus-within { outline: 3px solid rgba(18,135,217,.35); outline-offset: 2px; }
+  .sl-media { position: relative; height: 150px; background: #f4f9fd; }
+  .sl-media img { width: 100%; height: 100%; display: block; }
+  .sl-media img.is-banner { object-fit: cover; }
+  .sl-media img.is-logo { object-fit: contain; padding: 18px; }       /* logos aren't photos: don't crop them */
+  .sl-initials { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: #fff; font: 800 34px 'Outfit', sans-serif; }
+  .sl-status {
+    position: absolute; top: 12px; left: 12px; display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 700;
+    background: #fff; color: #5d7187; box-shadow: 0 2px 6px rgba(16,42,67,.12);
+  }
+  .sl-status::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: #9fb3c4; }
+  .sl-status.is-open { color: var(--success-fg); }
+  .sl-status.is-open::before { background: var(--success-solid); }
+  .sl-media .promo-badge { position: absolute; top: 12px; right: 12px; box-shadow: 0 2px 6px rgba(16,42,67,.12); }
+
+  .sl-body { display: flex; flex-direction: column; gap: 8px; flex: 1; padding: 16px 16px 14px; }
+  .sl-title-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+  .sl-title { font-size: 16.5px; font-weight: 700; line-height: 1.3; color: var(--text); }
+  .sl-title a { color: inherit; }
+  .sl-title a::after { content: ''; position: absolute; inset: 0; }   /* whole card is the link */
+  .sl-rating { flex-shrink: 0; display: inline-flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 700; color: #7a5200; }
+  .sl-rating .bi { color: #f6b51e; }
+  .sl-rating.is-new { color: #0b6fb5; font-weight: 600; }
+  .sl-meta { display: grid; gap: 4px; font-size: 13px; color: var(--text-muted); }
+  .sl-meta span { display: flex; gap: 7px; align-items: flex-start; }
+  .sl-meta .bi { color: #8397a9; margin-top: 2px; flex-shrink: 0; }
+  .sl-addr { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .sl-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+  .sl-tags span { padding: 3px 9px; border-radius: 999px; background: #e8f4fc; color: #075c9a; font-size: 11.5px; font-weight: 600; }
+  .sl-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: auto; padding-top: 12px; border-top: 1px solid var(--border); }
+  .sl-price { font-size: 12px; color: var(--text-muted); }
+  .sl-price strong { display: block; font-size: 15.5px; color: var(--text); }
+  .sl-cta { display: inline-flex; align-items: center; gap: 6px; font-size: 13.5px; font-weight: 700; color: #0b6fb5; }
+  .sl-card:hover .sl-cta { color: #075c9a; }
+
+  .sl-empty { padding: 48px 24px; text-align: center; background: var(--surface); border: 1px dashed var(--border-strong); border-radius: var(--card-radius); }
+  .sl-empty .bi { display: block; margin-bottom: 10px; font-size: 40px; color: #f6b51e; }
+  .sl-empty h3 { font-size: 18px; margin-bottom: 6px; }
+  .sl-empty p { color: var(--text-muted); margin-bottom: 18px; }
+
+  .sl-pages { display: flex; justify-content: center; align-items: center; gap: 6px; margin-top: 26px; flex-wrap: wrap; }
+  .sl-pages a, .sl-pages span {
+    min-width: 38px; min-height: 38px; padding: 0 10px; display: inline-flex; align-items: center; justify-content: center;
+    border: 1px solid var(--border-strong); border-radius: var(--ctl-radius); background: #fff; font-size: 14px; font-weight: 600; color: #385b78;
+  }
+  .sl-pages span.is-current { background: #1287d9; border-color: #1287d9; color: #fff; }
+  .sl-pages span.is-disabled { opacity: .45; }
+
+  .sl-map-section { margin-top: 36px; }
+  .sl-map-section h2 { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; font-size: 17px; font-weight: 700; }
+  .sl-map-section .map-container { height: 340px; border-radius: var(--card-radius); border: 1px solid var(--border); overflow: hidden; }
+
+  @media (max-width: 900px) {
+    .sl-toolbar-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+    .sl-search { grid-column: 1 / -1; }
+  }
+  @media (max-width: 480px) {
+    .sl-toolbar { padding: 12px; }
+    .sl-toolbar-row { grid-template-columns: 1fr 1fr; }
+    .sl-toolbar-row .btn { grid-column: 1 / -1; }
+    .sl-chips { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 2px; scrollbar-width: none; }
+    .sl-grid { grid-template-columns: 1fr; }
+    .sl-media { height: 140px; }
+  }
+  @media (prefers-reduced-motion: reduce) { .sl-card:hover { transform: none; } }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-shell">
+  <header class="sl-head">
+    <div>
+      <span class="sl-eyebrow">Marketplace</span>
+      <h1>Browse Laundry Shops</h1>
+      <p>Compare verified local shops by service, price and rating, then book pickup in a few taps.</p>
+    </div>
+  </header>
+
+  <form method="get" class="sl-toolbar" role="search" aria-label="Search and filter shops">
+    {% if service_filter %}<input type="hidden" name="service" value="{{ service_filter }}">{% endif %}
+    <div class="sl-toolbar-row">
+      <div class="sl-search">
+        <i class="bi bi-search" aria-hidden="true"></i>
+        <label for="sl-q" class="sr-only">Search by shop name or area</label>
+        <input id="sl-q" type="search" name="q" value="{{ query }}" placeholder="Search shop name or area" maxlength="100">
+      </div>
+      <div>
+        <label for="sl-sort" class="sr-only">Sort shops</label>
+        <select id="sl-sort" name="sort" onchange="this.form.submit()">
+          {% for value, label in sort_choices %}
+            <option value="{{ value }}" {% if value == sort %}selected{% endif %}>Sort: {{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <label class="sl-open-toggle">
+        <input type="checkbox" name="open" value="1" {% if open_now %}checked{% endif %} onchange="this.form.submit()">
+        Open now
+      </label>
+      <button type="submit" class="btn btn-primary"><i class="bi bi-search" aria-hidden="true"></i> Search</button>
+    </div>
+    <nav class="sl-chips" aria-label="Filter by service">
+      {% for value, label, chip_qs in service_chips %}
+        <a href="?{{ chip_qs }}" class="sl-chip{% if value == service_filter %} is-active{% endif %}"{% if value == service_filter %} aria-current="true"{% endif %}>{{ label }}</a>
+      {% endfor %}
+    </nav>
+  </form>
+
+  <div class="sl-summary">
+    <h2>{{ result_count }} shop{{ result_count|pluralize }}{% if has_filters %} match{{ result_count|pluralize:"es," }} your filters{% endif %}</h2>
+    {% if has_filters %}<a href="{% url 'shop_list' %}"><i class="bi bi-x-circle" aria-hidden="true"></i> Clear filters</a>{% endif %}
+  </div>
+
+  {% if shops %}
+    <div class="sl-grid">
+      {% for shop in shops %}
+        {% cycle 'linear-gradient(135deg,#1287d9,#13b8c8)' 'linear-gradient(135deg,#0b6fb5,#38bdf8)' 'linear-gradient(135deg,#13b8c8,#0e8fa0)' as shop_grad silent %}
+        <article class="sl-card">
+          <div class="sl-media">
+            {% if shop.banner %}
+              <img src="{{ shop.banner.url }}" alt="" class="is-banner" loading="lazy">
+            {% elif shop.logo %}
+              <img src="{{ shop.logo.url }}" alt="" class="is-logo" loading="lazy">
+            {% else %}
+              <div class="sl-initials" style="background:{{ shop_grad }};" aria-hidden="true">{{ shop.name|slice:":2"|upper }}</div>
+            {% endif %}
+            <span class="sl-status{% if shop.is_open %} is-open{% endif %}">{% if shop.is_open %}Open now{% else %}Closed{% endif %}</span>
+            {% if shop.live_promos_list %}<span class="promo-badge"><i class="bi bi-tag-fill" aria-hidden="true"></i>{{ shop.live_promos_list.0.discount_label }}{% if shop.live_promos_list|length > 1 %} +{{ shop.live_promos_list|length|add:"-1" }}{% endif %}</span>{% endif %}
+          </div>
+          <div class="sl-body">
+            <div class="sl-title-row">
+              <h3 class="sl-title"><a href="{% url 'shop_detail' shop.id %}">{{ shop.name }}</a></h3>
+              {% if shop.avg_rating %}
+                <span class="sl-rating" aria-label="Rated {{ shop.avg_rating|floatformat:1 }} out of 5 from {{ shop.review_count }} review{{ shop.review_count|pluralize }}">
+                  <i class="bi bi-star-fill" aria-hidden="true"></i>{{ shop.avg_rating|floatformat:1 }} <span style="font-weight:500;color:var(--text-muted);">({{ shop.review_count }})</span>
+                </span>
+              {% else %}
+                <span class="sl-rating is-new">New</span>
+              {% endif %}
+            </div>
+            <div class="sl-meta">
+              <span><i class="bi bi-geo-alt" aria-hidden="true"></i><span class="sl-addr">{{ shop.address }}</span></span>
+              <span><i class="bi bi-clock" aria-hidden="true"></i>{{ shop.operating_hours_start|time:"g:i A" }} – {{ shop.operating_hours_end|time:"g:i A" }}</span>
+            </div>
+            <div class="sl-tags">
+              {% for svc in shop.services.all %}<span>{{ svc.get_name_display }}</span>{% endfor %}
+            </div>
+            <div class="sl-foot">
+              <span class="sl-price">
+                {% if shop.min_price_kg %}Starting from<strong>₱{{ shop.min_price_kg }}/kg</strong>
+                {% elif shop.min_price_piece %}Starting from<strong>₱{{ shop.min_price_piece }}/pc</strong>
+                {% else %}Pricing<strong>See shop</strong>{% endif %}
+              </span>
+              <span class="sl-cta" aria-hidden="true">View shop <i class="bi bi-arrow-right"></i></span>
+            </div>
+          </div>
+        </article>
+      {% endfor %}
+    </div>
+
+    {% if page_obj.has_other_pages %}
+      <nav class="sl-pages" aria-label="Pagination">
+        {% if page_obj.has_previous %}
+          <a href="?{{ page_qs }}{% if page_qs %}&{% endif %}page={{ page_obj.previous_page_number }}" aria-label="Previous page"><i class="bi bi-chevron-left"></i></a>
+        {% else %}<span class="is-disabled" aria-hidden="true"><i class="bi bi-chevron-left"></i></span>{% endif %}
+        {% for n in page_obj.paginator.page_range %}
+          {% if n == page_obj.number %}<span class="is-current" aria-current="page">{{ n }}</span>
+          {% else %}<a href="?{{ page_qs }}{% if page_qs %}&{% endif %}page={{ n }}">{{ n }}</a>{% endif %}
+        {% endfor %}
+        {% if page_obj.has_next %}
+          <a href="?{{ page_qs }}{% if page_qs %}&{% endif %}page={{ page_obj.next_page_number }}" aria-label="Next page"><i class="bi bi-chevron-right"></i></a>
+        {% else %}<span class="is-disabled" aria-hidden="true"><i class="bi bi-chevron-right"></i></span>{% endif %}
+      </nav>
+    {% endif %}
+  {% else %}
+    <div class="sl-empty">
+      <i class="bi bi-shop" aria-hidden="true"></i>
+      {% if has_filters %}
+        <h3>No shops match your filters</h3>
+        <p>Try a different name or area, another service, or turn off “Open now”.</p>
+        <a href="{% url 'shop_list' %}" class="btn btn-primary">Clear filters</a>
+      {% else %}
+        <h3>No shops available yet</h3>
+        <p>There are no approved laundry shops listed at the moment. Check back soon!</p>
+      {% endif %}
+    </div>
+  {% endif %}
+
+  {% if shop_markers and GOOGLE_MAPS_API_KEY %}
+    <section class="sl-map-section" aria-label="Shops on the map">
+      <h2><i class="bi bi-map glyph-icon" aria-hidden="true"></i>Shops on the map</h2>
+      <div id="shopsMap" class="map-container"></div>
+    </section>
+  {% endif %}
+</div>
+
+{{ shop_markers|json_script:"shop-markers" }}
+{% endblock %}

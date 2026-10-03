@@ -1,0 +1,284 @@
+{% extends 'base.html' %}
+{% block title %}Rate Your Order — {{ order.shop.name }}{% endblock %}
+{% block extra_head %}
+<style>
+  .rv-shell {
+    min-height: calc(100vh - 74px);
+    background: #f4f7fb;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 48px 16px 64px;
+  }
+  .rv-card {
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 4px 32px rgba(18,135,217,.1);
+    width: 100%;
+    max-width: 520px;
+    overflow: hidden;
+  }
+  .rv-shop-banner {
+    background: linear-gradient(135deg, #0E9AA7, #0a6278);
+    padding: 24px 28px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    color: #fff;
+  }
+  .rv-shop-avatar {
+    width: 52px;
+    height: 52px;
+    border-radius: 12px;
+    background: rgba(255,255,255,.2);
+    border: 2px solid rgba(255,255,255,.35);
+    display: grid;
+    place-items: center;
+    font-size: 20px;
+    font-weight: 900;
+    flex-shrink: 0;
+  }
+  .rv-shop-meta { flex: 1; min-width: 0; }
+  .rv-shop-meta strong { display: block; font-size: 17px; font-weight: 800; }
+  .rv-shop-meta span { font-size: 13px; color: rgba(255,255,255,.75); }
+  .rv-body { padding: 28px; }
+  .rv-heading {
+    font-size: 18px;
+    font-weight: 800;
+    color: #172033;
+    margin: 0 0 6px;
+    text-align: center;
+  }
+  .rv-sub {
+    font-size: 13px;
+    color: #637386;
+    text-align: center;
+    margin: 0 0 28px;
+  }
+
+  /* ── Star selector ─────────────────────────────────── */
+  .rv-stars {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+  .rv-stars input { display: none; }
+  .rv-stars label {
+    cursor: pointer;
+    font-size: 44px;
+    color: #dde3ea;
+    transition: color .15s, transform .15s;
+    line-height: 1;
+  }
+  .rv-stars label:hover,
+  .rv-stars label.lit { color: #f9ca47; transform: scale(1.12); }
+  .rv-rating-label {
+    text-align: center;
+    font-size: 14px;
+    font-weight: 700;
+    color: #f9ca47;
+    min-height: 22px;
+    margin-bottom: 24px;
+    letter-spacing: .02em;
+    transition: opacity .15s;
+  }
+
+  /* ── Quick tags ────────────────────────────────────── */
+  .rv-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 20px;
+    justify-content: center;
+  }
+  .rv-tag {
+    padding: 7px 14px;
+    border-radius: 999px;
+    border: 1.5px solid #dde3ea;
+    font-size: 13px;
+    font-weight: 600;
+    color: #47677f;
+    cursor: pointer;
+    transition: all .15s;
+    user-select: none;
+  }
+  .rv-tag.selected {
+    background: #e6f4ff;
+    border-color: var(--primary);
+    color: var(--primary);
+  }
+
+  /* ── Comment box ───────────────────────────────────── */
+  .rv-comment textarea {
+    width: 100%;
+    border: 1.5px solid #dde3ea;
+    border-radius: 10px;
+    padding: 12px 14px;
+    font-size: 14px;
+    font-family: 'DM Sans', sans-serif;
+    resize: vertical;
+    min-height: 100px;
+    color: #172033;
+    transition: border-color .15s;
+    box-sizing: border-box;
+  }
+  .rv-comment textarea:focus {
+    outline: none;
+    border-color: var(--primary);
+  }
+  .rv-comment label {
+    display: block;
+    font-size: 13px;
+    font-weight: 700;
+    color: #47677f;
+    margin-bottom: 8px;
+  }
+  .rv-actions {
+    margin-top: 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .rv-submit {
+    width: 100%;
+    padding: 14px;
+    border-radius: 10px;
+    background: var(--primary);
+    color: #fff;
+    font-size: 15px;
+    font-weight: 700;
+    border: none;
+    cursor: pointer;
+    transition: background .2s;
+  }
+  .rv-submit:hover { background: #0f74bc; }
+  .rv-skip {
+    text-align: center;
+    font-size: 13px;
+    color: #8fa4b8;
+    text-decoration: none;
+  }
+  .rv-skip:hover { color: #47677f; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="rv-shell">
+  <div class="rv-card">
+    <div class="rv-shop-banner">
+      <div class="rv-shop-avatar">
+        {% if order.shop.logo %}
+          <img src="{{ order.shop.logo.url }}" alt="{{ order.shop.name }}" style="width:100%;height:100%;object-fit:cover;border-radius:10px;">
+        {% else %}
+          {{ order.shop.name|slice:":2"|upper }}
+        {% endif %}
+      </div>
+      <div class="rv-shop-meta">
+        <strong>{{ order.shop.name }}</strong>
+        <span>Order #{{ order.id }}</span>
+      </div>
+    </div>
+
+    <div class="rv-body">
+      <p class="rv-heading">How was your experience?</p>
+      <p class="rv-sub">Your honest feedback helps other customers.</p>
+
+      <form method="post" id="reviewForm" data-no-loading-state>
+        {% csrf_token %}
+        <input type="hidden" name="rating" id="ratingInput" value="5">
+        <input type="hidden" name="comment" id="commentInput">
+
+        <div class="rv-stars" id="starRow" role="radiogroup" aria-labelledby="rv-star-legend">
+          <span class="sr-only" id="rv-star-legend">Star rating</span>
+          {% for i in "12345" %}
+            <label data-val="{{ forloop.counter }}"
+                   class="{% if forloop.counter == 5 %}lit{% endif %}"
+                   tabindex="0"
+                   role="radio"
+                   aria-checked="{% if forloop.counter == 5 %}true{% else %}false{% endif %}">
+              <span class="sr-only">{{ forloop.counter }} star{% if forloop.counter > 1 %}s{% endif %}</span>
+              <i class="bi bi-star-fill" aria-hidden="true"></i>
+            </label>
+          {% endfor %}
+        </div>
+        <div class="rv-rating-label" id="ratingLabel" aria-live="polite" aria-atomic="true">Excellent</div>
+
+        <div class="rv-tags" id="tagRow">
+          <span class="rv-tag" data-tag="Fast pickup">Fast pickup</span>
+          <span class="rv-tag" data-tag="Clean clothes">Clean clothes</span>
+          <span class="rv-tag" data-tag="On time">On time</span>
+          <span class="rv-tag" data-tag="Great packaging">Great packaging</span>
+          <span class="rv-tag" data-tag="Friendly staff">Friendly staff</span>
+          <span class="rv-tag" data-tag="Good communication">Good communication</span>
+        </div>
+
+        <div class="rv-comment">
+          <label for="commentBox">Write a review (optional)</label>
+          <textarea id="commentBox" placeholder="Share more about your experience..."></textarea>
+        </div>
+
+        <div class="rv-actions">
+          <button type="submit" class="btn btn-primary btn-full" style="padding:14px; font-size:15px; border-radius:10px;">Submit Review</button>
+          <a href="{% url 'order_detail' order.id %}" class="rv-skip">Skip for now</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  const labels = ['', 'Terrible', 'Bad', 'Okay', 'Good', 'Excellent'];
+  const stars = document.querySelectorAll('#starRow label');
+  const ratingInput = document.getElementById('ratingInput');
+  const ratingLabel = document.getElementById('ratingLabel');
+  const commentBox = document.getElementById('commentBox');
+  const commentInput = document.getElementById('commentInput');
+  const tagEls = document.querySelectorAll('.rv-tag');
+  const selectedTags = new Set();
+  let current = 5;
+
+  function setStars(val) {
+    current = val;
+    ratingInput.value = val;
+    ratingLabel.textContent = labels[val];
+    stars.forEach((s, i) => {
+      s.classList.toggle('lit', i < val);
+      s.setAttribute('aria-checked', i + 1 === val ? 'true' : 'false');
+    });
+  }
+
+  stars.forEach((star, idx) => {
+    star.addEventListener('mouseenter', () => {
+      stars.forEach((s, i) => s.classList.toggle('lit', i <= idx));
+      ratingLabel.textContent = labels[idx + 1];
+    });
+    star.addEventListener('mouseleave', () => setStars(current));
+    star.addEventListener('click', () => setStars(idx + 1));
+    star.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setStars(idx + 1); }
+      if (e.key === 'ArrowRight' || e.key === 'ArrowUp') { e.preventDefault(); setStars(Math.min(current + 1, 5)); }
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') { e.preventDefault(); setStars(Math.max(current - 1, 1)); }
+    });
+  });
+
+  tagEls.forEach(tag => {
+    tag.addEventListener('click', () => {
+      const t = tag.dataset.tag;
+      if (selectedTags.has(t)) { selectedTags.delete(t); tag.classList.remove('selected'); }
+      else { selectedTags.add(t); tag.classList.add('selected'); }
+    });
+  });
+
+  document.getElementById('reviewForm').addEventListener('submit', (e) => {
+    const tagText = selectedTags.size ? '[' + [...selectedTags].join(', ') + '] ' : '';
+    commentInput.value = tagText + commentBox.value.trim();
+    const btn = e.target.querySelector('[type="submit"]');
+    if (btn && !btn.disabled) {
+      btn.disabled = true;
+      btn.innerHTML = '<i class="bi bi-hourglass-split" aria-hidden="true" style="animation:spin .8s linear infinite;display:inline-block;"></i> Submitting…';
+    }
+  });
+})();
+</script>
+{% endblock %}

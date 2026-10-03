@@ -1,0 +1,95 @@
+{% extends 'base.html' %}
+{% load socialaccount static %}
+{% block title %}Register — CLEFRESH{% endblock %}
+{% block extra_head %}
+<style>
+  .sr-page {
+    min-height: calc(100vh - 68px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 16px 56px;
+    background: radial-gradient(ellipse at 20% 30%, rgba(14,154,167,.12), transparent 40%),
+                radial-gradient(ellipse at 80% 70%, rgba(18,135,217,.10), transparent 40%),
+                #f0f8fa;
+  }
+  .sr-card {
+    width: min(560px, 100%);
+    border-radius: 20px;
+    overflow: hidden;
+    background: #fff;
+    display: flex;
+    box-shadow: 0 20px 60px rgba(7,50,69,.18);
+    border: 1px solid rgba(14,154,167,.1);
+    animation: srIn .35s cubic-bezier(.2,.8,.2,1) both;
+  }
+  @keyframes srIn {
+    from { opacity: 0; transform: translateY(18px) scale(.97); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  @media (prefers-reduced-motion: reduce) { .sr-card { animation: none; } }
+  .sr-form-side { flex: 1; min-width: 0; overflow-y: auto; max-height: calc(100vh - 120px); }
+  .sr-image-side {
+    flex: 0 0 170px;
+    background: url('{% static "img/login.webp" %}') center/cover no-repeat;
+  }
+  .sr-form-body { padding: 28px 26px 28px; }
+  .sr-logo { font-size: 19px; font-weight: 900; font-family: 'Open Sans', sans-serif; letter-spacing: -.03em; display: block; margin-bottom: 12px; }
+  .sr-title { font-size: 22px; font-weight: 800; color: #0b1f33; margin: 0 0 4px; line-height: 1.2; }
+  .sr-subtitle { font-size: 12px; color: #7a96aa; margin: 0 0 18px; }
+  .sr-footer { margin-top: 16px; text-align: center; font-size: 14px; color: #7a96aa; }
+  .sr-footer a { font-weight: 700; color: var(--primary); text-decoration: none; }
+  .sr-footer a:hover { text-decoration: underline; }
+  @media (max-width: 540px) {
+    .sr-page { padding: 24px 12px 48px; align-items: flex-start; }
+    .sr-card { flex-direction: column; }
+    .sr-image-side { display: none; }
+    .sr-form-side { max-height: none; }
+    .sr-form-body { padding: 24px 22px 28px; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="sr-page">
+  <div class="sr-card">
+
+    <div class="sr-form-side">
+      <div class="sr-form-body">
+        <span class="sr-logo"><span class="brand-cle">CLE</span><span class="brand-fresh">FRESH</span></span>
+        <h1 class="sr-title">Create an account 👋</h1>
+        <p class="sr-subtitle">Join CLEFRESH and enjoy fresh laundry at your door</p>
+
+        <a href="{% provider_login_url 'google' process='signup' %}" class="lf-google-btn">
+          <svg width="20" height="20" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z" fill="#4285F4"/>
+            <path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34A853"/>
+            <path d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/>
+            <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
+          </svg>
+          Continue with Google
+        </a>
+
+        <div class="lf-divider"><span>or</span></div>
+
+        <form method="post">
+          {% csrf_token %}
+          {% for field in form %}
+            <div class="form-group">
+              <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+              {{ field }}
+              {% if field.errors %}<span class="form-error" role="alert">{{ field.errors.0 }}</span>{% endif %}
+            </div>
+          {% endfor %}
+          <button type="submit" class="lf-submit-btn">Create Account <i class="bi bi-arrow-right" aria-hidden="true"></i></button>
+        </form>
+
+        <p class="sr-footer">Already have an account? <a href="{% url 'login' %}">Sign in</a></p>
+      </div>
+    </div>
+
+    <div class="sr-image-side" aria-hidden="true"></div>
+
+  </div>
+</div>
+{% endblock %}

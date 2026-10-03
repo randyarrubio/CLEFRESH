@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+{% block title %}Broadcast — Admin{% endblock %}
+{% block content %}
+<div class="auth-container auth-container-top">
+  <div class="auth-card auth-card-wide">
+    <h2><i class="bi bi-megaphone glyph-icon"></i>Broadcast Notification</h2>
+    <p class="auth-subtitle">Send a notification to platform users</p>
+    <form method="post">
+      {% csrf_token %}
+      <div class="form-group">
+        <label>Target Audience</label>
+        <select name="role">
+          <option value="">All Users</option>
+          <option value="customer">Customers Only</option>
+          <option value="shop_owner">Shop Owners Only</option>
+          <option value="rider">Riders Only</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Message</label>
+        <textarea name="message" rows="5" required placeholder="Enter your announcement or notification message..."></textarea>
+      </div>
+      <button type="submit" class="confirm-btn">Send Broadcast →</button>
+    </form>
+    <div style="text-align:center; margin-top:16px;">
+      <a href="{% url 'admin_dashboard' %}" style="font-size:13px; color:var(--text-secondary);">← Back to Dashboard</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

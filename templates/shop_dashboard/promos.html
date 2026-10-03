@@ -1,0 +1,156 @@
+{% extends 'base.html' %}
+{% block title %}Promos & Discounts — {{ shop.name }}{% endblock %}
+{% block extra_head %}
+<style>
+  .pr-form .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .pr-form .errorlist { list-style: none; margin: 4px 0 0; color: var(--danger-fg); font-size: 12.5px; }
+  .pr-form .has-error input, .pr-form .has-error select, .pr-form .has-error textarea { border-color: var(--danger-solid); }
+  .pr-form .check-row { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+  .pr-form .check-row label { margin: 0; font-size: 14px; }
+  .pr-title { font-weight: 700; color: var(--text); }
+  .pr-desc { display: block; max-width: 340px; font-size: 12.5px; color: var(--text-muted); white-space: normal; }
+  .pr-actions { display: flex; gap: 6px; flex-wrap: nowrap; }
+  .pr-runs { white-space: nowrap; }
+  .pr-note { font-size: 12.5px; color: var(--text-muted); margin-top: 10px; line-height: 1.5; }
+  @media (max-width: 480px) { .pr-form .form-row { grid-template-columns: 1fr; } }
+</style>
+{% endblock %}
+{% block content %}
+<div class="page-shell">
+  <div class="page-header">
+    <div>
+      <nav class="page-crumbs" aria-label="Breadcrumb"><a href="{% url 'shop_dashboard' %}">Shop dashboard</a><span class="page-crumbs-sep" aria-hidden="true">/</span><span aria-current="page">Promos</span></nav>
+      <h2>Promos &amp; Discounts</h2>
+      <p>{{ shop.name }} — live promos appear on your shop page and in customer search results.</p>
+    </div>
+    <a href="{% url 'shop_dashboard' %}" class="btn btn-outline">← Dashboard</a>
+  </div>
+
+  <div class="split-layout">
+    <div class="split-aside">
+      <div class="card">
+        <h3><i class="bi {% if editing %}bi-pencil-square{% else %}bi-megaphone{% endif %} glyph-icon"></i>{% if editing %}Edit Promo{% else %}Post a Promo{% endif %}</h3>
+        <form method="post" action="{% url 'shop_dashboard_promos' %}" class="pr-form" novalidate>
+          {% csrf_token %}
+          {% if editing %}<input type="hidden" name="promo_id" value="{{ editing.id }}">{% endif %}
+          {% if form.non_field_errors %}<div class="alert alert-error"><span class="alert-text">{{ form.non_field_errors|join:" " }}</span></div>{% endif %}
+
+          <div class="form-group {% if form.title.errors %}has-error{% endif %}">
+            <label for="{{ form.title.id_for_label }}">Title</label>
+            {{ form.title }}
+            {{ form.title.errors }}
+          </div>
+          <div class="form-group {% if form.description.errors %}has-error{% endif %}">
+            <label for="{{ form.description.id_for_label }}">Details <span style="font-weight:400;color:var(--text-muted);">(optional)</span></label>
+            {{ form.description }}
+            {{ form.description.errors }}
+          </div>
+          <div class="form-row">
+            <div class="form-group {% if form.discount_type.errors %}has-error{% endif %}">
+              <label for="{{ form.discount_type.id_for_label }}">Type</label>
+              {{ form.discount_type }}
+              {{ form.discount_type.errors }}
+            </div>
+            <div class="form-group {% if form.discount_value.errors %}has-error{% endif %}" id="promoValueGroup">
+              <label for="{{ form.discount_value.id_for_label }}" id="promoValueLabel">Discount value</label>
+              {{ form.discount_value }}
+              {{ form.discount_value.errors }}
+            </div>
+          </div>
+          <div class="form-group {% if form.min_order_amount.errors %}has-error{% endif %}">
+            <label for="{{ form.min_order_amount.id_for_label }}">{{ form.min_order_amount.label }}</label>
+            {{ form.min_order_amount }}
+            {{ form.min_order_amount.errors }}
+          </div>
+          <div class="form-row">
+            <div class="form-group {% if form.start_date.errors %}has-error{% endif %}">
+              <label for="{{ form.start_date.id_for_label }}">Starts</label>
+              {{ form.start_date }}
+              {{ form.start_date.errors }}
+            </div>
+            <div class="form-group {% if form.end_date.errors %}has-error{% endif %}">
+              <label for="{{ form.end_date.id_for_label }}">Ends</label>
+              {{ form.end_date }}
+              {{ form.end_date.errors }}
+            </div>
+          </div>
+          <div class="form-group check-row">
+            {{ form.is_active }}
+            <label for="{{ form.is_active.id_for_label }}">{{ form.is_active.label }}</label>
+          </div>
+          <button type="submit" class="btn btn-primary btn-full">{% if editing %}Save Changes{% else %}Post Promo{% endif %}</button>
+          {% if editing %}
+            <a href="{% url 'shop_dashboard_promos' %}" class="btn btn-outline btn-full" style="margin-top:8px;">Cancel</a>
+          {% endif %}
+          <p class="pr-note"><i class="bi bi-info-circle" aria-hidden="true"></i> Percent and fixed-amount promos are deducted automatically at checkout (one promo per order — the one that saves the customer most). Special offers are shown only; honour them yourself.</p>
+        </form>
+      </div>
+    </div>
+
+    <div class="split-main">
+      <div class="table-wrapper">
+        <table class="table">
+          <thead>
+            <tr><th>Promo</th><th>Discount</th><th>Runs</th><th>Status</th><th></th></tr>
+          </thead>
+          <tbody>
+            {% for promo in promos %}
+              <tr>
+                <td>
+                  <span class="pr-title">{{ promo.title }}</span>
+                  {% if promo.description %}<span class="pr-desc">{{ promo.description|truncatechars:90 }}</span>{% endif %}
+                </td>
+                <td>
+                  {{ promo.discount_label }}
+                  {% if promo.min_order_amount %}<span class="pr-desc">Min. ₱{{ promo.min_order_amount }}</span>{% endif %}
+                </td>
+                <td class="pr-runs">{{ promo.start_date|date:"M d" }} – {{ promo.end_date|date:"M d, Y" }}</td>
+                <td>
+                  {% with s=promo.status %}
+                    <span class="badge {% if s == 'live' %}badge-success{% elif s == 'scheduled' %}badge-warning{% elif s == 'expired' %}badge-danger{% else %}badge-role-default{% endif %}">{{ s|capfirst }}</span>
+                  {% endwith %}
+                </td>
+                <td>
+                  <div class="pr-actions">
+                    <a href="?edit={{ promo.id }}" class="btn btn-xs btn-outline">Edit</a>
+                    <form method="post" action="{% url 'toggle_promo' promo.id %}">
+                      {% csrf_token %}
+                      <button type="submit" class="btn btn-xs btn-warning">{% if promo.is_active %}Pause{% else %}Resume{% endif %}</button>
+                    </form>
+                    <form method="post" action="{% url 'delete_promo' promo.id %}" data-confirm="“{{ promo.title }}” will be removed from your shop page. This cannot be undone." data-confirm-title="Delete this promo?" data-confirm-action="Delete promo">
+                      {% csrf_token %}
+                      <button type="submit" class="btn btn-xs btn-danger">Delete</button>
+                    </form>
+                  </div>
+                </td>
+              </tr>
+            {% empty %}
+              <tr>
+                <td colspan="5" class="table-empty-cell"><i class="bi bi-megaphone" aria-hidden="true"></i> No promos yet. Post your first promo using the form.</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  // Show the value field only for percent / fixed promos, with a matching label.
+  (function () {
+    const type = document.getElementById('{{ form.discount_type.id_for_label }}');
+    const group = document.getElementById('promoValueGroup');
+    const label = document.getElementById('promoValueLabel');
+    if (!type || !group) return;
+    function sync() {
+      group.style.visibility = type.value === 'offer' ? 'hidden' : 'visible';
+      label.textContent = type.value === 'fixed' ? 'Amount off (₱)' : 'Percent off (%)';
+    }
+    type.addEventListener('change', sync);
+    sync();
+  })();
+</script>
+{% endblock %}

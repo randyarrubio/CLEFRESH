@@ -1,0 +1,10 @@
+{# Order price lines. Context: order. Shows the promo line only when a discount was applied. #}
+{% if order.discount_amount %}
+  <div class="price-breakdown">
+    <div class="price-line"><span>Subtotal</span><span>₱{{ order.subtotal_amount|floatformat:"2g" }}</span></div>
+    <div class="price-line price-line-discount">
+      <span><i class="bi bi-tag-fill" aria-hidden="true"></i> {{ order.promotion_title|default:"Promo" }}</span>
+      <span>−₱{{ order.discount_amount|floatformat:"2g" }}</span>
+    </div>
+  </div>
+{% endif %}

@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+{% load shop_extras %}
+{% block title %}Transactions — Admin{% endblock %}
+{% block content %}
+<div class="page-shell">
+  <div class="page-header">
+    <div>
+      <nav class="page-crumbs" aria-label="Breadcrumb"><a href="{% url 'admin_dashboard' %}">Admin panel</a><span class="page-crumbs-sep" aria-hidden="true">/</span><span aria-current="page">Transactions</span></nav>
+      <h2>PayMongo Transactions</h2>
+      <p>Online payment transaction history</p>
+    </div>
+    <a href="{% url 'admin_dashboard' %}" class="btn btn-outline">← Dashboard</a>
+  </div>
+
+  <div class="table-wrapper">
+    <table class="table">
+      <thead>
+        <tr><th>Order #</th><th>Customer</th><th>Amount</th><th>Status</th><th>Intent ID</th><th>Date</th></tr>
+      </thead>
+      <tbody>
+        {% for tx in transactions %}
+          <tr>
+            <td><strong>#{{ tx.order_id }}</strong></td>
+            <td>{{ tx.order.customer.email }}</td>
+            <td style="font-weight:700; color:var(--primary);">₱{{ tx.amount|centavos_to_php|floatformat:2 }}</td>
+            <td>
+              <span class="badge {% if tx.status == 'succeeded' %}badge-success{% elif tx.status == 'failed' %}badge-danger{% else %}badge-cod{% endif %}">
+                {{ tx.get_status_display }}
+              </span>
+            </td>
+            <td><code style="font-size:11px; color:var(--text-secondary);">{{ tx.payment_intent_id|truncatechars:32 }}</code></td>
+            <td>{{ tx.created_at|date:"M d, Y" }}</td>
+          </tr>
+        {% empty %}
+          <tr>
+            <td colspan="6" class="table-empty-cell"><i class="bi bi-credit-card" aria-hidden="true"></i> No transactions yet.</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% include 'includes/pagination.html' %}
+</div>
+{% endblock %}

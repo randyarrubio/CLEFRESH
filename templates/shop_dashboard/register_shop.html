@@ -1,0 +1,772 @@
+{% extends 'base.html' %}
+{% block title %}Register Shop - CLEFRESH{% endblock %}
+
+{% block extra_head %}
+<style>
+  .owner-onboarding {
+    min-height: calc(100vh - 68px);
+    padding: 28px 16px 64px;
+    background: #eef6fb;
+  }
+
+  .owner-shell {
+    max-width: 520px;
+    margin: 0 auto;
+  }
+
+  .owner-card {
+    background: #fff;
+    border: 1px solid #dce8ef;
+    border-radius: 12px;
+    padding: 16px 18px;
+    margin-bottom: 12px;
+    box-shadow: 0 12px 28px rgba(15, 47, 72, .06);
+  }
+
+  .owner-title-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+
+  .owner-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 9px;
+    background: #e6f1fb;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #185fa5;
+    font-size: 18px;
+  }
+
+  .owner-title {
+    font-size: 15px;
+    font-weight: 800;
+    color: #263746;
+  }
+
+  .owner-subtitle {
+    font-size: 12px;
+    color: #6c7d8b;
+    margin-top: 2px;
+  }
+
+  .step-bar {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    margin-bottom: 12px;
+  }
+
+  .step-dot {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  .step-line {
+    flex: 1;
+    height: 1px;
+    background: #d7e3ea;
+  }
+
+  .step-active { background: #185fa5; color: #fff; }
+  .step-done { background: #eaf3de; color: #27500a; border: 1px solid #c0dd97; }
+  .step-todo { background: #f4f7f9; color: #94a3af; border: 1px solid #d7e3ea; }
+  .step-line-done { background: #97c459; }
+
+  .step-label-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 14px;
+  }
+
+  .step-lbl-item {
+    font-size: 11px;
+    color: #8a98a5;
+    text-align: center;
+    width: 44px;
+  }
+
+  .step-lbl-item.cur {
+    color: #185fa5;
+    font-weight: 800;
+  }
+
+  .progress-wrap {
+    background: #eef3f7;
+    border-radius: 20px;
+    height: 4px;
+    overflow: hidden;
+  }
+
+  .progress-fill {
+    height: 100%;
+    background: #185fa5;
+    border-radius: 20px;
+    transition: width .3s ease;
+  }
+
+  .step-page { display: none; }
+  .step-page.active { display: block; animation: ownerStepIn .24s ease; }
+
+  @keyframes ownerStepIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .section-head {
+    font-size: 13px;
+    font-weight: 800;
+    color: #263746;
+    margin-bottom: 10px;
+  }
+
+  .field-row { margin-bottom: 12px; }
+  .field-row:last-child { margin-bottom: 0; }
+
+  .owner-lbl {
+    font-size: 12px;
+    color: #586b7a;
+    margin-bottom: 5px;
+    font-weight: 700;
+  }
+
+  .owner-onboarding input,
+  .owner-onboarding textarea,
+  .owner-onboarding select {
+    font-size: 13px;
+    border-radius: 8px;
+  }
+
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .service-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  .svc-card {
+    border: 1px solid #d7e3ea;
+    border-radius: 10px;
+    padding: 10px 12px;
+    cursor: pointer;
+    background: #fff;
+    user-select: none;
+  }
+
+  .svc-card.sel {
+    border-color: #185fa5;
+    background: #e6f1fb;
+  }
+
+  .svc-card input { display: none; }
+
+  .svc-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .svc-name {
+    font-size: 13px;
+    font-weight: 800;
+    color: #263746;
+  }
+
+  .svc-sub {
+    font-size: 11px;
+    color: #8a98a5;
+    margin-top: 2px;
+  }
+
+  .check-icon {
+    display: none;
+    margin-left: auto;
+    color: #27500a;
+    font-size: 12px;
+    font-weight: 800;
+  }
+
+  .svc-card.sel .check-icon { display: inline; }
+  .svc-card.sel .svc-name { color: #0c447c; }
+  .svc-card.sel .svc-sub { color: #185fa5; }
+
+  .price-row,
+  .hours-row,
+  .review-kv {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 0;
+    border-bottom: 1px solid #edf2f5;
+    font-size: 13px;
+  }
+
+  .price-row:last-child,
+  .hours-row:last-child,
+  .review-kv:last-child { border-bottom: 0; }
+
+  .price-input {
+    width: 92px;
+    text-align: right;
+  }
+
+  .hours-day {
+    min-width: 86px;
+    color: #586b7a;
+    font-weight: 700;
+  }
+
+  .hours-inputs {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: 1;
+    justify-content: flex-end;
+  }
+
+  .time-input { width: 92px; font-size: 12px; }
+
+  .tag-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .pay-chip {
+    border: 1px solid #d7e3ea;
+    border-radius: 20px;
+    padding: 6px 14px;
+    font-size: 12px;
+    color: #586b7a;
+    cursor: pointer;
+    user-select: none;
+    background: #fff;
+  }
+
+  .pay-chip.sel {
+    border-color: #185fa5;
+    background: #e6f1fb;
+    color: #0c447c;
+  }
+
+  .avatar-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 0;
+  }
+
+  .avatar-circle {
+    width: 58px;
+    height: 58px;
+    border-radius: 12px;
+    background: #e6f1fb;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    font-weight: 800;
+    color: #0c447c;
+    border: 2px dashed #b5d4f4;
+    flex-shrink: 0;
+  }
+
+  .upload-hint,
+  .note {
+    font-size: 12px;
+    color: #7a8894;
+    line-height: 1.5;
+  }
+
+  .note {
+    background: #f4f7f9;
+    border-radius: 10px;
+    padding: 8px 10px;
+    margin-top: 8px;
+  }
+
+  .photo-upload {
+    min-height: 96px;
+    border: 2px dashed #b5d4f4;
+    border-radius: 10px;
+    background: #eef7ff;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 14px;
+    color: #185fa5;
+    font-size: 12px;
+    font-weight: 800;
+    cursor: pointer;
+  }
+
+  .file-input {
+    width: 100%;
+    margin-top: 8px;
+  }
+
+  .review-kv span:first-child { color: #6c7d8b; }
+  .review-kv span:last-child {
+    color: #263746;
+    font-weight: 800;
+    text-align: right;
+    max-width: 64%;
+  }
+
+  .cta,
+  .cta-back {
+    width: 100%;
+    border-radius: 10px;
+    font-size: 14px;
+    cursor: pointer;
+  }
+
+  .cta {
+    padding: 12px;
+    border: 0;
+    background: #185fa5;
+    color: #fff;
+    font-weight: 800;
+    margin-top: 4px;
+  }
+
+  .cta-back {
+    padding: 11px;
+    background: transparent;
+    border: 1px solid #c9d7e0;
+    color: #263746;
+    margin-bottom: 8px;
+  }
+
+  .owner-success-note {
+    background: #eaf3de;
+    border: 1px solid #c0dd97;
+    border-radius: 10px;
+    padding: 10px 14px;
+    margin-bottom: 12px;
+    font-size: 12px;
+    color: #27500a;
+    line-height: 1.5;
+  }
+
+  @media (max-width: 620px) {
+    .owner-onboarding { padding: 16px 10px 44px; }
+    .owner-card { padding: 14px; }
+    .two-col,
+    .service-grid { grid-template-columns: 1fr; }
+    .time-input { width: 78px; }
+    .step-lbl-item { width: 38px; font-size: 10px; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="owner-onboarding">
+  <form class="owner-shell" method="post" enctype="multipart/form-data" id="shopOnboardingForm">
+    {% csrf_token %}
+
+    <div class="owner-card">
+      <div class="owner-title-row">
+        <div class="owner-icon"><i class="bi bi-shop"></i></div>
+        <div>
+          <div class="owner-title">Register your shop</div>
+          <div class="owner-subtitle">Get listed and start accepting orders</div>
+        </div>
+      </div>
+
+      <div class="step-bar">
+        <div class="step-dot step-active" id="d1">1</div>
+        <div class="step-line" id="l12"></div>
+        <div class="step-dot step-todo" id="d2">2</div>
+        <div class="step-line" id="l23"></div>
+        <div class="step-dot step-todo" id="d3">3</div>
+        <div class="step-line" id="l34"></div>
+        <div class="step-dot step-todo" id="d4">4</div>
+        <div class="step-line" id="l45"></div>
+        <div class="step-dot step-todo" id="d5">5</div>
+      </div>
+
+      <div class="step-label-row">
+        <div class="step-lbl-item cur" id="lbl1">Info</div>
+        <div class="step-lbl-item" id="lbl2">Services</div>
+        <div class="step-lbl-item" id="lbl3">Hours</div>
+        <div class="step-lbl-item" id="lbl4">Photos</div>
+        <div class="step-lbl-item" id="lbl5">Review</div>
+      </div>
+
+      <div class="progress-wrap"><div class="progress-fill" id="progressFill" style="width:20%"></div></div>
+    </div>
+
+    <div class="step-page active" id="page1">
+      <div class="owner-card">
+        <div class="section-head">Shop identity</div>
+        <div class="avatar-row">
+          <div class="avatar-circle" id="avatarCircle">CF</div>
+          <div>
+            <div class="upload-hint">Upload your shop logo or photo<br>JPG, PNG - max 5 MB</div>
+            <input class="file-input" type="file" name="logo" accept="image/*">
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="owner-lbl">Shop name</div>
+          <input type="text" name="name" id="shopName" required placeholder="e.g. Fresh & Clean Laundry" value="{{ shop.name|default:'' }}">
+        </div>
+        <div class="field-row">
+          <div class="owner-lbl">Tagline / short description</div>
+          <input type="text" name="tagline" placeholder="e.g. Fresh, clean, and on time - every load">
+        </div>
+        <div class="field-row">
+          <div class="owner-lbl">About your shop</div>
+          <textarea name="description" rows="4" placeholder="Tell customers what makes your shop special...">{{ shop.description|default:'' }}</textarea>
+        </div>
+      </div>
+
+      <div class="owner-card">
+        <div class="section-head">Location</div>
+        <div class="field-row">
+          <div class="owner-lbl">Street address</div>
+          <input type="text" name="street_address" id="streetAddress" required placeholder="e.g. 123 Roces Ave">
+        </div>
+        <div class="two-col">
+          <div class="field-row">
+            <div class="owner-lbl">City / Municipality</div>
+            <input type="text" name="city" id="city" required placeholder="Cantilan">
+          </div>
+          <div class="field-row">
+            <div class="owner-lbl">Barangay</div>
+            <input type="text" name="barangay" id="barangay" placeholder="Barangay">
+          </div>
+        </div>
+        <input type="hidden" name="address" id="fullAddress" value="{{ shop.address|default:'' }}">
+      </div>
+
+      <div class="owner-card">
+        <div class="section-head">Contact details</div>
+        <div class="field-row">
+          <div class="owner-lbl">Mobile / phone number</div>
+          <input type="tel" name="contact" id="contact" placeholder="+63 9XX XXX XXXX" value="{{ shop.contact|default:'' }}">
+        </div>
+        <div class="field-row">
+          <div class="owner-lbl">Email address</div>
+          <input type="email" name="shop_email" id="shopEmail" placeholder="shop@example.com" value="{{ user.email }}">
+        </div>
+      </div>
+
+      <button class="cta" type="button" data-next="2">Next: services & pricing</button>
+    </div>
+
+    <div class="step-page" id="page2">
+      <div class="owner-card">
+        <div class="section-head">Services offered</div>
+        <div class="service-grid">
+          <label class="svc-card sel">
+            <input type="checkbox" name="services" value="wash" checked>
+            <div class="svc-header"><span class="svc-name">Wash</span><span class="check-icon">✓</span></div>
+            <div class="svc-sub">Per kilogram</div>
+          </label>
+          <label class="svc-card sel">
+            <input type="checkbox" name="services" value="dry" checked>
+            <div class="svc-header"><span class="svc-name">Dry</span><span class="check-icon">✓</span></div>
+            <div class="svc-sub">Per kilogram</div>
+          </label>
+          <label class="svc-card">
+            <input type="checkbox" name="services" value="fold">
+            <div class="svc-header"><span class="svc-name">Fold</span><span class="check-icon">✓</span></div>
+            <div class="svc-sub">Add-on</div>
+          </label>
+          <label class="svc-card">
+            <input type="checkbox" name="services" value="iron">
+            <div class="svc-header"><span class="svc-name">Iron / press</span><span class="check-icon">✓</span></div>
+            <div class="svc-sub">Per piece</div>
+          </label>
+          <label class="svc-card">
+            <input type="checkbox" name="services" value="dry_clean">
+            <div class="svc-header"><span class="svc-name">Dry cleaning</span><span class="check-icon">✓</span></div>
+            <div class="svc-sub">Specialty</div>
+          </label>
+        </div>
+      </div>
+
+      <div class="owner-card">
+        <div class="section-head">Pricing</div>
+        <div class="price-row"><span>Wash (per kg)</span><span>₱ <input type="number" class="price-input" name="price_wash_kg" id="priceWash" placeholder="65" min="0" step="0.01"></span></div>
+        <div class="price-row"><span>Dry (per kg)</span><span>₱ <input type="number" class="price-input" name="price_dry_kg" id="priceDry" placeholder="50" min="0" step="0.01"></span></div>
+        <div class="price-row"><span>Fold (per kg)</span><span>₱ <input type="number" class="price-input" name="price_fold_kg" id="priceFold" placeholder="20" min="0" step="0.01"></span></div>
+        <div class="price-row"><span>Iron / press (per piece)</span><span>₱ <input type="number" class="price-input" name="price_iron_piece" id="priceIron" placeholder="15" min="0" step="0.01"></span></div>
+        <div class="price-row"><span>Dry cleaning (per piece)</span><span>₱ <input type="number" class="price-input" name="price_dry_clean_piece" id="priceDryClean" placeholder="120" min="0" step="0.01"></span></div>
+        <div class="note">You can update services and prices anytime from your shop dashboard.</div>
+      </div>
+
+      <div class="owner-card">
+        <div class="section-head">Minimum load & turnaround</div>
+        <div class="two-col">
+          <div class="field-row">
+            <div class="owner-lbl">Minimum load (kg)</div>
+            <input type="number" name="minimum_load" id="minimumLoad" placeholder="3" min="1">
+          </div>
+          <div class="field-row">
+            <div class="owner-lbl">Standard turnaround</div>
+            <select name="turnaround" id="turnaround">
+              <option>24 hours</option>
+              <option>48 hours</option>
+              <option>Same day</option>
+              <option>2-3 days</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="owner-card">
+        <div class="section-head">Accepted payments</div>
+        <div class="tag-row">
+          <label class="pay-chip sel"><input type="checkbox" name="payments" value="Cash" checked hidden>Cash</label>
+          <label class="pay-chip sel"><input type="checkbox" name="payments" value="GCash" checked hidden>GCash</label>
+          <label class="pay-chip"><input type="checkbox" name="payments" value="Maya" hidden>Maya</label>
+          <label class="pay-chip"><input type="checkbox" name="payments" value="Bank transfer" hidden>Bank transfer</label>
+        </div>
+      </div>
+
+      <button class="cta-back" type="button" data-next="1">Back</button>
+      <button class="cta" type="button" data-next="3">Next: operating hours</button>
+    </div>
+
+    <div class="step-page" id="page3">
+      <div class="owner-card">
+        <div class="section-head">Operating hours</div>
+        <div class="hours-row"><span class="hours-day">Monday-Friday</span><div class="hours-inputs"><input type="time" class="time-input" name="hours_start" id="hoursStart" value="{{ shop.operating_hours_start|time:'H:i'|default:'07:00' }}"><span>-</span><input type="time" class="time-input" name="hours_end" id="hoursEnd" value="{{ shop.operating_hours_end|time:'H:i'|default:'20:00' }}"></div></div>
+        <div class="hours-row"><span class="hours-day">Saturday</span><div class="hours-inputs"><input type="time" class="time-input" name="saturday_start" value="08:00"><span>-</span><input type="time" class="time-input" name="saturday_end" value="18:00"></div></div>
+        <div class="hours-row"><span class="hours-day">Sunday</span><span style="color:#a32d2d;font-weight:800">Closed</span></div>
+        <div class="note">The platform currently uses one operating-hours range for marketplace display. Detailed day notes are included in your shop description.</div>
+      </div>
+
+      <div class="owner-card">
+        <div class="section-head">Policies & notes</div>
+        <div class="field-row">
+          <div class="owner-lbl">Unclaimed items policy</div>
+          <select name="unclaimed_policy" id="unclaimedPolicy">
+            <option>Items not claimed after 7 days may be donated</option>
+            <option>Items not claimed after 14 days may be donated</option>
+            <option>Will contact customer before any action</option>
+          </select>
+        </div>
+        <div class="field-row">
+          <div class="owner-lbl">Additional notes for customers</div>
+          <textarea name="customer_notes" id="customerNotes" rows="3" placeholder="e.g. no bleaching on dark clothes, separate reds..."></textarea>
+        </div>
+      </div>
+
+      <button class="cta-back" type="button" data-next="2">Back</button>
+      <button class="cta" type="button" data-next="4">Next: shop photos</button>
+    </div>
+
+    <div class="step-page" id="page4">
+      <div class="owner-card">
+        <div class="section-head">Shop cover photo</div>
+        <label class="photo-upload">
+          <i class="bi bi-camera"></i>
+          Upload cover photo
+          <input type="file" name="banner" accept="image/*" hidden>
+        </label>
+        <div class="note">Recommended: 1200 x 400 px. Shown as the banner on your shop page.</div>
+      </div>
+
+      <div class="owner-card">
+        <div class="section-head">Owner / operator verification</div>
+        <div class="upload-hint">Upload a valid government ID and a selfie holding it. This helps CLEFRESH verify your shop is legitimate.</div>
+        <div class="two-col" style="margin-top:10px">
+          <div class="field-row">
+            <div class="owner-lbl">Government ID{% if shop.owner_government_id %} <span style="color:#2f6717;">(on file)</span>{% endif %}</div>
+            <input type="file" name="government_id" accept="image/*,.pdf">
+          </div>
+          <div class="field-row">
+            <div class="owner-lbl">Selfie + ID{% if shop.owner_selfie_with_id %} <span style="color:#2f6717;">(on file)</span>{% endif %}</div>
+            <input type="file" name="selfie_id" accept="image/*">
+          </div>
+        </div>
+        <div class="note">Documents are used only for verification and are not shown to customers.</div>
+      </div>
+
+      <button class="cta-back" type="button" data-next="3">Back</button>
+      <button class="cta" type="button" data-next="5">Review & submit</button>
+    </div>
+
+    <div class="step-page" id="page5">
+      <div class="owner-card">
+        <div class="section-head">Shop details</div>
+        <div class="review-kv"><span>Shop name</span><span data-review="name">-</span></div>
+        <div class="review-kv"><span>Location</span><span data-review="address">-</span></div>
+        <div class="review-kv"><span>Contact</span><span data-review="contact">-</span></div>
+        <div class="review-kv"><span>Min. load</span><span data-review="minimum">-</span></div>
+        <div class="review-kv"><span>Turnaround</span><span data-review="turnaround">-</span></div>
+      </div>
+
+      <div class="owner-card">
+        <div class="section-head">Services & pricing</div>
+        <div class="review-kv"><span>Selected services</span><span data-review="services">-</span></div>
+        <div class="review-kv"><span>Payments</span><span data-review="payments">-</span></div>
+      </div>
+
+      <div class="owner-card">
+        <div class="section-head">Operating hours</div>
+        <div class="review-kv"><span>Marketplace display</span><span data-review="hours">-</span></div>
+      </div>
+
+      <div class="owner-card">
+        <label style="display:flex;gap:10px;align-items:flex-start;font-size:13px;color:#586b7a;line-height:1.5;cursor:pointer">
+          <input type="checkbox" required style="width:auto;margin-top:2px">
+          <span>I confirm that all information is accurate and I agree to the Terms of Service and Merchant Guidelines.</span>
+        </label>
+      </div>
+
+      <div class="owner-success-note">
+        <strong style="display:block;margin-bottom:2px">What happens next?</strong>
+        Our team will review your submission within 1-2 business days. You will get an update once your shop is approved and live.
+      </div>
+
+      <button class="cta-back" type="button" data-next="4">Back</button>
+      <button class="cta" type="submit">Submit registration</button>
+    </div>
+  </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  (function () {
+    let current = 1;
+    const total = 5;
+    const form = document.getElementById('shopOnboardingForm');
+    const shopName = document.getElementById('shopName');
+    const avatarCircle = document.getElementById('avatarCircle');
+
+    function updateAvatar() {
+      const val = shopName.value.trim();
+      avatarCircle.textContent = val.split(' ').slice(0, 2).map((word) => word[0] || '').join('').toUpperCase() || 'CF';
+    }
+
+    function syncAddress() {
+      const parts = [
+        document.getElementById('streetAddress').value,
+        document.getElementById('barangay').value,
+        document.getElementById('city').value
+      ].filter(Boolean);
+      document.getElementById('fullAddress').value = parts.join(', ');
+    }
+
+    function updateServiceCards() {
+      document.querySelectorAll('.svc-card').forEach((card) => {
+        const input = card.querySelector('input');
+        card.classList.toggle('sel', input.checked);
+      });
+      document.querySelectorAll('.pay-chip').forEach((chip) => {
+        const input = chip.querySelector('input');
+        chip.classList.toggle('sel', input.checked);
+      });
+    }
+
+    function selectedLabels(selector) {
+      return Array.from(document.querySelectorAll(selector))
+        .filter((input) => input.checked)
+        .map((input) => input.closest('label').innerText.trim().replace('✓', '').trim());
+    }
+
+    function updateReview() {
+      syncAddress();
+      document.querySelector('[data-review="name"]').textContent = shopName.value || '-';
+      document.querySelector('[data-review="address"]').textContent = document.getElementById('fullAddress').value || '-';
+      document.querySelector('[data-review="contact"]').textContent = document.getElementById('contact').value || '-';
+      document.querySelector('[data-review="minimum"]').textContent = (document.getElementById('minimumLoad').value || '-') + ' kg';
+      document.querySelector('[data-review="turnaround"]').textContent = document.getElementById('turnaround').value || '-';
+      document.querySelector('[data-review="services"]').textContent = selectedLabels('input[name="services"]').join(', ') || '-';
+      document.querySelector('[data-review="payments"]').textContent = selectedLabels('input[name="payments"]').join(', ') || '-';
+      document.querySelector('[data-review="hours"]').textContent = `${document.getElementById('hoursStart').value} - ${document.getElementById('hoursEnd').value}`;
+    }
+
+    function validateStep(step) {
+      if (step !== 1) return true;
+      const required = ['shopName', 'streetAddress', 'city'];
+      for (const id of required) {
+        const input = document.getElementById(id);
+        if (!input.value.trim()) {
+          input.reportValidity();
+          return false;
+        }
+      }
+      return true;
+    }
+
+    function goTo(next) {
+      if (next > current && !validateStep(current)) return;
+      document.getElementById(`page${current}`).classList.remove('active');
+      current = next;
+      document.getElementById(`page${current}`).classList.add('active');
+      updateStepper();
+      updateAvatar();
+      updateReview();
+      document.querySelector('.owner-onboarding').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    function updateStepper() {
+      for (let i = 1; i <= total; i++) {
+        const dot = document.getElementById(`d${i}`);
+        const lbl = document.getElementById(`lbl${i}`);
+        dot.className = 'step-dot';
+        lbl.className = 'step-lbl-item';
+        if (i < current) {
+          dot.classList.add('step-done');
+          dot.textContent = '✓';
+        } else if (i === current) {
+          dot.classList.add('step-active');
+          dot.textContent = i;
+          lbl.classList.add('cur');
+        } else {
+          dot.classList.add('step-todo');
+          dot.textContent = i;
+        }
+      }
+      for (let i = 1; i < total; i++) {
+        document.getElementById(`l${i}${i + 1}`).className = 'step-line' + (i < current ? ' step-line-done' : '');
+      }
+      document.getElementById('progressFill').style.width = `${Math.round((current / total) * 100)}%`;
+    }
+
+    document.querySelectorAll('[data-next]').forEach((button) => {
+      button.addEventListener('click', () => goTo(Number(button.dataset.next)));
+    });
+    document.querySelectorAll('.svc-card, .pay-chip').forEach((label) => {
+      label.addEventListener('click', () => window.setTimeout(updateServiceCards, 0));
+    });
+    ['input', 'change'].forEach((eventName) => {
+      form.addEventListener(eventName, () => {
+        syncAddress();
+        updateAvatar();
+        updateReview();
+      });
+    });
+    form.addEventListener('submit', syncAddress);
+    updateAvatar();
+    updateServiceCards();
+    updateReview();
+  })();
+</script>
+{% endblock %}

@@ -1,0 +1,191 @@
+{% extends 'base.html' %}
+{% block title %}My Profile — CLEFRESH{% endblock %}
+
+{% block extra_head %}
+<style>
+  /* ── Profile page (.pf-*) ──────────────────────────────────────────── */
+  .pf-grid { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 24px; align-items: start; }
+  .pf-summary { text-align: center; padding: 28px 22px; position: sticky; top: 88px; }
+  .pf-avatar {
+    width: 96px; height: 96px; margin: 0 auto 14px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center; overflow: hidden;
+    background: #e6f4fb; color: #075c9a; font: 800 32px 'Outfit', sans-serif;
+    border: 3px solid #fff; box-shadow: 0 0 0 1px var(--card-border), var(--shadow-sm);
+  }
+  .pf-avatar img { width: 100%; height: 100%; object-fit: cover; }
+  .pf-name { font-size: 18px; font-weight: 800; color: var(--text); overflow-wrap: anywhere; }
+  .pf-email { font-size: 13.5px; color: var(--text-muted); margin-top: 2px; overflow-wrap: anywhere; }
+  .pf-role { margin-top: 10px; }
+  .pf-facts { display: grid; gap: 8px; margin: 18px 0 0; padding-top: 16px; border-top: 1px solid var(--card-border); text-align: left; font-size: 13px; }
+  .pf-facts div { display: flex; justify-content: space-between; gap: 10px; color: var(--text-muted); }
+  .pf-facts strong { color: var(--text); font-weight: 600; text-align: right; }
+  .pf-summary .btn { margin-top: 18px; }
+
+  .pf-section { padding: 22px; margin-bottom: 18px; }
+  .pf-section h3 { margin-bottom: 4px !important; }
+  .pf-section-sub { font-size: 13.5px; color: var(--text-muted); margin-bottom: 16px; }
+  .pf-section textarea { height: 96px; }   /* Django's Textarea defaults to 10 rows */
+  .pf-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 16px; }
+  .pf-required { color: var(--danger-solid); margin-left: 2px; }
+  .pf-photo { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  .pf-photo .pf-avatar { width: 64px; height: 64px; margin: 0; font-size: 22px; }
+  .pf-photo-fields { flex: 1; min-width: 220px; }
+  .pf-check { display: flex; align-items: flex-start; gap: 10px; font-size: 14px; color: #344b5f; cursor: pointer; }
+  .pf-check input { width: 18px; height: 18px; margin-top: 2px; flex-shrink: 0; }
+  .pf-check small { display: block; color: var(--text-muted); font-size: 12.5px; margin-top: 2px; }
+  .pf-actions { display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap; }
+
+  @media (max-width: 860px) {
+    .pf-grid { grid-template-columns: 1fr; }
+    .pf-summary { position: static; }
+  }
+  @media (max-width: 520px) {
+    .pf-row { grid-template-columns: 1fr; }
+    .pf-section { padding: 18px 16px; }
+    .pf-actions .btn { flex: 1; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-shell">
+  <div class="page-header">
+    <div>
+      <nav class="page-crumbs" aria-label="Breadcrumb"><span>My account</span><span class="page-crumbs-sep" aria-hidden="true">/</span><span aria-current="page">Profile</span></nav>
+      <h2>My Profile</h2>
+      <p>Keep your contact details current so shops and riders can reach you.</p>
+    </div>
+  </div>
+
+  <div class="pf-grid">
+    <aside class="card pf-summary" aria-label="Account summary">
+      <div class="pf-avatar">
+        {% if user.profile_picture %}
+          <img src="{{ user.profile_picture.url }}" alt="Profile photo of {{ user.get_full_name|default:user.email }}">
+        {% else %}
+          <span aria-hidden="true">{{ user.first_name|first|upper|default:user.email|first|upper }}{{ user.last_name|first|upper }}</span>
+        {% endif %}
+      </div>
+      <div class="pf-name">{{ user.get_full_name|default:"No name set" }}</div>
+      <div class="pf-email">{{ user.email }}</div>
+      {% if user.role %}<div class="pf-role"><span class="badge badge-role-{{ user.role }}">{{ user.get_role_display }}</span></div>{% endif %}
+      <div class="pf-facts">
+        <div><span>Member since</span><strong>{{ user.date_joined|date:"M j, Y" }}</strong></div>
+        <div><span>Sign-in</span><strong>{% if user.sso_provider and user.sso_provider != 'none' %}{{ user.get_sso_provider_display }}{% else %}Email &amp; password{% endif %}</strong></div>
+        <div><span>Email updates</span><strong>{% if user.email_notifications_enabled %}On{% else %}Off{% endif %}</strong></div>
+      </div>
+      {% if user.role == 'customer' %}
+        <a href="{% url 'order_list' %}" class="btn btn-outline btn-full"><i class="bi bi-bag-check" aria-hidden="true"></i> My orders</a>
+      {% elif user.role == 'shop_owner' %}
+        <a href="{% url 'shop_dashboard' %}" class="btn btn-outline btn-full"><i class="bi bi-speedometer2" aria-hidden="true"></i> Shop dashboard</a>
+      {% elif user.role == 'rider' %}
+        <a href="{% url 'rider_onboarding' %}" class="btn btn-outline btn-full"><i class="bi bi-person-vcard" aria-hidden="true"></i> Rider details &amp; documents</a>
+      {% elif user.role == 'admin' or user.is_superuser %}
+        <a href="{% url 'admin_dashboard' %}" class="btn btn-outline btn-full"><i class="bi bi-speedometer2" aria-hidden="true"></i> Admin panel</a>
+      {% endif %}
+    </aside>
+
+    <form method="post" enctype="multipart/form-data" novalidate>
+      {% csrf_token %}
+      {% if form.non_field_errors %}
+        <div class="alert alert-error"><i class="bi bi-exclamation-octagon-fill" aria-hidden="true"></i><span class="alert-text">{{ form.non_field_errors|join:" " }}</span></div>
+      {% endif %}
+
+      <section class="card pf-section" aria-labelledby="pf-personal">
+        <h3 id="pf-personal"><i class="bi bi-person glyph-icon" aria-hidden="true"></i>Personal details</h3>
+        <p class="pf-section-sub">Shown to shops and riders on your orders.</p>
+        <div class="pf-row">
+          <div class="form-group">
+            <label for="{{ form.first_name.id_for_label }}">First name</label>
+            {{ form.first_name }}
+            {% if form.first_name.errors %}<span class="form-error">{{ form.first_name.errors.0 }}</span>{% endif %}
+          </div>
+          <div class="form-group">
+            <label for="{{ form.last_name.id_for_label }}">Last name</label>
+            {{ form.last_name }}
+            {% if form.last_name.errors %}<span class="form-error">{{ form.last_name.errors.0 }}</span>{% endif %}
+          </div>
+        </div>
+        <div class="form-group" style="margin-bottom:0;">
+          <label for="pf-email">Email address</label>
+          <input id="pf-email" type="email" value="{{ user.email }}" disabled aria-describedby="pf-email-hint">
+          <span class="form-hint" id="pf-email-hint">Your sign-in email can't be changed here.</span>
+        </div>
+      </section>
+
+      <section class="card pf-section" aria-labelledby="pf-contact">
+        <h3 id="pf-contact"><i class="bi bi-telephone glyph-icon" aria-hidden="true"></i>Contact</h3>
+        <p class="pf-section-sub">Used for pickups and deliveries.</p>
+        <div class="form-group">
+          <label for="{{ form.contact_number.id_for_label }}">Mobile number</label>
+          {{ form.contact_number }}
+          {% if form.contact_number.errors %}<span class="form-error">{{ form.contact_number.errors.0 }}</span>{% endif %}
+        </div>
+        <div class="form-group" style="margin-bottom:0;">
+          <label for="{{ form.address.id_for_label }}">Address</label>
+          {{ form.address }}
+          {% if form.address.errors %}<span class="form-error">{{ form.address.errors.0 }}</span>{% endif %}
+        </div>
+      </section>
+
+      <section class="card pf-section" aria-labelledby="pf-photo-title">
+        <h3 id="pf-photo-title"><i class="bi bi-image glyph-icon" aria-hidden="true"></i>Profile photo</h3>
+        <p class="pf-section-sub">JPG, PNG or WEBP, up to 5 MB.</p>
+        <div class="pf-photo">
+          <div class="pf-avatar" id="pfPhotoPreview">
+            {% if user.profile_picture %}
+              <img src="{{ user.profile_picture.url }}" alt="">
+            {% else %}
+              <span aria-hidden="true">{{ user.first_name|first|upper|default:user.email|first|upper }}{{ user.last_name|first|upper }}</span>
+            {% endif %}
+          </div>
+          <div class="pf-photo-fields">
+            <label for="{{ form.profile_picture.id_for_label }}" class="sr-only">Upload a new profile photo</label>
+            <input type="file" name="{{ form.profile_picture.html_name }}" id="{{ form.profile_picture.id_for_label }}" accept="image/jpeg,image/png,image/webp">
+            {% if user.profile_picture %}
+              <label class="pf-check" style="margin-top:10px;">
+                <input type="checkbox" name="{{ form.profile_picture.html_name }}-clear" id="{{ form.profile_picture.html_name }}-clear_id">
+                <span>Remove current photo</span>
+              </label>
+            {% endif %}
+            {% if form.profile_picture.errors %}<span class="form-error">{{ form.profile_picture.errors.0 }}</span>{% endif %}
+          </div>
+        </div>
+      </section>
+
+      <section class="card pf-section" aria-labelledby="pf-notify">
+        <h3 id="pf-notify"><i class="bi bi-bell glyph-icon" aria-hidden="true"></i>Notifications</h3>
+        <label class="pf-check">
+          {{ form.email_notifications_enabled }}
+          <span>Email me about my orders<small>Order status, rider and payment updates. In-app notifications stay on either way.</small></span>
+        </label>
+      </section>
+
+      <div class="pf-actions">
+        <a href="{% url 'home' %}" class="btn btn-outline">Cancel</a>
+        <button type="submit" class="btn btn-primary"><i class="bi bi-check2" aria-hidden="true"></i> Save changes</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  // Preview a newly chosen photo before saving.
+  (function () {
+    const input = document.getElementById('{{ form.profile_picture.id_for_label }}');
+    const preview = document.getElementById('pfPhotoPreview');
+    if (!input || !preview || !window.URL) return;
+    input.addEventListener('change', function () {
+      const file = input.files && input.files[0];
+      if (!file || !file.type.startsWith('image/')) return;
+      preview.innerHTML = '';
+      const img = document.createElement('img');
+      img.alt = '';
+      img.src = URL.createObjectURL(file);
+      preview.appendChild(img);
+    });
+  })();
+</script>
+{% endblock %}

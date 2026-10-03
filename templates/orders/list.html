@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+{% load shop_extras %}
+{% block title %}My Orders - CLEFRESH{% endblock %}
+{% block content %}
+<div class="page-shell">
+  <div class="page-header">
+    <div>
+      <nav class="page-crumbs" aria-label="Breadcrumb"><span aria-current="page">My orders</span></nav>
+      <h2>My Orders</h2>
+      <p>Track and manage all your laundry orders</p>
+    </div>
+    {% if last_order_shop %}
+      <a href="{% url 'place_order' last_order_shop.id %}" class="btn btn-primary">+ New Order</a>
+    {% else %}
+      <a href="{% url 'shop_list' %}" class="btn btn-primary">+ New Order</a>
+    {% endif %}
+  </div>
+
+  {% if orders %}
+    <div class="orders-list">
+      {% for order in orders %}
+        {% with status=order.status %}
+          <a href="{% url 'order_detail' order.id %}" class="order-row-link">
+            <div class="order-row {% if status == 'pending' %}pending{% elif status in 'washing,drying,folding,picked_up' %}processing{% elif status == 'ready' or status == 'out_for_delivery' %}ready{% elif status == 'delivered' %}delivered{% endif %}">
+              <div class="order-row-left">
+                <div class="order-avatar" style="background:{% if status == 'delivered' %}var(--success){% elif status == 'declined' or status == 'cancelled' %}var(--danger){% elif status == 'pending' %}var(--accent){% else %}var(--primary){% endif %};">
+                  {{ order.shop.name|slice:":2"|upper }}
+                </div>
+                <div class="order-details">
+                  <h5>{{ order.shop.name }}</h5>
+                  <p>{{ order.service_count }} service{{ order.service_count|pluralize }} &bull; {{ order.created_at|date:"M d, Y" }} &bull; {{ order.get_payment_method_display }}</p>
+                </div>
+              </div>
+              <div class="order-row-right">
+                <div class="order-amount">{{ order|order_total }}</div>
+                {% if order.discount_amount %}<span class="promo-badge" style="margin-top:4px;"><i class="bi bi-tag-fill" aria-hidden="true"></i>−₱{{ order.discount_amount }}</span>{% endif %}
+                <div class="order-status-pill {% if status == 'pending' %}pill-new{% elif status == 'delivered' %}pill-delivered{% elif status == 'ready' or status == 'out_for_delivery' %}pill-ready{% else %}pill-processing{% endif %}">
+                  {{ order.get_status_display }}
+                </div>
+              </div>
+            </div>
+          </a>
+        {% endwith %}
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="empty-state">
+      <div class="empty-icon"><i class="bi bi-basket"></i></div>
+      <h3>No orders yet</h3>
+      <p>Browse shops to place your first laundry order.</p>
+      <a href="{% url 'shop_list' %}" class="btn btn-primary btn-lg">Browse Shops</a>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

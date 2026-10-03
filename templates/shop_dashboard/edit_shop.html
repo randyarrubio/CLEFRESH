@@ -1,0 +1,277 @@
+{% extends 'base.html' %}
+{% block title %}Edit Shop - {{ shop.name }}{% endblock %}
+{% block content %}
+<style>
+  .shop-edit-form {
+    display: grid;
+    gap: 18px;
+  }
+  .edit-panel {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    box-shadow: var(--shadow-sm);
+    padding: 20px;
+  }
+  .edit-panel h3 {
+    margin: 0 0 16px;
+    font-size: 17px;
+    font-weight: 800;
+    color: var(--text);
+  }
+  .edit-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px 16px;
+  }
+  .edit-grid.full {
+    grid-template-columns: 1fr;
+  }
+  .edit-field {
+    display: grid;
+    gap: 7px;
+  }
+  .edit-field label,
+  .choice-label {
+    font-size: 13px;
+    font-weight: 800;
+    color: var(--text);
+  }
+  .edit-field input,
+  .edit-field textarea,
+  .edit-field select {
+    width: 100%;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 11px 12px;
+    color: var(--text);
+    background: #fff;
+    font: inherit;
+  }
+  .edit-field textarea {
+    resize: vertical;
+    min-height: 94px;
+  }
+  .current-logo {
+    display: flex;
+    gap: 14px;
+    align-items: center;
+  }
+  .current-logo img {
+    width: 72px;
+    height: 72px;
+    object-fit: cover;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+  }
+  .choice-grid {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 10px;
+  }
+  .choice-card {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+    display: flex;
+    gap: 9px;
+    align-items: center;
+    cursor: pointer;
+    min-height: 48px;
+    color: var(--text);
+    font-weight: 700;
+  }
+  .choice-card input {
+    width: auto;
+  }
+  .price-list {
+    display: grid;
+    gap: 10px;
+    margin-top: 14px;
+  }
+  .price-row {
+    display: grid;
+    grid-template-columns: minmax(140px, 1fr) 160px;
+    gap: 12px;
+    align-items: center;
+  }
+  .form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .hint-text {
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.45;
+  }
+  @media (max-width: 760px) {
+    .edit-grid,
+    .choice-grid,
+    .price-row { grid-template-columns: 1fr; }
+  }
+</style>
+
+<div class="page-shell">
+  <div class="page-header">
+    <div>
+      <nav class="page-crumbs" aria-label="Breadcrumb"><a href="{% url 'shop_dashboard' %}">Shop dashboard</a><span class="page-crumbs-sep" aria-hidden="true">/</span><span aria-current="page">Edit shop</span></nav>
+      <h2>Edit Shop</h2>
+      <p>Update the information customers and admins see for your laundry shop.</p>
+    </div>
+    <a href="{% url 'shop_dashboard' %}" class="btn btn-outline"><i class="bi bi-arrow-left glyph-icon"></i>Back to Dashboard</a>
+  </div>
+
+  <form class="shop-edit-form" method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+
+    <section class="edit-panel">
+      <h3>Shop Information</h3>
+      <div class="edit-grid">
+        <div class="edit-field">
+          <label for="name">Shop name</label>
+          <input type="text" name="name" id="name" required value="{{ shop.name }}">
+        </div>
+        <div class="edit-field">
+          <label for="tagline">Tagline / short description</label>
+          <input type="text" name="tagline" id="tagline" value="{{ shop_meta.tagline }}">
+        </div>
+        <div class="edit-field" style="grid-column:1/-1;">
+          <label for="description">About your shop</label>
+          <textarea name="description" id="description">{{ shop_description }}</textarea>
+        </div>
+      </div>
+    </section>
+
+    <section class="edit-panel">
+      <h3>Location and Contact</h3>
+      <div class="edit-grid">
+        <div class="edit-field" style="grid-column:1/-1;">
+          <label for="address">Full shop address</label>
+          <textarea name="address" id="address" required>{{ shop.address }}</textarea>
+        </div>
+        <div class="edit-field">
+          <label for="contact">Mobile / phone number</label>
+          <input type="tel" name="contact" id="contact" value="{{ shop.contact }}">
+        </div>
+        <div class="edit-field">
+          <label for="shop_email">Email address</label>
+          <input type="email" name="shop_email" id="shop_email" value="{{ user.email }}" readonly>
+        </div>
+      </div>
+    </section>
+
+    <section class="edit-panel">
+      <h3>Services and Pricing</h3>
+      <div class="choice-grid">
+        <label class="choice-card"><input type="checkbox" name="services" value="wash" {% if 'wash' in selected_services %}checked{% endif %}>Wash</label>
+        <label class="choice-card"><input type="checkbox" name="services" value="dry" {% if 'dry' in selected_services %}checked{% endif %}>Dry</label>
+        <label class="choice-card"><input type="checkbox" name="services" value="fold" {% if 'fold' in selected_services %}checked{% endif %}>Fold</label>
+        <label class="choice-card"><input type="checkbox" name="services" value="iron" {% if 'iron' in selected_services %}checked{% endif %}>Iron</label>
+        <label class="choice-card"><input type="checkbox" name="services" value="dry_clean" {% if 'dry_clean' in selected_services %}checked{% endif %}>Dry Clean</label>
+      </div>
+      <div class="price-list">
+        <div class="price-row">
+          <span class="choice-label">Wash price per kg</span>
+          <input type="number" name="price_wash_kg" min="0" step="0.01" value="{{ service_prices.wash }}">
+        </div>
+        <div class="price-row">
+          <span class="choice-label">Dry price per kg</span>
+          <input type="number" name="price_dry_kg" min="0" step="0.01" value="{{ service_prices.dry }}">
+        </div>
+        <div class="price-row">
+          <span class="choice-label">Fold price per kg</span>
+          <input type="number" name="price_fold_kg" min="0" step="0.01" value="{{ service_prices.fold }}">
+        </div>
+        <div class="price-row">
+          <span class="choice-label">Iron price per piece</span>
+          <input type="number" name="price_iron_piece" min="0" step="0.01" value="{{ service_prices.iron }}">
+        </div>
+        <div class="price-row">
+          <span class="choice-label">Dry clean price per piece</span>
+          <input type="number" name="price_dry_clean_piece" min="0" step="0.01" value="{{ service_prices.dry_clean }}">
+        </div>
+      </div>
+    </section>
+
+    <section class="edit-panel">
+      <h3>Operations</h3>
+      <div class="edit-grid">
+        <div class="edit-field">
+          <label for="hours_start">Opening time</label>
+          <input type="time" name="hours_start" id="hours_start" value="{{ shop.operating_hours_start|time:'H:i' }}">
+        </div>
+        <div class="edit-field">
+          <label for="hours_end">Closing time</label>
+          <input type="time" name="hours_end" id="hours_end" value="{{ shop.operating_hours_end|time:'H:i' }}">
+        </div>
+        <div class="edit-field">
+          <label for="minimum_load">Minimum load (kg)</label>
+          <input type="number" name="minimum_load" id="minimum_load" min="1" value="{{ shop_meta.minimum_load }}">
+        </div>
+        <div class="edit-field">
+          <label for="turnaround">Standard turnaround</label>
+          <select name="turnaround" id="turnaround">
+            <option {% if shop_meta.turnaround == '24 hours' %}selected{% endif %}>24 hours</option>
+            <option {% if shop_meta.turnaround == '48 hours' %}selected{% endif %}>48 hours</option>
+            <option {% if shop_meta.turnaround == 'Same day' %}selected{% endif %}>Same day</option>
+            <option {% if shop_meta.turnaround == '2-3 days' %}selected{% endif %}>2-3 days</option>
+          </select>
+        </div>
+        <div class="edit-field" style="grid-column:1/-1;">
+          <span class="choice-label">Accepted payments</span>
+          <div class="choice-grid">
+            <label class="choice-card"><input type="checkbox" name="payments" value="Cash" {% if 'Cash' in shop_meta.payments %}checked{% endif %}>Cash</label>
+            <label class="choice-card"><input type="checkbox" name="payments" value="GCash" {% if 'GCash' in shop_meta.payments %}checked{% endif %}>GCash</label>
+            <label class="choice-card"><input type="checkbox" name="payments" value="Maya" {% if 'Maya' in shop_meta.payments %}checked{% endif %}>Maya</label>
+            <label class="choice-card"><input type="checkbox" name="payments" value="Bank transfer" {% if 'Bank transfer' in shop_meta.payments %}checked{% endif %}>Bank transfer</label>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="edit-panel">
+      <h3>Policies, Notes, and Logo</h3>
+      <div class="edit-grid">
+        <div class="edit-field">
+          <label for="unclaimed_policy">Unclaimed items policy</label>
+          <select name="unclaimed_policy" id="unclaimed_policy">
+            <option {% if shop_meta.unclaimed_policy == 'Items not claimed after 7 days may be donated' %}selected{% endif %}>Items not claimed after 7 days may be donated</option>
+            <option {% if shop_meta.unclaimed_policy == 'Items not claimed after 14 days may be donated' %}selected{% endif %}>Items not claimed after 14 days may be donated</option>
+            <option {% if shop_meta.unclaimed_policy == 'Will contact customer before any action' %}selected{% endif %}>Will contact customer before any action</option>
+          </select>
+        </div>
+        <div class="edit-field">
+          <label for="logo">Shop logo</label>
+          <div class="current-logo">
+            {% if shop.logo %}
+              <img src="{{ shop.logo.url }}" alt="{{ shop.name }} logo">
+            {% endif %}
+            <input type="file" name="logo" id="logo" accept="image/*">
+          </div>
+        </div>
+        <div class="edit-field" style="grid-column:1/-1;">
+          <label for="banner">Shop banner <span style="font-weight:400; color:var(--text-secondary);">— recommended 1440 × 480 px (3:1 ratio)</span></label>
+          {% if shop.banner %}
+            <div style="margin-bottom:10px; border-radius:8px; overflow:hidden; max-height:140px;">
+              <img src="{{ shop.banner.url }}" alt="Current banner" style="width:100%; height:140px; object-fit:cover; display:block;">
+            </div>
+          {% endif %}
+          <input type="file" name="banner" id="banner" accept="image/*">
+        </div>
+        <div class="edit-field" style="grid-column:1/-1;">
+          <label for="customer_notes">Additional notes for customers</label>
+          <textarea name="customer_notes" id="customer_notes">{{ shop_meta.customer_notes }}</textarea>
+          <div class="hint-text">Uploaded verification documents from registration are not shown here because they are not displayed to customers.</div>
+        </div>
+      </div>
+    </section>
+
+    <div class="form-actions">
+      <a href="{% url 'shop_dashboard' %}" class="btn btn-outline">Cancel</a>
+      <button class="btn btn-primary" type="submit"><i class="bi bi-check2 glyph-icon"></i>Save Changes</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

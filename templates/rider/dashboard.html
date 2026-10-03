@@ -1,0 +1,136 @@
+{% extends 'base.html' %}
+{% load shop_extras %}
+{% block title %}Rider Dashboard - CLEFRESH{% endblock %}
+{% block content %}
+{% if has_active_delivery %}
+<script>
+  // Keep sharing location from the dashboard while a delivery is under way.
+  const riderId = {{ request.user.id }};
+  const isRiderPage = true;
+</script>
+{% endif %}
+<div class="rider-app">
+  <section class="rider-hero">
+    <div class="rider-panel rider-welcome">
+      <div class="rider-kicker">Rider workflow</div>
+      <h2>Good day, {{ request.user.first_name|default:"Rider" }}</h2>
+      <p>Stay available for assigned laundry jobs, review pickup and delivery stops, upload proof photos, and move each order through the delivery flow.</p>
+      {% if is_approved_rider %}
+        <div class="rider-online">Available for jobs</div>
+      {% endif %}
+    </div>
+    <div class="rider-panel rider-map" aria-label="Rider route preview">
+      <div class="rider-pin pin-you"><span class="rider-pin-dot"></span><span>You</span></div>
+      <div class="rider-pin pin-customer"><span class="rider-pin-dot"></span><span>Customer</span></div>
+      <div class="rider-pin pin-shop"><span class="rider-pin-dot"></span><span>Shop</span></div>
+    </div>
+  </section>
+
+  <section class="rider-stats">
+    <div class="rider-panel rider-stat"><strong>{{ active_count }}</strong><span>active jobs</span></div>
+    <div class="rider-panel rider-stat"><strong>{{ available_count }}</strong><span>new alerts</span></div>
+    <div class="rider-panel rider-stat"><strong>{{ completed_today_count }}</strong><span>completed today</span></div>
+  </section>
+
+  {% if not is_approved_rider %}
+    <div class="rider-panel rider-empty">
+      {% if not rider_profile or not rider_profile.is_submitted %}
+        <i class="bi bi-person-vcard"></i>
+        <h3>Complete your rider application</h3>
+        <p>Submit your details and identification documents. You can accept jobs once an admin verifies your application.</p>
+        <a href="{% url 'rider_onboarding' %}" class="btn btn-primary">Complete application</a>
+      {% elif rider_profile.approval_status == 'rejected' %}
+        <i class="bi bi-x-circle"></i>
+        <h3>Application not approved</h3>
+        {% if rider_profile.rejection_reason %}<p>Reason: {{ rider_profile.rejection_reason }}</p>{% endif %}
+        <p>Update your details or documents and resubmit for review.</p>
+        <a href="{% url 'rider_onboarding' %}" class="btn btn-primary">Update and resubmit</a>
+      {% else %}
+        <i class="bi bi-hourglass-split"></i>
+        <h3>Application under review</h3>
+        <p>An admin is verifying your documents. New job alerts will appear here once you're approved.</p>
+      {% endif %}
+    </div>
+  {% endif %}
+
+  {% if available_orders %}
+    <div class="rider-section-title"><i class="bi bi-bell"></i>New job alerts</div>
+    <div class="rider-jobs">
+      {% for order in available_orders %}
+        <article class="rider-panel rider-job rider-job--highlight">
+          <div class="rider-job-head">
+            <div>
+              <span class="rider-badge pickup"><i class="bi bi-box-arrow-in-down"></i>New pickup request</span>
+              {% if order.payment_method == 'cod' %}<span class="rider-badge" style="margin-left:6px;">COD</span>{% endif %}
+            </div>
+            <span class="rider-time">{{ order.pickup_datetime|date:"M d, g:i A" }}</span>
+          </div>
+          <h3 style="font-size:18px;margin-bottom:10px;">Order #{{ order.id }} - {{ order.shop.name }}</h3>
+          {# Customer identity is shown only after the rider claims the job. #}
+          <div class="rider-stop"><i class="bi bi-geo-alt"></i><span><strong>Pickup:</strong> {{ order.pickup_address }}</span></div>
+          <div class="rider-stop"><i class="bi bi-house-door"></i><span><strong>Delivery:</strong> {{ order.delivery_address }}</span></div>
+          <div class="rider-job-meta">
+            <div class="rider-mini"><strong>2 stops</strong><span>route</span></div>
+            <div class="rider-mini"><strong>Shop accepted</strong><span>status</span></div>
+            <div class="rider-mini"><strong>{{ order|order_total }}</strong><span>order value</span></div>
+          </div>
+          <form method="post" action="{% url 'rider_accept_job' order.id %}">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-primary btn-full"><i class="bi bi-check2-circle"></i>Accept job</button>
+          </form>
+        </article>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  {% if orders %}
+    <div class="rider-section-title"><i class="bi bi-lightning-charge"></i>Active job requests</div>
+    <div class="rider-jobs">
+      {% for order in orders %}
+        <article class="rider-panel rider-job {% if order.status == 'accepted' %}rider-job--highlight{% endif %}">
+          <div class="rider-job-head">
+            <div>
+              <span class="rider-badge {% if order.status == 'accepted' or order.status == 'picked_up' %}pickup{% else %}delivery{% endif %}">
+                {% if order.status == 'accepted' %}<i class="bi bi-box-arrow-in-down"></i>New pickup
+                {% elif order.status == 'picked_up' %}<i class="bi bi-shop"></i>Drop at shop
+                {% elif order.status == 'ready' %}<i class="bi bi-truck"></i>Ready to deliver
+                {% else %}<i class="bi bi-house-check"></i>Delivering{% endif %}
+              </span>
+              {% if order.payment_method == 'cod' %}<span class="rider-badge" style="margin-left:6px;">COD</span>{% endif %}
+            </div>
+            <span class="rider-time">{{ order.pickup_datetime|date:"M d, g:i A" }}</span>
+          </div>
+          <h3 style="font-size:18px;margin-bottom:10px;">Order #{{ order.id }} - {{ order.shop.name }}</h3>
+          <div class="rider-stop"><i class="bi bi-person"></i><span><strong>Customer:</strong> {{ order.customer.get_full_name|default:order.customer.email }}</span></div>
+          <div class="rider-stop"><i class="bi bi-geo-alt"></i><span><strong>Pickup:</strong> {{ order.pickup_address }}</span></div>
+          <div class="rider-stop"><i class="bi bi-house-door"></i><span><strong>Delivery:</strong> {{ order.delivery_address }}</span></div>
+          <div class="rider-job-meta">
+            <div class="rider-mini"><strong>2 stops</strong><span>route</span></div>
+            <div class="rider-mini"><strong>{{ order.get_status_display }}</strong><span>status</span></div>
+            <div class="rider-mini"><strong>{{ order|order_total }}</strong><span>order value</span></div>
+          </div>
+          <a href="{% url 'rider_task_detail' order.id %}" class="btn btn-primary btn-full"><i class="bi bi-arrow-right-circle"></i>Open workflow</a>
+        </article>
+      {% endfor %}
+    </div>
+  {% elif not available_orders and is_approved_rider %}
+    <div class="rider-panel rider-empty">
+      <i class="bi bi-bicycle"></i>
+      <h3>No active jobs</h3>
+      <p>You have no assigned deliveries or new requests right now. Keep your availability on and check again soon.</p>
+    </div>
+  {% endif %}
+
+  {% if recent_jobs %}
+    <div class="rider-section-title"><i class="bi bi-clock-history"></i>Recent completed jobs</div>
+    <div class="rider-recent">
+      {% for order in recent_jobs %}
+        <div class="rider-panel rider-recent-row">
+          <span>Order #{{ order.id }} - {{ order.shop.name }}</span>
+          <strong>{{ order|order_total }}</strong>
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,69 @@
+{% extends 'base.html' %}
+{% load shop_extras %}
+{% block title %}Dashboard — {{ shop.name }}{% endblock %}
+{% block content %}
+<div class="page-shell">
+  <div class="page-header">
+    <div>
+      <nav class="page-crumbs" aria-label="Breadcrumb"><span aria-current="page">Shop dashboard</span></nav>
+      <h2>{{ shop.name }}</h2>
+      <p>Today's orders, revenue and recent activity at a glance.</p>
+    </div>
+    <a href="{% url 'edit_shop' %}" class="btn btn-outline"><i class="bi bi-pencil-square glyph-icon"></i>Edit Shop</a>
+  </div>
+
+  <div class="stats-bar stats-bar-3">
+    <div class="stat-card">
+      <div class="stat-icon"><i class="bi bi-clipboard-check"></i></div>
+      <div class="stat-info">
+        <h4>{{ pending_orders }}</h4>
+        <p>Pending Orders</p>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon"><i class="bi bi-arrow-repeat"></i></div>
+      <div class="stat-info">
+        <h4>{{ active_orders }}</h4>
+        <p>Active Orders</p>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon"><i class="bi bi-cash-coin"></i></div>
+      <div class="stat-info">
+        <h4>₱{{ today_revenue }}</h4>
+        <p>Today's Revenue</p>
+      </div>
+    </div>
+  </div>
+
+  {% if recent_orders %}
+    <div class="section-title-row">
+      <h3>Recent Orders</h3>
+      <a href="{% url 'shop_dashboard_orders' %}" class="btn btn-sm btn-outline">View All</a>
+    </div>
+    <div class="orders-list">
+      {% for order in recent_orders %}
+        {% with status=order.status %}
+        <a href="{% url 'shop_dashboard_order_detail' order.id %}" class="order-row-link-block">
+          <div class="order-row {% if status == 'pending' %}new-order{% elif status in 'washing,drying,folding,picked_up,accepted' %}processing{% elif status == 'ready' or status == 'out_for_delivery' %}ready{% elif status == 'delivered' %}delivered{% endif %}">
+            <div class="order-row-left">
+              <div class="order-avatar" style="background:{% if status == 'delivered' %}var(--success){% elif status == 'pending' %}var(--accent){% else %}var(--primary){% endif %};">
+                #{{ order.id }}
+              </div>
+              <div class="order-details">
+                <h5>{{ order.customer.get_full_name|default:order.customer.email }}</h5>
+                <p>{{ order.created_at|date:"M d, Y g:i A" }} &bull; {{ order.get_payment_method_display }}</p>
+              </div>
+            </div>
+            <div class="order-row-right">
+              <div class="order-amount">{{ order|order_total }}</div>
+              <span class="badge badge-status-{{ order.status }}">{{ order.get_status_display }}</span>
+            </div>
+          </div>
+        </a>
+        {% endwith %}
+      {% endfor %}
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

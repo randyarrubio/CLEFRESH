@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+{% block title %}{{ page.title }} - CLEFRESH{% endblock %}
+
+{% block content %}
+<div class="page-shell">
+  <div class="legal-page">
+    <div class="legal-page__hero">
+      <span class="legal-page__eyebrow">{{ page.eyebrow }}</span>
+      <h1>{{ page.title }}</h1>
+      <p>{{ page.intro }}</p>
+    </div>
+
+    <div class="legal-page__grid">
+      {% for section in page.sections %}
+        <section class="legal-page__card">
+          <h2>{{ section.heading }}</h2>
+          {% for paragraph in section.body %}
+            <p>{{ paragraph }}</p>
+          {% endfor %}
+        </section>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

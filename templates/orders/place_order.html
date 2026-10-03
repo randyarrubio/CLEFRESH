@@ -1,0 +1,522 @@
+{% extends 'base.html' %}
+{% block title %}Book Now - {{ shop.name }}{% endblock %}
+{% block content %}
+<style>
+  .booking-flow { max-width:1120px; margin:0 auto; padding:28px 32px 52px; }
+  .booking-shell { display:grid; grid-template-columns:minmax(0,1fr) 340px; gap:18px; align-items:start; }
+  .booking-panel { background:rgba(255,255,255,.94); border:1px solid rgba(18,135,217,.14); border-radius:12px; box-shadow:var(--shadow); }
+  .booking-head { padding:18px; margin-bottom:16px; }
+  .booking-shop { display:flex; align-items:center; gap:12px; margin-bottom:16px; }
+  .booking-logo { width:44px; height:44px; border-radius:10px; background:#e6f4fb; color:#075c9a; display:flex; align-items:center; justify-content:center; font-weight:800; font-family:'Outfit',sans-serif; overflow:hidden; }
+  .booking-logo img { width:100%; height:100%; object-fit:cover; }
+  .booking-shop h2 { font-size:20px; margin-bottom:2px; }
+  .booking-shop p { color:#5d7187; font-size:13px; }
+  .book-steps { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
+  .book-step { color:#8ca0b4; font-size:12px; font-weight:800; text-align:center; }
+  .book-step::before { content:attr(data-num); display:flex; align-items:center; justify-content:center; width:30px; height:30px; margin:0 auto 6px; border-radius:50%; border:1px solid #d7e8f3; background:#f4fbff; color:#8ca0b4; }
+  .book-step.done::before { content:'✓'; background:#eaf6e2; color:#2f6717; border-color:#b9ddb0; }
+  .book-step.active { color:#075c9a; }
+  .book-step.active::before { background:#1287d9; color:#fff; border-color:#1287d9; }
+  .booking-card { padding:20px; margin-bottom:14px; }
+  .booking-card h3 { display:flex; align-items:center; gap:8px; font-size:17px; margin-bottom:14px; }
+  .book-screen { display:none; }
+  .book-screen.active { display:block; }
+  .booking-services { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+  .booking-service { border:1px solid #d7e8f3; border-radius:10px; padding:12px; background:#fff; cursor:pointer; transition:.18s; }
+  .booking-service.selected { border-color:#1287d9; background:#e6f4fb; box-shadow:0 0 0 4px rgba(18,135,217,.08); }
+  .booking-service h4 { font-size:14px; margin-bottom:4px; color:#172033; }
+  .booking-service p { font-size:12px; color:#5d7187; }
+  .service-fields { display:none; margin-top:10px; padding-top:10px; border-top:1px solid #d7e8f3; }
+  .service-fields.active { display:block; }
+  .qty-row { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .book-grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .book-note { background:#f4fbff; border:1px solid #d7e8f3; border-radius:8px; padding:10px 12px; color:#5d7187; font-size:13px; }
+  .addon-list { display:grid; gap:10px; }
+  .addon-row { display:flex; justify-content:space-between; gap:14px; align-items:center; padding:12px; border:1px solid #d7e8f3; border-radius:10px; background:#fff; }
+  .addon-row strong { display:block; font-size:14px; color:#172033; }
+  .addon-row span { display:block; font-size:12px; color:#6b7c8f; margin-top:2px; }
+  .book-toggle { width:40px; height:22px; border-radius:999px; border:0; background:#cfe0ec; position:relative; cursor:pointer; flex-shrink:0; }
+  .book-toggle.on { background:#1287d9; }
+  .book-toggle::after { content:''; position:absolute; width:16px; height:16px; left:3px; top:3px; border-radius:50%; background:#fff; transition:.15s; }
+  .book-toggle.on::after { transform:translateX(18px); }
+  .pay-options { display:grid; gap:10px; }
+  .pay-option { display:flex; align-items:center; gap:10px; border:1px solid #d7e8f3; border-radius:10px; padding:12px; background:#fff; cursor:pointer; }
+  .pay-option:has(input:checked) { border-color:#1287d9; background:#e6f4fb; }
+  .pay-option input { width:auto; }
+  .booking-actions { display:flex; gap:10px; margin-top:14px; }
+  .booking-actions .btn { flex:1; }
+  .book-error { display:none; margin-top:12px; padding:10px 12px; border-radius:8px; background:#fff1f2; border:1px solid #fca5a5; color:#b91c1c; font-size:13px; font-weight:600; }
+  .book-error.show { display:block; }
+  .addon-included { font-size:12px; font-weight:800; color:#2f6717; background:#eaf6e2; border-radius:999px; padding:4px 10px; flex-shrink:0; }
+  /* Per-kg services are always weighed by the shop */
+  .weigh-info { display:flex; gap:10px; align-items:flex-start; margin-bottom:14px; padding:12px 14px; border-radius:10px;
+                background:#f4f9fd; border:1px solid #e3eef6; color:#385b78; font-size:13px; line-height:1.5; }
+  .weigh-info .bi { color:#d99a06; font-size:18px; line-height:1.2; }
+  .weigh-note { display:none; margin-top:8px; padding:8px 10px; border-radius:8px; background:#fff6dc; color:#7a5200; font-size:12px; font-weight:600; }
+  .weigh-mode .booking-service.selected .weigh-note { display:block; }
+  /* .summary-line sets display:flex, which would otherwise override the [hidden] attribute */
+  #bookingDiscountLine[hidden], #bookingWeighEstimate[hidden] { display:none; }
+  .summary-estimate { margin:-4px 0 10px; padding:10px 12px; border-radius:8px; background:#f4f9fd; border:1px solid #e3eef6; color:#385b78; font-size:12.5px; line-height:1.5; }
+  .booking-summary { position:sticky; top:76px; padding:20px; }
+  .summary-shop-box { margin-bottom:14px; }
+  .summary-lines { display:grid; gap:8px; margin:14px 0; color:#5d7187; font-size:13px; }
+  .summary-line { display:flex; justify-content:space-between; gap:12px; }
+  .summary-total { display:flex; justify-content:space-between; gap:12px; padding-top:12px; border-top:1px solid #d7e8f3; font-size:18px; font-weight:800; color:#172033; }
+  .summary-promos { margin:14px 0 4px; }
+  .summary-discount { color:#1c6b3c; font-size:13px; margin:-4px 0 10px; }
+  .summary-discount .bi { color:#d99a06; }
+  .summary-promos-title { display:flex; align-items:center; gap:6px; margin-bottom:8px; font-size:13px; font-weight:800; color:#7a5200; }
+  .summary-note { color:#8ca0b4; font-size:12px; line-height:1.5; margin-top:10px; text-align:center; }
+  @media (max-width:900px){ .booking-flow{padding:20px 14px 42px}.booking-shell{grid-template-columns:1fr}.booking-summary{position:static}.booking-services,.book-grid-2,.qty-row{grid-template-columns:1fr}.book-steps{grid-template-columns:repeat(2,1fr)} }
+</style>
+
+<div class="booking-flow">
+  <div class="booking-panel booking-head">
+    <div class="booking-shop">
+      <div class="booking-logo">
+        {% if shop.logo %}<img src="{{ shop.logo.url }}" alt="{{ shop.name }}">{% else %}{{ shop.name|slice:":2"|upper }}{% endif %}
+      </div>
+      <div>
+        <h2>Book with {{ shop.name }}</h2>
+        <p>{{ shop.address }}</p>
+      </div>
+    </div>
+    <div class="book-steps" id="bookSteps" aria-label="Booking progress">
+      <div class="book-step active" data-step-dot="1" data-num="1" aria-current="step">Services</div>
+      <div class="book-step" data-step-dot="2" data-num="2">Details</div>
+      <div class="book-step" data-step-dot="3" data-num="3">Schedule</div>
+      <div class="book-step" data-step-dot="4" data-num="4">Payment</div>
+    </div>
+    <div id="stepAnnouncement" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+  </div>
+
+  <form method="post" id="orderForm">
+    {% csrf_token %}
+    <div class="booking-shell">
+      <main>
+        <section class="book-screen active" data-book-step="1">
+          <div class="booking-panel booking-card">
+            <fieldset style="border:none;padding:0;margin:0;">
+              <legend class="sr-only">Step 1 of 4: Choose services</legend>
+              <h3 aria-hidden="true"><i class="bi bi-basket" aria-hidden="true"></i>Choose services</h3>
+              {% if has_kg_services %}
+                <p class="weigh-info"><i class="bi bi-speedometer" aria-hidden="true"></i>
+                  <span>No need to weigh your laundry. The shop weighs it when it arrives and confirms the final price —
+                  you pay online after that. Chose cash on delivery? You can still pay online once it's weighed.</span></p>
+              {% endif %}
+              <div class="booking-services">
+                {% for svc in services %}
+                  <div class="booking-service" id="svc-opt-{{ svc.id }}" data-service-card="{{ svc.id }}" role="button" tabindex="0" aria-pressed="false">
+                    <input type="checkbox" name="svc_selected" value="{{ svc.id }}" id="svc-sel-{{ svc.id }}" hidden>
+                    <h4>{{ svc.get_name_display }}</h4>
+                    <p>
+                      {% if svc.price_per_kg %}₱{{ svc.price_per_kg }}/kg{% endif %}
+                      {% if svc.price_per_piece %}₱{{ svc.price_per_piece }}/pc{% endif %}
+                    </p>
+                    <div class="service-fields" id="svc-inputs-{{ svc.id }}">
+                      <div class="qty-row">
+                        {% if svc.price_per_piece %}
+                          <div class="form-group" style="margin:0;">
+                            <label for="qty-{{ svc.id }}">Pieces</label>
+                            <input id="qty-{{ svc.id }}" type="number" name="qty_{{ svc.id }}" min="0" value="0">
+                          </div>
+                        {% else %}
+                          <input type="hidden" name="qty_{{ svc.id }}" value="0">
+                        {% endif %}
+                        {% if svc.price_per_kg %}
+                          {# weighed by the shop at drop-off: no customer weight #}
+                        {% else %}
+                          <input type="hidden" name="weight_{{ svc.id }}" value="0">
+                        {% endif %}
+                      </div>
+                      {% if svc.price_per_kg %}<div class="weigh-note"><i class="bi bi-speedometer" aria-hidden="true"></i> Weighed at the shop — ₱{{ svc.price_per_kg }}/kg</div>{% endif %}
+                    </div>
+                  </div>
+                {% empty %}
+                  <p style="color:var(--text-light); grid-column:1/-1; text-align:center; padding:20px;">No services available.</p>
+                {% endfor %}
+              </div>
+            </fieldset>
+          </div>
+
+          <div class="booking-panel booking-card">
+            <fieldset style="border:none;padding:0;margin:0;">
+              <legend class="sr-only">Add-ons</legend>
+              <h3 aria-hidden="true"><i class="bi bi-plus-circle" aria-hidden="true"></i>Add-ons</h3>
+              <div class="addon-list">
+                <div class="addon-row">
+                  <div><strong>Pickup and delivery</strong><span>Rider handoff included in this booking</span></div>
+                  <span class="addon-included">Included</span>
+                </div>
+                <div class="addon-row">
+                  <div><strong>Express / same-day</strong><span>Ask the shop to prioritize this order</span></div>
+                  <input type="checkbox" name="addons" value="express" id="addon-express" hidden>
+                  <button type="button" class="book-toggle" data-addon-for="addon-express" aria-label="Express service" aria-pressed="false"></button>
+                </div>
+                <div class="addon-row">
+                  <div><strong>Hypoallergenic detergent</strong><span>Add a note for sensitive garments</span></div>
+                  <input type="checkbox" name="addons" value="hypoallergenic" id="addon-hypoallergenic" hidden>
+                  <button type="button" class="book-toggle" data-addon-for="addon-hypoallergenic" aria-label="Hypoallergenic detergent" aria-pressed="false"></button>
+                </div>
+              </div>
+            </fieldset>
+          </div>
+
+          <p class="book-error" role="alert" data-step-error="1"></p>
+          <div class="booking-actions">
+            <a href="{% url 'shop_detail' shop.id %}" class="btn btn-outline">Back to shop</a>
+            <button type="button" class="btn btn-primary" data-next-step="2">Next: details</button>
+          </div>
+        </section>
+
+        <section class="book-screen" data-book-step="2">
+          <div class="booking-panel booking-card">
+            <fieldset style="border:none;padding:0;margin:0;">
+              <legend class="sr-only">Step 2 of 4: Pickup and delivery details</legend>
+              <h3 aria-hidden="true"><i class="bi bi-geo-alt" aria-hidden="true"></i>Pickup and delivery details</h3>
+              <div class="form-group">
+                <label for="pickup-address">Pick-up address</label>
+                <input id="pickup-address" type="text" name="pickup_address" value="{{ request.user.address }}" required placeholder="Enter where to pick up your laundry" autocomplete="street-address">
+              </div>
+              <div class="form-group">
+                <label for="delivery-address">Delivery address</label>
+                <input id="delivery-address" type="text" name="delivery_address" value="{{ request.user.address }}" required placeholder="Enter where to deliver clean laundry" autocomplete="street-address">
+              </div>
+              <div class="form-group">
+                <label for="order-notes">Special instructions</label>
+                <textarea id="order-notes" name="notes" rows="4" placeholder="e.g. separate whites, handle delicates gently..."></textarea>
+              </div>
+              <div class="book-note" role="note">Not sure of the exact weight? The shop can verify and adjust totals during processing.</div>
+            </fieldset>
+          </div>
+          <p class="book-error" role="alert" data-step-error="2"></p>
+          <div class="booking-actions">
+            <button type="button" class="btn btn-outline" data-prev-step="1">Back</button>
+            <button type="button" class="btn btn-primary" data-next-step="3">Next: schedule</button>
+          </div>
+        </section>
+
+        <section class="book-screen" data-book-step="3">
+          <div class="booking-panel booking-card">
+            <fieldset style="border:none;padding:0;margin:0;">
+              <legend class="sr-only">Step 3 of 4: Choose schedule</legend>
+              <h3 aria-hidden="true"><i class="bi bi-calendar3" aria-hidden="true"></i>Choose schedule</h3>
+            <div class="book-grid-2">
+              <div class="form-group">
+                <label for="pickup-datetime">Pick-up date and time</label>
+                <input id="pickup-datetime" type="datetime-local" name="pickup_datetime" required>
+              </div>
+              <div class="form-group">
+                <label for="delivery-slot">Delivery slot</label>
+                <select id="delivery-slot" name="delivery_slot">
+                  <option value="">No preference</option>
+                  {% for slot in slots %}{% if slot.is_available %}
+                    <option value="{{ slot.id }}">{{ slot.date|date:"M d" }} {{ slot.time_start|time:"g:i A" }}-{{ slot.time_end|time:"g:i A" }}{% if slot.capacity_percent >= 80 %} (Almost Full){% endif %}</option>
+                  {% endif %}{% endfor %}
+                </select>
+              </div>
+            </div>
+            </fieldset>
+          </div>
+          <p class="book-error" role="alert" data-step-error="3"></p>
+          <div class="booking-actions">
+            <button type="button" class="btn btn-outline" data-prev-step="2">Back</button>
+            <button type="button" class="btn btn-primary" data-next-step="4">Next: payment</button>
+          </div>
+        </section>
+
+        <section class="book-screen" data-book-step="4">
+          <div class="booking-panel booking-card">
+            <fieldset style="border:none;padding:0;margin:0;">
+              <legend class="sr-only">Step 4 of 4: Payment method</legend>
+              <h3 aria-hidden="true"><i class="bi bi-credit-card" aria-hidden="true"></i>Payment method</h3>
+            <div class="pay-options">
+              {% for value, label in order_payment_choices %}
+                <label class="pay-option">
+                  <input type="radio" name="payment_method" value="{{ value }}" {% if value == 'cod' %}checked{% endif %}>
+                  <span>{{ label }}</span>
+                </label>
+              {% endfor %}
+            </div>
+            </fieldset>
+          </div>
+          <p class="book-error" role="alert" data-step-error="4"></p>
+          <div class="booking-actions">
+            <button type="button" class="btn btn-outline" data-prev-step="3">Back</button>
+            <button type="submit" class="btn btn-primary">Confirm booking</button>
+          </div>
+        </section>
+      </main>
+
+      <aside class="booking-panel booking-summary">
+        <h3 style="font-size:18px; margin-bottom:14px;">Order summary</h3>
+        <div class="summary-shop-box">
+          <div class="summary-shop-logo">{{ shop.name|slice:":2"|upper }}</div>
+          <div>
+            <div class="summary-shop-name">{{ shop.name }}</div>
+            <div class="summary-shop-dist"><i class="bi bi-geo-alt glyph-icon"></i>{{ shop.address|truncatechars:35 }}</div>
+          </div>
+        </div>
+        {% if live_promos %}
+          <div class="summary-promos">
+            <div class="summary-promos-title"><i class="bi bi-tag-fill" aria-hidden="true"></i> Promos at {{ shop.name }}</div>
+            {% include 'shops/_promos.html' with promos=live_promos compact=True %}
+            <p class="summary-note" style="text-align:left;margin-top:6px;">The best eligible discount is applied automatically at checkout. Special offers are honoured by the shop.</p>
+          </div>
+        {% endif %}
+        <div id="orderSummary" class="summary-lines">
+          <p style="color:var(--text-light); text-align:center; padding:12px 0;">Choose services to see total</p>
+        </div>
+        <div class="summary-line summary-discount" id="bookingDiscountLine" hidden>
+          <span><i class="bi bi-tag-fill" aria-hidden="true"></i> <span id="bookingDiscountTitle"></span></span>
+          <strong id="bookingDiscountAmount"></strong>
+        </div>
+        <div class="summary-estimate" id="bookingWeighEstimate" hidden></div>
+        <div class="summary-total"><span id="bookingTotalLabel">Estimated total</span><span id="bookingGrandTotal">₱0.00</span></div>
+        <p class="summary-note">Final price may vary based on actual weight, shop verification, and selected add-ons.</p>
+      </aside>
+    </div>
+  </form>
+</div>
+
+{{ form_data|json_script:"booking-form-data" }}
+{{ promo_rules|json_script:"booking-promo-rules" }}
+{{ error_step|json_script:"booking-error-step" }}
+<script>
+const bookingServices = [
+  {% for svc in services %}{id:{{ svc.id }},name:"{{ svc.get_name_display|escapejs }}",ppkg:{{ svc.price_per_kg|default:"null" }},ppiece:{{ svc.price_per_piece|default:"null" }}},{% endfor %}
+];
+
+const stepNames = ['', 'Services', 'Details', 'Schedule', 'Payment'];
+
+function setStep(step) {
+  document.querySelectorAll('[data-book-step]').forEach((screen) => {
+    screen.classList.toggle('active', screen.dataset.bookStep === String(step));
+  });
+  document.querySelectorAll('[data-step-dot]').forEach((dot) => {
+    const n = Number(dot.dataset.stepDot);
+    dot.classList.toggle('active', n === step);
+    dot.classList.toggle('done', n < step);
+    dot.setAttribute('aria-current', n === step ? 'step' : 'false');
+  });
+  const ann = document.getElementById('stepAnnouncement');
+  if (ann) ann.textContent = `Step ${step} of 4: ${stepNames[step]}`;
+}
+
+// Per-kg services are always weighed by the shop (there is no customer weight input).
+function weighAtShop() {
+  return true;
+}
+
+function toggleService(id, forceSelected) {
+  const card = document.getElementById('svc-opt-' + id);
+  const fields = document.getElementById('svc-inputs-' + id);
+  const shouldSelect = typeof forceSelected === 'boolean' ? forceSelected : !card.classList.contains('selected');
+  card.classList.toggle('selected', shouldSelect);
+  card.setAttribute('aria-pressed', shouldSelect ? 'true' : 'false');
+  document.getElementById('svc-sel-' + id).checked = shouldSelect;
+  fields.classList.toggle('active', shouldSelect);
+  fields.querySelectorAll('input[type="number"]').forEach((input) => {
+    if (shouldSelect && Number(input.value) === 0) input.value = '1';
+    if (!shouldSelect) input.value = '0';
+  });
+  bookingRecalcTotal();
+}
+
+// Typical load used only for the "let the shop weigh it" estimate shown to the customer.
+const TYPICAL_KG = [3, 7];
+
+function bookingRecalcTotal() {
+  const weighMode = weighAtShop();
+  document.querySelector('.booking-services').classList.toggle('weigh-mode', weighMode);
+  document.getElementById('orderForm').classList.toggle('weigh-mode', weighMode);
+  let total = 0;
+  let kgRate = 0;          // sum of per-kg rates of selected services (weigh mode)
+  const lines = [];
+  bookingServices.forEach((svc) => {
+    const selected = document.getElementById('svc-sel-' + svc.id).checked;
+    const qty = Number(document.querySelector(`[name="qty_${svc.id}"]`)?.value || 0);
+    const weight = weighMode && svc.ppkg ? 0 : Number(document.querySelector(`[name="weight_${svc.id}"]`)?.value || 0);
+    let subtotal = 0;
+    if (svc.ppiece && qty > 0) subtotal += svc.ppiece * qty;
+    if (svc.ppkg && weight > 0) subtotal += svc.ppkg * weight;
+    if (weighMode && svc.ppkg && selected) {
+      kgRate += svc.ppkg;
+      lines.push(`<div class="summary-line"><span>${svc.name}</span><strong>₱${svc.ppkg.toFixed(2)}/kg</strong></div>`);
+    }
+    if (subtotal > 0) {
+      total += subtotal;
+      lines.push(`<div class="summary-line"><span>${svc.name}${weighMode && svc.ppkg ? ' (pieces)' : ''}</span><strong>₱${subtotal.toFixed(2)}</strong></div>`);
+    }
+  });
+  const summary = document.getElementById('orderSummary');
+  summary.innerHTML = lines.length ? lines.join('') : '<p style="color:var(--text-light); text-align:center; padding:12px 0;">Choose services to see total</p>';
+  const estimate = document.getElementById('bookingWeighEstimate');
+  if (weighMode && kgRate > 0) {
+    // Price isn't final: show a range for a typical load; promos are applied when the shop confirms.
+    const low = total + kgRate * TYPICAL_KG[0], high = total + kgRate * TYPICAL_KG[1];
+    estimate.hidden = false;
+    estimate.textContent = `A typical ${TYPICAL_KG[0]}–${TYPICAL_KG[1]} kg load comes to about ₱${low.toFixed(0)}–₱${high.toFixed(0)}. ` +
+      'The shop weighs your laundry at drop-off and any promo is applied then.';
+    document.getElementById('bookingDiscountLine').hidden = true;
+    document.getElementById('bookingTotalLabel').textContent = 'Final price';
+    document.getElementById('bookingGrandTotal').textContent = 'After weighing';
+    return total + kgRate;   // > 0 means "a valid selection" for step validation
+  }
+  estimate.hidden = true;
+  document.getElementById('bookingTotalLabel').textContent = 'Estimated total';
+  // Estimate the promo the server will apply (same rule as Promotion.discount_for).
+  const best = bestPromo(total);
+  const line = document.getElementById('bookingDiscountLine');
+  line.hidden = !best;
+  if (best) {
+    document.getElementById('bookingDiscountTitle').textContent = best.title;
+    document.getElementById('bookingDiscountAmount').textContent = `−₱${best.amount.toFixed(2)}`;
+  }
+  document.getElementById('bookingGrandTotal').textContent = `₱${(total - (best ? best.amount : 0)).toFixed(2)}`;
+  return total;
+}
+
+const promoRules = JSON.parse(document.getElementById('booking-promo-rules').textContent) || [];
+function bestPromo(subtotal) {
+  let best = null;
+  promoRules.forEach((rule) => {
+    if (rule.min !== null && subtotal < rule.min) return;
+    const amount = rule.type === 'percent' ? Math.round(subtotal * rule.value) / 100 : rule.value;
+    if (amount <= 0 || amount >= subtotal) return;
+    if (!best || amount > best.amount) best = { title: rule.title, amount };
+  });
+  return best;
+}
+
+document.querySelectorAll('[data-service-card]').forEach((card) => {
+  card.addEventListener('click', (event) => {
+    if (event.target.matches('input')) return;
+    toggleService(card.dataset.serviceCard);
+  });
+  card.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      toggleService(card.dataset.serviceCard);
+    }
+  });
+});
+document.querySelectorAll('[name^="qty_"], [name^="weight_"]').forEach((input) => input.addEventListener('input', bookingRecalcTotal));
+document.querySelectorAll('[data-next-step]').forEach((button) => button.addEventListener('click', () => goToStep(Number(button.dataset.nextStep))));
+document.querySelectorAll('[data-prev-step]').forEach((button) => button.addEventListener('click', () => setStep(Number(button.dataset.prevStep))));
+function setAddon(button, on) {
+  document.getElementById(button.dataset.addonFor).checked = on;
+  button.classList.toggle('on', on);
+  button.setAttribute('aria-pressed', on ? 'true' : 'false');
+}
+document.querySelectorAll('[data-addon-for]').forEach((button) => button.addEventListener('click', () => {
+  setAddon(button, !document.getElementById(button.dataset.addonFor).checked);
+}));
+
+// Required fields sit on hidden steps, where the browser can't focus them to show
+// its own validation bubble. Validate each step ourselves before leaving it.
+function setMinPickup() {
+  const soon = new Date(Date.now() + 5 * 60000);
+  soon.setMinutes(soon.getMinutes() - soon.getTimezoneOffset());
+  document.getElementById('pickup-datetime').min = soon.toISOString().slice(0, 16);
+}
+
+function showStepError(step, message) {
+  document.querySelectorAll('[data-step-error]').forEach((el) => {
+    const show = el.dataset.stepError === String(step) && Boolean(message);
+    el.textContent = show ? message : '';
+    el.classList.toggle('show', show);
+  });
+}
+
+function validateStep(step) {
+  if (step === 1 && bookingRecalcTotal() <= 0) {
+    return 'Select at least one service.';
+  }
+  const screen = document.querySelector(`[data-book-step="${step}"]`);
+  for (const input of screen.querySelectorAll('input, select, textarea')) {
+    if (input.type === 'hidden' || input.hidden || input.type === 'radio' || input.type === 'checkbox') continue;
+    if (input.required && input.value.trim() === '') input.value = '';  // spaces-only counts as empty
+    if (!input.checkValidity()) {
+      const label = screen.querySelector(`label[for="${input.id}"]`);
+      return `${label ? label.textContent.trim() : 'This field'}: ${input.validationMessage}`;
+    }
+  }
+  return '';
+}
+
+function focusFirstInvalid(step) {
+  const screen = document.querySelector(`[data-book-step="${step}"]`);
+  const bad = screen.querySelector('input:invalid, select:invalid, textarea:invalid');
+  if (bad) bad.focus();
+}
+
+function goToStep(target) {
+  const current = Number(document.querySelector('.book-screen.active').dataset.bookStep);
+  for (let step = current; step < target; step += 1) {
+    const error = validateStep(step);
+    if (error) {
+      setStep(step);
+      showStepError(step, error);
+      focusFirstInvalid(step);
+      return;
+    }
+  }
+  showStepError(0, '');
+  setStep(target);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+document.getElementById('orderForm').addEventListener('submit', function (event) {
+  setMinPickup();
+  for (let step = 1; step <= 4; step += 1) {
+    const error = validateStep(step);
+    if (error) {
+      event.preventDefault();
+      setStep(step);
+      showStepError(step, error);
+      focusFirstInvalid(step);
+      return;
+    }
+  }
+  document.querySelectorAll('#orderForm button[type="submit"]').forEach((btn) => {
+    btn.disabled = true;
+    btn.textContent = 'Placing order…';
+  });
+});
+
+// Restore a submission the server rejected, then reopen the step with the problem.
+function restoreForm(data) {
+  Object.entries(data).forEach(([name, value]) => {
+    if (name === 'addons') {
+      value.forEach((addon) => {
+        const button = document.querySelector(`[data-addon-for="addon-${addon}"]`);
+        if (button) setAddon(button, true);
+      });
+      return;
+    }
+    document.getElementsByName(name).forEach((field) => {
+      if (field.type === 'radio') field.checked = field.value === value;
+      else if (field.type !== 'hidden' && field.type !== 'checkbox') field.value = value;
+    });
+  });
+  const selectedIds = [].concat(data.svc_selected || []).map(String);
+  bookingServices.forEach((svc) => {
+    if (selectedIds.includes(String(svc.id)) || Number(data[`qty_${svc.id}`] || 0) > 0 || Number(data[`weight_${svc.id}`] || 0) > 0) {
+      toggleService(svc.id, true);
+    }
+  });
+  bookingRecalcTotal();
+}
+
+const restoredData = JSON.parse(document.getElementById('booking-form-data').textContent);
+const errorStep = JSON.parse(document.getElementById('booking-error-step').textContent);
+setMinPickup();
+if (restoredData) {
+  restoreForm(restoredData);
+} else if (bookingServices.length) {
+  toggleService(bookingServices[0].id, true);
+}
+setStep(errorStep || 1);
+</script>
+{% endblock %}

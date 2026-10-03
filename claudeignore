@@ -1,0 +1,25 @@
+# .claudeignore — tell Claude Code to skip these
+
+# Python cache
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+
+# Database (large binary, not useful for Claude to read)
+db.sqlite3
+
+# Media uploads (binary files)
+media/
+
+# Static files (generated/vendored)
+static/css/
+static/img/
+
+# Migrations (verbose, Claude only needs models.py)
+**/migrations/
+
+# Environment
+.env
+
+# VS Code
+.vscode/

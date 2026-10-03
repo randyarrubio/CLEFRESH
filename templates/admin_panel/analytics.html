@@ -1,0 +1,383 @@
+{% extends 'base.html' %}
+{% block title %}Analytics — Admin{% endblock %}
+
+{% block extra_head %}
+<style>
+/* ── Business Analytics page (.ba-*) ─────────────────── */
+.ba-header { display:flex; justify-content:space-between; gap:16px; flex-wrap:wrap; }   /* title styling comes from .page-header */
+.ba-controls { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.ba-range { display:flex; background:#f0f4f8; border-radius:8px; padding:3px; gap:2px; }
+.ba-range a { padding:6px 14px; border-radius:6px; font-size:13px; font-weight:600; color:#5d7187; text-decoration:none; transition:background .15s,color .15s; }
+.ba-range a.active { background:#fff; color:#1287d9; box-shadow:0 1px 4px rgba(0,0,0,.1); }
+.ba-export { display:inline-flex; align-items:center; gap:7px; padding:8px 16px; background:var(--primary); color:#fff; border-radius:8px; font-size:13px; font-weight:600; text-decoration:none; border:none; cursor:pointer; }
+.ba-export:hover { background:#0f72bb; }
+
+/* stat cards with trend */
+.ba-stats { display:grid; grid-template-columns:repeat(5,1fr); gap:16px; margin-bottom:28px; }
+.ba-stat { background:#fff; border:1px solid #e4eaf1; border-radius:12px; padding:20px; box-shadow:0 1px 4px rgba(0,0,0,.05); }
+.ba-stat-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+.ba-trend { font-size:11px; font-weight:700; padding:3px 8px; border-radius:20px; }
+.ba-trend.up { background:#e6f9f0; color:#18a463; }
+.ba-trend.down { background:#fde8e8; color:#d93636; }
+.ba-trend.neutral { background:#f0f4f8; color:#5d7187; }
+.ba-stat-value { font-size:24px; font-weight:800; font-family:'Outfit',sans-serif; color:#172033; line-height:1; }
+.ba-stat-label { font-size:12px; color:#5d7187; margin-top:5px; }
+.ba-stat-sub { font-size:12px; color:#9aaaba; margin-top:6px; }
+
+/* chart row */
+.ba-charts { display:grid; grid-template-columns:3fr 2fr; gap:20px; margin-bottom:20px; }
+.ba-chart-card { background:#fff; border:1px solid #e4eaf1; border-radius:12px; padding:22px; box-shadow:0 1px 4px rgba(0,0,0,.05); }
+.ba-chart-card h3 { font-size:15px; font-weight:700; color:#172033; margin-bottom:4px; }
+.ba-chart-legend { display:flex; gap:16px; margin-bottom:16px; }
+.ba-legend-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; margin-top:3px; }
+.ba-legend-label { font-size:12px; color:#5d7187; display:flex; align-items:center; gap:6px; }
+
+/* donut legend */
+.ba-donut-legend { margin-top:16px; display:grid; gap:8px; }
+.ba-donut-row { display:flex; align-items:center; justify-content:space-between; font-size:13px; }
+.ba-donut-row span:last-child { font-weight:700; color:#172033; }
+.ba-donut-bar { flex:1; height:4px; background:#f0f4f8; border-radius:4px; margin:0 10px; }
+.ba-donut-fill { height:4px; border-radius:4px; }
+
+/* bottom row */
+.ba-bottom { display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:20px; }
+.ba-panel { background:#fff; border:1px solid #e4eaf1; border-radius:12px; padding:22px; box-shadow:0 1px 4px rgba(0,0,0,.05); }
+.ba-panel-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:18px; }
+.ba-panel-header h3 { font-size:15px; font-weight:700; color:#172033; }
+.ba-panel-header a { font-size:12px; color:var(--primary); font-weight:600; text-decoration:none; }
+
+/* shop performance */
+.ba-perf-item { margin-bottom:14px; }
+.ba-perf-item:last-child { margin-bottom:0; }
+.ba-perf-meta { display:flex; justify-content:space-between; align-items:center; margin-bottom:5px; }
+.ba-perf-name { font-size:13px; font-weight:600; color:#172033; }
+.ba-perf-rev { font-size:13px; font-weight:700; color:var(--primary); }
+.ba-perf-track { height:6px; background:#f0f4f8; border-radius:4px; overflow:hidden; }
+.ba-perf-fill { height:6px; background:var(--primary); border-radius:4px; }
+
+/* top customers */
+.ba-cust-table { width:100%; border-collapse:collapse; }
+.ba-cust-table th { font-size:11px; font-weight:700; color:#9aaaba; text-transform:uppercase; letter-spacing:.4px; padding:0 8px 10px 0; border-bottom:1px solid #f0f4f8; text-align:left; }
+.ba-cust-table td { padding:10px 8px 10px 0; border-bottom:1px solid #f8fafc; font-size:13px; vertical-align:middle; }
+.ba-cust-table tr:last-child td { border-bottom:none; }
+.ba-avatar { width:32px; height:32px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; color:#fff; flex-shrink:0; }
+.ba-cust-info { display:flex; align-items:center; gap:10px; }
+.ba-cust-name { font-weight:600; color:#172033; font-size:13px; line-height:1.2; }
+.ba-cust-email { font-size:11px; color:#9aaaba; }
+.ba-tier { font-size:10px; font-weight:800; padding:3px 8px; border-radius:20px; letter-spacing:.5px; text-transform:uppercase; }
+.ba-tier.platinum { background:#e8effe; color:#4361c2; }
+.ba-tier.gold { background:#fff6d7; color:#8a6410; }
+.ba-tier.silver { background:#f0f4f8; color:#5d7187; }
+.ba-tier.bronze { background:#fef0e6; color:#9a5a1c; }
+
+/* smart insights */
+.ba-insight { background:linear-gradient(135deg,#eef7ff 0%,#e6f3fd 100%); border:1px solid #c2dff5; border-radius:12px; padding:20px 24px; display:flex; align-items:flex-start; gap:14px; }
+.ba-insight h4 { font-size:14px; font-weight:700; color:#172033; margin-bottom:4px; }
+.ba-insight p { font-size:13px; color:#3d5a72; line-height:1.55; }
+
+@media (max-width:1200px) { .ba-stats { grid-template-columns:repeat(3,1fr); } }
+@media (max-width:1024px) { .ba-charts { grid-template-columns:1fr; } }
+@media (max-width:860px) { .ba-bottom { grid-template-columns:1fr; } .ba-stats { grid-template-columns:1fr 1fr; } }
+@media (max-width:520px) { .ba-stats { grid-template-columns:1fr; } .ba-header { flex-direction:column; } }
+/* Grid tracks may shrink below their content; wide tables scroll inside their panel. */
+.ba-charts > *, .ba-bottom > *, .ba-stats > * { min-width:0; }
+.ba-panel { overflow-x:auto; }
+.ba-chart-card canvas { max-width:100%; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-shell">
+
+  <!-- Header -->
+  <div class="page-header ba-header">
+    <div>
+      <nav class="page-crumbs" aria-label="Breadcrumb"><a href="{% url 'admin_dashboard' %}">Admin panel</a><span class="page-crumbs-sep" aria-hidden="true">/</span><span aria-current="page">Analytics</span></nav>
+      <h2>Business Analytics</h2>
+      <p>Real-time performance overview across all locations.</p>
+    </div>
+    <div class="ba-controls">
+      <div class="ba-range">
+        <a href="?days=7" {% if days == 7 %}class="active"{% endif %}>Last 7D</a>
+        <a href="?days=30" {% if days == 30 %}class="active"{% endif %}>Last 30D</a>
+        <a href="?days=90" {% if days == 90 %}class="active"{% endif %}>Last 90D</a>
+      </div>
+      <button class="ba-export" onclick="window.print()">
+        <i class="bi bi-download" aria-hidden="true"></i> Export Report
+      </button>
+    </div>
+  </div>
+
+  <!-- Stat Cards -->
+  <div class="ba-stats">
+    <div class="ba-stat">
+      <div class="ba-stat-top">
+        <div class="stat-icon"><i class="bi bi-cash-coin"></i></div>
+        {% if revenue_change is not None %}
+          <span class="ba-trend {% if revenue_change >= 0 %}up{% else %}down{% endif %}">
+            {% if revenue_change >= 0 %}▲{% else %}▼{% endif %} {{ revenue_change|floatformat:1 }}%
+          </span>
+        {% endif %}
+      </div>
+      <div class="ba-stat-value">₱{{ total_revenue }}</div>
+      <div class="ba-stat-label">Total Revenue</div>
+      {% if prev_revenue != "0.00" %}<div class="ba-stat-sub">Prev. ₱{{ prev_revenue }}</div>{% endif %}
+    </div>
+
+    <div class="ba-stat">
+      <div class="ba-stat-top">
+        <div class="stat-icon"><i class="bi bi-cart-check"></i></div>
+        {% if avg_change is not None %}
+          <span class="ba-trend {% if avg_change >= 0 %}up{% else %}down{% endif %}">
+            {% if avg_change >= 0 %}▲{% else %}▼{% endif %} {{ avg_change|floatformat:1 }}%
+          </span>
+        {% endif %}
+      </div>
+      <div class="ba-stat-value">₱{{ avg_value }}</div>
+      <div class="ba-stat-label">Avg. Order Value</div>
+      {% if prev_avg_value != "0.00" %}<div class="ba-stat-sub">Prev. ₱{{ prev_avg_value }}</div>{% endif %}
+    </div>
+
+    <div class="ba-stat">
+      <div class="ba-stat-top">
+        <div class="stat-icon"><i class="bi bi-arrow-repeat"></i></div>
+        {% if retention_change is not None %}
+          <span class="ba-trend {% if retention_change >= 0 %}up{% else %}down{% endif %}">
+            {% if retention_change >= 0 %}▲{% else %}▼{% endif %} {{ retention_change }}%
+          </span>
+        {% endif %}
+      </div>
+      <div class="ba-stat-value">{{ retention_rate }}%</div>
+      <div class="ba-stat-label">Retention Rate</div>
+      <div class="ba-stat-sub">Returning customers</div>
+    </div>
+
+    <div class="ba-stat">
+      <div class="ba-stat-top">
+        <div class="stat-icon"><i class="bi bi-shop"></i></div>
+        <span class="ba-trend neutral">LIVE</span>
+      </div>
+      <div class="ba-stat-value">{{ active_shops }} / {{ total_shops }}</div>
+      <div class="ba-stat-label">Active Shops</div>
+      <div class="ba-stat-sub">Approved shops</div>
+    </div>
+
+    <div class="ba-stat">
+      <div class="ba-stat-top">
+        <div class="stat-icon"><i class="bi bi-clipboard-check"></i></div>
+      </div>
+      <div class="ba-stat-value">{{ total_orders }}</div>
+      <div class="ba-stat-label">Total Orders</div>
+      <div class="ba-stat-sub">In this period</div>
+    </div>
+  </div>
+
+  <!-- Charts Row -->
+  <div class="ba-charts">
+    <div class="ba-chart-card">
+      <h3><i class="bi bi-graph-up glyph-icon" aria-hidden="true"></i>Revenue Over Time</h3>
+      <div class="ba-chart-legend">
+        <span class="ba-legend-label"><span class="ba-legend-dot" style="background:#1287d9;"></span>This Period</span>
+        <span class="ba-legend-label"><span class="ba-legend-dot" style="background:#c0d9ee;"></span>Last Period</span>
+      </div>
+      <canvas id="revenueChart" height="90"></canvas>
+    </div>
+    <div class="ba-chart-card">
+      <h3><i class="bi bi-pie-chart glyph-icon" aria-hidden="true"></i>Order Breakdown</h3>
+      <div style="max-width:220px; margin:0 auto;">
+        <canvas id="donutChart" height="180"></canvas>
+      </div>
+      <div class="ba-donut-legend" id="donutLegend"></div>
+    </div>
+  </div>
+
+  <!-- Bottom Row -->
+  <div class="ba-bottom">
+    <div class="ba-panel">
+      <div class="ba-panel-header">
+        <h3><i class="bi bi-shop glyph-icon" aria-hidden="true"></i>Shop Performance</h3>
+      </div>
+      {% if top_shops %}
+        {% for shop in top_shops %}
+          <div class="ba-perf-item">
+            <div class="ba-perf-meta">
+              <span class="ba-perf-name">{{ shop.shop__name }}</span>
+              <span class="ba-perf-rev">₱{{ shop.revenue|floatformat:2 }}</span>
+            </div>
+            <div class="ba-perf-track">
+              <div class="ba-perf-fill" style="width:0%"
+                   data-rev="{{ shop.revenue }}" data-max="{{ max_shop_rev }}"></div>
+            </div>
+          </div>
+        {% endfor %}
+      {% else %}
+        <p style="color:#9aaaba; font-size:13px; text-align:center; padding:24px 0;">No revenue data for this period.</p>
+      {% endif %}
+    </div>
+
+    <div class="ba-panel">
+      <div class="ba-panel-header">
+        <h3><i class="bi bi-people glyph-icon" aria-hidden="true"></i>Top Customers</h3>
+        <a href="{% url 'admin_users' %}">View All</a>
+      </div>
+      {% if top_customers %}
+        <table class="ba-cust-table">
+          <thead>
+            <tr>
+              <th>Customer</th>
+              <th>Tier</th>
+              <th>Orders</th>
+              <th>Spent</th>
+              <th>Last Order</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for c in top_customers %}
+              {% cycle '#1287d9' '#18a463' '#e07030' '#7c4dda' '#d93636' as avatar_color silent %}
+              <tr>
+                <td>
+                  <div class="ba-cust-info">
+                    <div class="ba-avatar" style="background:{{ avatar_color }};">{{ c.initials }}</div>
+                    <div>
+                      <div class="ba-cust-name">{{ c.customer__first_name }} {{ c.customer__last_name }}</div>
+                      <div class="ba-cust-email">{{ c.customer__email }}</div>
+                    </div>
+                  </div>
+                </td>
+                <td><span class="ba-tier {{ c.tier }}">{{ c.tier }}</span></td>
+                <td style="font-weight:600;">{{ c.order_count }}</td>
+                <td style="font-weight:700; color:var(--primary);">₱{{ c.total_spend|floatformat:2 }}</td>
+                <td style="color:#9aaaba; white-space:nowrap;">{{ c.last_order|date:"M d, Y" }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <p style="color:#9aaaba; font-size:13px; text-align:center; padding:24px 0;">No customer data for this period.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Smart Insights -->
+  {% if insight %}
+    <div class="ba-insight">
+      <div class="stat-icon" style="flex-shrink:0;"><i class="bi bi-lightbulb"></i></div>
+      <div>
+        <h4>Smart Insights</h4>
+        <p>{{ insight|safe }}</p>
+      </div>
+    </div>
+  {% endif %}
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{{ chart_labels|json_script:"ba-chart-labels" }}
+{{ chart_values|json_script:"ba-chart-values" }}
+{{ prev_chart_values|json_script:"ba-prev-values" }}
+{{ service_names|json_script:"ba-svc-names" }}
+{{ service_values|json_script:"ba-svc-values" }}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+(function () {
+  const readJson = (id) => JSON.parse(document.getElementById(id).textContent);
+  const labels = readJson('ba-chart-labels');
+  const values = readJson('ba-chart-values');
+  const prevValues = readJson('ba-prev-values');
+  const svcNames = readJson('ba-svc-names');
+  const svcValues = readJson('ba-svc-values');
+
+  // Revenue line chart
+  const lineCtx = document.getElementById('revenueChart');
+  if (lineCtx) {
+    const hasRevData = values.some(v => v > 0) || prevValues.some(v => v > 0);
+    if (!hasRevData) {
+      lineCtx.style.display = 'none';
+      lineCtx.insertAdjacentHTML('afterend', '<p style="text-align:center;color:#9aaaba;font-size:13px;padding:40px 0;">No revenue data for this period.</p>');
+    } else {
+    new Chart(lineCtx, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [
+          {
+            label: 'This Period',
+            data: values,
+            borderColor: '#1287d9',
+            backgroundColor: 'rgba(18,135,217,.08)',
+            borderWidth: 2,
+            pointRadius: 0,
+            tension: .4,
+            fill: true,
+          },
+          {
+            label: 'Last Period',
+            data: prevValues,
+            borderColor: '#c0d9ee',
+            backgroundColor: 'transparent',
+            borderWidth: 1.5,
+            pointRadius: 0,
+            tension: .4,
+            fill: false,
+            borderDash: [4, 4],
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false } },
+        scales: {
+          x: { grid: { display: false }, ticks: { maxTicksLimit: 8, font: { size: 11 }, color: '#9aaaba' } },
+          y: { grid: { color: '#f0f4f8' }, ticks: { font: { size: 11 }, color: '#9aaaba', callback: v => '₱' + v.toLocaleString() } },
+        },
+      },
+    });
+    }
+  }
+
+  // Service donut chart
+  const donutCtx = document.getElementById('donutChart');
+  const donutLegend = document.getElementById('donutLegend');
+  const donutColors = ['#1287d9', '#18a463', '#f9ca47', '#e07030', '#7c4dda'];
+  if (donutCtx && svcValues.length) {
+    new Chart(donutCtx, {
+      type: 'doughnut',
+      data: {
+        labels: svcNames,
+        datasets: [{ data: svcValues, backgroundColor: donutColors, borderWidth: 2, borderColor: '#fff' }],
+      },
+      options: {
+        cutout: '68%',
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${ctx.parsed} orders` } },
+        },
+      },
+    });
+    const total = svcValues.reduce((a, b) => a + b, 0);
+    svcNames.forEach((name, i) => {
+      const pct = total ? Math.round(svcValues[i] / total * 100) : 0;
+      donutLegend.innerHTML += `
+        <div class="ba-donut-row">
+          <span style="display:flex;align-items:center;gap:7px;color:#3d5a72;">
+            <span style="width:10px;height:10px;border-radius:50%;background:${donutColors[i]};flex-shrink:0;display:inline-block;"></span>
+            ${name}
+          </span>
+          <div class="ba-donut-bar"><div class="ba-donut-fill" style="width:${pct}%;background:${donutColors[i]};"></div></div>
+          <span>${pct}%</span>
+        </div>`;
+    });
+  } else if (donutCtx) {
+    donutCtx.parentElement.innerHTML += '<p style="text-align:center;color:#9aaaba;font-size:13px;padding:24px 0;">No service data.</p>';
+  }
+
+  // Scale shop performance bars by percentage
+  document.querySelectorAll('.ba-perf-fill').forEach(el => {
+    const rev = parseFloat(el.dataset.rev);
+    const max = parseFloat(el.dataset.max);
+    el.style.width = max ? (rev / max * 100) + '%' : '0%';
+  });
+})();
+</script>
+{% endblock %}

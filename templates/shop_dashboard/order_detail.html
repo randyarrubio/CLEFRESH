@@ -1,0 +1,264 @@
+{% extends 'base.html' %}
+{% load shop_extras %}
+{% block title %}Order #{{ order.id }} — {{ shop.name }}{% endblock %}
+{% block extra_head %}
+<style>
+  .weigh-card { border-color: #f3d68a; background: linear-gradient(180deg, #fffdf6, #fff); }
+  .weigh-help { font-size: 14px; color: var(--text-muted); line-height: 1.55; margin-bottom: 14px; }
+  .weigh-status { display: flex; gap: 8px; align-items: center; font-size: 14px; font-weight: 600; color: var(--success-fg); }
+  .weigh-status.is-locked { color: #385b78; }
+  .weigh-lines { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 14px; }
+  .weigh-rate { font-weight: 500; color: var(--text-muted); }
+  .weigh-preview { margin: 4px 0 14px; padding: 10px 12px; border-radius: 8px; background: #f4f9fd; font-size: 14px; color: #385b78; }
+  .weigh-preview strong { color: var(--text); }
+  @media (max-width: 560px) { .weigh-lines { grid-template-columns: 1fr; } }
+</style>
+{% endblock %}
+{% block content %}
+<div class="page-shell">
+  <div class="page-header">
+    <div>
+      <nav class="page-crumbs" aria-label="Breadcrumb"><a href="{% url 'shop_dashboard' %}">Shop dashboard</a><span class="page-crumbs-sep" aria-hidden="true">/</span><a href="{% url 'shop_dashboard_orders' %}">Orders</a><span class="page-crumbs-sep" aria-hidden="true">/</span><span aria-current="page">Order #{{ order.id }}</span></nav>
+      <h2>Order #{{ order.id }}</h2>
+      <p>{{ order.customer.get_full_name|default:order.customer.email }} &bull; {{ order.created_at|date:"M d, Y g:i A" }}</p>
+    </div>
+    <span class="badge badge-status-{{ order.status }}">{{ order.get_status_display }}</span>
+    <a href="{% url 'shop_dashboard_orders' %}" class="btn btn-outline">← Orders</a>
+  </div>
+
+  <div class="detail-layout">
+    <div class="detail-main">
+
+      <div class="card">
+        <h3><i class="bi bi-box-seam glyph-icon"></i>Customer & Order Info</h3>
+        <div class="info-grid">
+          <div>
+            <p class="info-label">Customer</p>
+            <p class="info-value">{{ order.customer.get_full_name|default:order.customer.email }}</p>
+          </div>
+          <div>
+            <p class="info-label">Contact</p>
+            <p class="info-value">{{ order.customer.contact_number|default:"—" }}</p>
+          </div>
+          <div>
+            <p class="info-label">Pickup Address</p>
+            <p class="info-value">{{ order.pickup_address }}</p>
+          </div>
+          <div>
+            <p class="info-label">Delivery Address</p>
+            <p class="info-value">{{ order.delivery_address }}</p>
+          </div>
+          <div>
+            <p class="info-label">Pickup Time</p>
+            <p class="info-value">{{ order.pickup_datetime|date:"M d, Y g:i A" }}</p>
+          </div>
+          <div>
+            <p class="info-label">Payment</p>
+            <p class="info-value">{{ order.get_payment_method_display }}</p>
+            <span class="badge badge-payment-{{ order.payment_status }}">{{ order.get_payment_status_display }}</span>
+            {% if order.payment_method == 'cod' and order.status == 'delivered' and order.payment_status != 'paid' %}
+              <form method="post" action="{% url 'confirm_cash_received' order.id %}" style="margin-top:8px;"
+                    data-confirm="Only confirm once the rider has handed over the cash."
+                    data-confirm-title="Cash received for order #{{ order.id }}?" data-confirm-action="Yes, cash received" data-confirm-cancel="Not yet">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-sm btn-outline"><i class="bi bi-cash-coin" aria-hidden="true"></i> Mark ₱{{ order.total_amount|floatformat:"2g" }} cash received</button>
+              </form>
+            {% endif %}
+            {% if order.payment_due_at and order.awaiting_online_payment %}
+              <p class="form-hint" style="margin-top:6px;"><i class="bi bi-clock" aria-hidden="true"></i> Due {{ order.payment_due_at|date:"M d, g:i A" }} — switches to cash on delivery if unpaid.</p>
+            {% endif %}
+          </div>
+          <div>
+            <p class="info-label">Total</p>
+            {% include 'orders/_price_breakdown.html' %}
+            <p class="info-value-primary">{{ order|order_total }}</p>
+          </div>
+          {% if order.notes %}
+            <div class="info-grid-full">
+              <p class="info-label">Notes</p>
+              <p class="info-value">{{ order.notes }}</p>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+
+
+      {% if order.weigh_at_shop %}
+        <div class="card weigh-card" id="weigh">
+          <h3><i class="bi bi-speedometer glyph-icon" aria-hidden="true"></i>Weigh laundry &amp; confirm price</h3>
+          {% if order.payment_status == 'paid' %}
+            <p class="weigh-status is-locked"><i class="bi bi-lock-fill" aria-hidden="true"></i> Paid — the price is locked at {{ order|order_total }}.</p>
+          {% elif can_weigh %}
+            <p class="weigh-help">
+              {% if order.price_pending %}Weigh the laundry and enter the kilos below; the customer is notified to pay right away.
+              {% else %}Price confirmed {{ order.price_confirmed_at|date:"M d, g:i A" }}{% if order.price_confirmed_by %} by {{ order.price_confirmed_by.get_full_name|default:order.price_confirmed_by.email }}{% endif %}. You can still correct it until the customer pays.{% endif %}
+            </p>
+            <form method="post" action="{% url 'confirm_order_weight' order.id %}" enctype="multipart/form-data" class="weigh-form" data-weigh-form>
+              {% csrf_token %}
+              <div class="weigh-lines">
+                {% for line in order_lines %}
+                  {% if line.service.price_per_kg %}
+                    <div class="form-group">
+                      <label for="weigh-kg-{{ line.id }}">{{ line.service.get_name_display }} — kg <span class="weigh-rate">₱{{ line.service.price_per_kg }}/kg</span></label>
+                      <input id="weigh-kg-{{ line.id }}" type="number" name="weight_{{ line.id }}" step="0.01" min="0.01" max="200" required
+                             value="{{ line.weight_kg|default_if_none:'' }}" inputmode="decimal" placeholder="e.g. 4.25"
+                             data-rate="{{ line.service.price_per_kg }}">
+                    </div>
+                  {% endif %}
+                  {% if line.service.price_per_piece %}
+                    <div class="form-group">
+                      <label for="weigh-qty-{{ line.id }}">{{ line.service.get_name_display }} — pieces <span class="weigh-rate">₱{{ line.service.price_per_piece }}/pc</span></label>
+                      <input id="weigh-qty-{{ line.id }}" type="number" name="qty_{{ line.id }}" step="1" min="0" max="1000"
+                             value="{{ line.quantity }}" inputmode="numeric" data-rate="{{ line.service.price_per_piece }}">
+                    </div>
+                  {% endif %}
+                {% endfor %}
+              </div>
+              <div class="form-group">
+                <label for="weigh-photo">Photo of the scale <span style="font-weight:400;color:var(--text-muted);">(optional — shown to the customer)</span></label>
+                <input id="weigh-photo" type="file" name="scale_photo" accept="image/jpeg,image/png,image/webp">
+              </div>
+              <div class="weigh-preview" aria-live="polite">Subtotal before promos: <strong data-weigh-total>—</strong></div>
+              <button type="submit" class="btn btn-primary"><i class="bi bi-check2-circle" aria-hidden="true"></i>
+                {% if order.price_pending %}Confirm weight &amp; price{% else %}Update weight &amp; price{% endif %}</button>
+            </form>
+          {% elif order.price_pending %}
+            <p class="weigh-help">You can enter the weight once the rider drops the laundry off at your shop.</p>
+          {% else %}
+            <p class="weigh-status"><i class="bi bi-check-circle-fill" aria-hidden="true"></i> Weighed and priced {{ order.price_confirmed_at|date:"M d, g:i A" }}.</p>
+          {% endif %}
+        </div>
+      {% endif %}
+
+      <div class="card">
+        <h3><i class="bi bi-basket glyph-icon"></i>Services</h3>
+        <div class="table-wrapper">
+          <table class="table">
+            <thead><tr><th>Service</th><th>Qty</th><th>Weight</th><th>Subtotal</th></tr></thead>
+            <tbody>
+              {% for os in order_lines %}
+                <tr>
+                  <td><strong>{{ os.service.get_name_display }}</strong></td>
+                  <td>{{ os.quantity }}</td>
+                  <td>{% if os.weight_kg %}{{ os.weight_kg }} kg{% elif order.price_pending and os.service.price_per_kg %}<span class="badge badge-warning">To be weighed</span>{% else %}—{% endif %}</td>
+                  <td style="color:var(--primary); font-weight:600;">₱{{ os.subtotal }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {% if order.status == 'pending' %}
+        <div class="card">
+          <h3><i class="bi bi-check2-circle glyph-icon"></i>Accept / Decline</h3>
+          <div style="display:flex; gap:12px; flex-wrap:wrap;">
+            <form method="post" action="{% url 'update_order_status' order.id %}">
+              {% csrf_token %}
+              <input type="hidden" name="status" value="accepted">
+              <button type="submit" class="btn btn-primary"><i class="bi bi-check2 glyph-icon"></i>Accept Order</button>
+            </form>
+          </div>
+          <form method="post" action="{% url 'update_order_status' order.id %}" style="margin-top:16px;"
+                data-confirm="The customer will be notified{% if order.payment_status == 'paid' %} and their online payment refunded{% endif %}. This can't be undone."
+                data-confirm-title="Decline order #{{ order.id }}?" data-confirm-action="Decline order" data-confirm-cancel="Keep order">
+            {% csrf_token %}
+            <input type="hidden" name="status" value="declined">
+            <div class="form-group">
+              <label for="od-decline-reason">Decline Reason</label>
+              <input id="od-decline-reason" type="text" name="decline_reason" placeholder="e.g. Fully booked for this date">
+            </div>
+            <button type="submit" class="btn btn-danger"><i class="bi bi-x-lg glyph-icon"></i>Decline Order</button>
+          </form>
+        </div>
+      {% elif order.status != 'declined' and order.status != 'cancelled' and order.status != 'delivered' %}
+        <div class="card">
+          <h3><i class="bi bi-arrow-repeat glyph-icon"></i>Update Status</h3>
+          {% if delivery_block %}
+            <div class="alert alert-warning" style="margin-bottom:14px;"><i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i><span class="alert-text"><strong class="alert-title">Before delivery</strong> {{ delivery_block }}</span></div>
+          {% endif %}
+          <form method="post" action="{% url 'update_order_status' order.id %}">
+            {% csrf_token %}
+            <div class="form-group">
+              <label for="od-status">New Status</label>
+              <select id="od-status" name="status" required>
+                {% for value, label in next_statuses %}
+                  <option value="{{ value }}">{{ label }}</option>
+                {% endfor %}
+              </select>
+              {% if order.status == 'picked_up' or order.status == 'washing' or order.status == 'drying' %}
+                <small class="form-hint">You can skip steps — choose <strong>Ready for Delivery</strong> when the laundry is done so the rider can deliver it.</small>
+              {% endif %}
+            </div>
+            <div class="form-group">
+              <label for="od-note">Note (optional)</label>
+              <input id="od-note" type="text" name="note" placeholder="Add a note for this status update">
+            </div>
+            <button type="submit" class="btn btn-primary">Update Status</button>
+          </form>
+        </div>
+      {% endif %}
+
+      {% if order.status == 'accepted' and not order.rider %}
+        <div class="card">
+          <h3><i class="bi bi-bicycle glyph-icon"></i>Assign Rider</h3>
+          <form method="post" action="{% url 'assign_rider' order.id %}">
+            {% csrf_token %}
+            <div class="form-group">
+              <label for="od-rider">Select Rider</label>
+              <select id="od-rider" name="rider_id" required>
+                <option value="">Choose a rider...</option>
+                {% for rider in riders %}
+                  <option value="{{ rider.id }}">{{ rider.get_full_name|default:rider.email }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <button type="submit" class="btn btn-primary">Assign Rider</button>
+          </form>
+          {% if not riders %}
+            <p style="color:var(--text-light); font-size:13px; margin-top:8px;">No approved riders are available yet. Approved riders can also claim this job from their dashboard.</p>
+          {% endif %}
+        </div>
+      {% endif %}
+    </div>
+
+    <div class="detail-sidebar">
+      <div class="card detail-sidebar-sticky">
+        <h3><i class="bi bi-clipboard-check glyph-icon"></i>Status Timeline</h3>
+        <div class="timeline">
+          {% for log in logs %}
+            <div class="timeline-item {% if forloop.last %}active{% else %}done{% endif %}">
+              <h5>{{ log.status|humanize_status }}</h5>
+              {% if log.note %}<p>{{ log.note }}</p>{% endif %}
+              <div class="tl-time">{{ log.timestamp|date:"M d, g:i A" }}</div>
+            </div>
+          {% empty %}
+            <p style="color:var(--text-light); font-size:13px;">No status updates yet.</p>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  // Live subtotal while the shop types weights / piece counts (the server recomputes on save).
+  (function () {
+    const form = document.querySelector('[data-weigh-form]');
+    if (!form) return;
+    const out = form.querySelector('[data-weigh-total]');
+    const update = () => {
+      let total = 0;
+      form.querySelectorAll('input[data-rate]').forEach((input) => {
+        const n = parseFloat(input.value);
+        if (n > 0) total += n * parseFloat(input.dataset.rate);
+      });
+      out.textContent = total > 0 ? '₱' + total.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—';
+    };
+    form.addEventListener('input', update);
+    update();
+  })();
+</script>
+{% endblock %}

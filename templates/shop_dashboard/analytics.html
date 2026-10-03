@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+{% block title %}Analytics — {{ shop.name }}{% endblock %}
+{% block content %}
+<div class="page-shell">
+  <div class="page-header">
+    <div>
+      <nav class="page-crumbs" aria-label="Breadcrumb"><a href="{% url 'shop_dashboard' %}">Shop dashboard</a><span class="page-crumbs-sep" aria-hidden="true">/</span><span aria-current="page">Analytics</span></nav>
+      <h2>Analytics</h2>
+      <p>{{ shop.name }}</p>
+    </div>
+    <a href="{% url 'shop_dashboard' %}" class="btn btn-outline">← Dashboard</a>
+  </div>
+
+  <div class="stats-bar">
+    <div class="stat-card">
+      <div class="stat-icon"><i class="bi bi-cash-coin"></i></div>
+      <div class="stat-info">
+        <h4>₱{{ total_revenue }}</h4>
+        <p>Total Revenue</p>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon"><i class="bi bi-clipboard-check"></i></div>
+      <div class="stat-info">
+        <h4>{{ total_orders }}</h4>
+        <p>Total Orders</p>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon"><i class="bi bi-check2-circle"></i></div>
+      <div class="stat-info">
+        <h4>{{ delivered }}</h4>
+        <p>Delivered</p>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon"><i class="bi bi-star"></i></div>
+      <div class="stat-info">
+        <h4>{{ avg_rating }}</h4>
+        <p>Avg Rating</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3><i class="bi bi-credit-card glyph-icon"></i>Payment Method Breakdown</h3>
+    <div class="table-wrapper" style="margin-bottom:0;">
+      <table class="table">
+        <thead><tr><th>Method</th><th>Orders</th></tr></thead>
+        <tbody>
+          {% for method, count in payment_breakdown.items %}
+            <tr>
+              <td>{{ method }}</td>
+              <td><strong>{{ count }}</strong></td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="2" style="text-align:center; color:var(--text-light);">No data yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

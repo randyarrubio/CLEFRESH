@@ -1,0 +1,71 @@
+# CLEFRESH — example nginx site config (production).
+# Assumes: gunicorn on 127.0.0.1:8000, project at /srv/clefresh, TLS certs already issued.
+# Matching .env: DEBUG=False, STATIC_HASHED_FILENAMES=True, CLIENT_IP_HEADER=HTTP_X_REAL_IP,
+#                SESSION_COOKIE_SECURE=True, CSRF_COOKIE_SECURE=True, SECURE_SSL_REDIRECT=True
+# Deploy: python manage.py collectstatic --noinput   (writes hashed files to staticfiles/)
+
+server {
+    listen 443 ssl http2;
+    server_name clefresh.example.com;
+    # ssl_certificate / ssl_certificate_key ...
+
+    client_max_body_size 10m;            # matches DATA_UPLOAD_MAX_MEMORY_SIZE
+
+    # ── Compression ─────────────────────────────────────────────
+    # Text only; images/fonts are already compressed formats. Django masks the CSRF token
+    # per response, which is the usual BREACH mitigation for compressing HTML.
+    gzip on;
+    gzip_comp_level 5;
+    gzip_min_length 1024;
+    gzip_vary on;
+    gzip_proxied any;
+    gzip_types text/css application/javascript application/json image/svg+xml text/plain text/xml;
+    # text/html is always compressed when gzip is on.
+    # With the ngx_brotli module installed, add:
+    #   brotli on; brotli_comp_level 5;
+    #   brotli_types text/css application/javascript application/json image/svg+xml text/plain;
+
+    # ── Static files: content-hashed names, so cache for a year ──
+    location /static/ {
+        alias /srv/clefresh/staticfiles/;
+        expires 1y;
+        add_header Cache-Control "public, max-age=31536000, immutable";
+        access_log off;
+    }
+
+    # ── Uploaded media ──────────────────────────────────────────
+    # Private documents are only served through Django views with permission checks.
+    location ^~ /media/rider_docs/  { deny all; }
+    location ^~ /media/shop_docs/   { deny all; }
+    location /media/ {
+        alias /srv/clefresh/media/;
+        expires 30d;                       # upload names are random UUIDs; a new upload = new URL
+        add_header Cache-Control "public, max-age=2592000";
+        add_header X-Content-Type-Options nosniff;
+        access_log off;
+    }
+
+    # ── Live notification stream: no buffering, long-lived ──────
+    location /api/notifications/stream/ {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_buffering off;
+        proxy_read_timeout 1h;
+        gzip off;
+    }
+
+    location / {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;           # read via CLIENT_IP_HEADER for rate limits
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+
+server {
+    listen 80;
+    server_name clefresh.example.com;
+    return 301 https://$host$request_uri;
+}

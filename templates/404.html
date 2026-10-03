@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Page Not Found — CLEFRESH</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;800&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #f8fafc;
+      font-family: 'DM Sans', sans-serif;
+      color: #1e293b;
+    }
+    .error-card {
+      text-align: center;
+      padding: 64px 40px;
+      max-width: 480px;
+    }
+    .error-code {
+      font-family: 'Outfit', sans-serif;
+      font-size: 96px;
+      font-weight: 800;
+      line-height: 1;
+      color: #1287d9;
+      letter-spacing: -0.04em;
+    }
+    .error-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 24px;
+      font-weight: 700;
+      margin: 16px 0 12px;
+    }
+    .error-body {
+      color: #64748b;
+      font-size: 15px;
+      line-height: 1.6;
+      margin-bottom: 32px;
+    }
+    .btn {
+      display: inline-block;
+      background: #f9ca47;
+      color: #1e293b;
+      font-family: 'Outfit', sans-serif;
+      font-weight: 700;
+      font-size: 15px;
+      padding: 12px 28px;
+      border-radius: 10px;
+      text-decoration: none;
+      margin: 0 6px 8px;
+    }
+    .btn-outline {
+      background: transparent;
+      border: 2px solid #1287d9;
+      color: #1287d9;
+    }
+    .brand { font-family: 'Outfit', sans-serif; font-weight: 800; font-size: 22px; margin-bottom: 40px; display: block; }
+    .brand-cle { color: #1287d9; }
+    .brand-fresh { color: #f9ca47; }
+  </style>
+</head>
+<body>
+  <div class="error-card">
+    <span class="brand"><span class="brand-cle">CLE</span><span class="brand-fresh">FRESH</span></span>
+    <div class="error-code">404</div>
+    <h1 class="error-title">Page Not Found</h1>
+    <p class="error-body">The page you're looking for doesn't exist or has been moved. Let's get you back on track.</p>
+    <a href="/" class="btn">Go Home</a>
+    <a href="javascript:history.back()" class="btn btn-outline">Go Back</a>
+  </div>
+</body>
+</html>

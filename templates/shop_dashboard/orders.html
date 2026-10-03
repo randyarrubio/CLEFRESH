@@ -1,0 +1,57 @@
+{% extends 'base.html' %}
+{% load shop_extras %}
+{% block title %}Orders — {{ shop.name }}{% endblock %}
+{% block content %}
+<div class="page-shell">
+  <div class="page-header">
+    <div>
+      <nav class="page-crumbs" aria-label="Breadcrumb"><a href="{% url 'shop_dashboard' %}">Shop dashboard</a><span class="page-crumbs-sep" aria-hidden="true">/</span><span aria-current="page">Orders</span></nav>
+      <h2>Orders</h2>
+      <p>{{ shop.name }}</p>
+    </div>
+    <a href="{% url 'shop_dashboard' %}" class="btn btn-outline">← Dashboard</a>
+  </div>
+
+  <form method="get" style="margin-bottom:20px;">
+    <div class="sub-nav">
+      <button type="submit" name="status" value="" class="sub-tab {% if not status_filter %}active{% endif %}">All</button>
+      {% for value, label in status_choices %}
+        <button type="submit" name="status" value="{{ value }}" class="sub-tab {% if status_filter == value %}active{% endif %}">{{ label }}</button>
+      {% endfor %}
+    </div>
+  </form>
+
+  {% if orders %}
+    <div class="orders-list">
+      {% for order in orders %}
+        {% with status=order.status %}
+        <a href="{% url 'shop_dashboard_order_detail' order.id %}" class="order-row-link-block">
+          <div class="order-row {% if status == 'pending' %}new-order{% elif status in 'washing,drying,folding,picked_up,accepted' %}processing{% elif status == 'ready' or status == 'out_for_delivery' %}ready{% elif status == 'delivered' %}delivered{% endif %}">
+            <div class="order-row-left">
+              <div class="order-avatar" style="background:{% if status == 'delivered' %}var(--success){% elif status == 'declined' or status == 'cancelled' %}var(--danger){% elif status == 'pending' %}var(--accent){% else %}var(--primary){% endif %};">
+                {{ order.id }}
+              </div>
+              <div class="order-details">
+                <h5>{{ order.customer.get_full_name|default:order.customer.email }}</h5>
+                <p>{{ order.created_at|date:"M d, Y" }} &bull; {{ order.get_payment_method_display }}</p>
+              </div>
+            </div>
+            <div class="order-row-right">
+              <div class="order-amount">{{ order|order_total }}</div>
+              <span class="badge badge-status-{{ order.status }}">{{ order.get_status_display }}</span>
+            </div>
+          </div>
+        </a>
+        {% endwith %}
+      {% endfor %}
+    </div>
+    {% include 'includes/pagination.html' %}
+  {% else %}
+    <div class="empty-state">
+      <div class="empty-icon"><i class="bi bi-clipboard-check"></i></div>
+      <h3>No orders found</h3>
+      <p>{% if status_filter %}No orders with status "{{ status_filter }}".{% else %}You have no orders yet.{% endif %}</p>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

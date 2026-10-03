@@ -1,0 +1,81 @@
+{% extends 'base.html' %}
+{% load shop_extras %}
+{% block title %}Admin Dashboard — CLEFRESH{% endblock %}
+{% block content %}
+<div class="page-shell">
+  <div class="page-header">
+    <div>
+      <nav class="page-crumbs" aria-label="Breadcrumb"><span aria-current="page">Admin panel</span></nav>
+      <h2>Admin Dashboard</h2>
+      <p>Platform overview and management</p>
+    </div>
+    {% if pending_riders %}
+      <a href="{% url 'admin_riders' %}" class="btn btn-primary"><i class="bi bi-person-vcard glyph-icon"></i>{{ pending_riders }} rider application{{ pending_riders|pluralize }} to review</a>
+    {% endif %}
+  </div>
+
+  <div class="stats-bar stats-bar-5">
+    <div class="stat-card">
+      <div class="stat-icon"><i class="bi bi-people"></i></div>
+      <div class="stat-info">
+        <h4>{{ total_users }}</h4>
+        <p>Total Users</p>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon"><i class="bi bi-shop"></i></div>
+      <div class="stat-info">
+        <h4>{{ total_shops }}</h4>
+        <p>Active Shops</p>
+      </div>
+    </div>
+    <div class="stat-card{% if pending_shops %} stat-alert{% endif %}">
+      <div class="stat-icon"><i class="bi bi-hourglass-split"></i></div>
+      <div class="stat-info">
+        <h4>{{ pending_shops }}</h4>
+        <p>Pending Approvals</p>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon"><i class="bi bi-clipboard-check"></i></div>
+      <div class="stat-info">
+        <h4>{{ total_orders }}</h4>
+        <p>Total Orders</p>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon"><i class="bi bi-cash-coin"></i></div>
+      <div class="stat-info">
+        <h4>₱{{ total_revenue }}</h4>
+        <p>Total Revenue</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-title-row">
+    <h3>Recent Orders</h3>
+    <a href="{% url 'admin_orders' %}" class="btn btn-sm btn-outline">View All</a>
+  </div>
+  <div class="table-wrapper">
+    <table class="table">
+      <thead>
+        <tr><th>#</th><th>Customer</th><th>Shop</th><th>Status</th><th>Total</th><th>Date</th></tr>
+      </thead>
+      <tbody>
+        {% for order in recent_orders %}
+          <tr>
+            <td><strong>#{{ order.id }}</strong></td>
+            <td>{{ order.customer.email }}</td>
+            <td>{{ order.shop.name }}</td>
+            <td><span class="badge badge-status-{{ order.status }}">{{ order.get_status_display }}</span></td>
+            <td style="font-weight:700; color:var(--primary);">{{ order|order_total }}</td>
+            <td>{{ order.created_at|date:"M d, Y" }}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="6" class="table-empty-cell"><i class="bi bi-clipboard-check" aria-hidden="true"></i> No orders yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+{% block title %}Checkout — Order #{{ order.id }}{% endblock %}
+{% block content %}
+<div class="acc-page">
+  <div class="acc-card acc-card-wide">
+    <span class="acc-logo"><span class="brand-cle">CLE</span><span class="brand-fresh">FRESH</span></span>
+    <h1 class="acc-title">Complete payment</h1>
+    <p class="acc-sub">Order #{{ order.id }} &bull; {{ order.shop.name }}</p>
+
+    <div class="checkout-box">
+      {% include 'orders/_price_breakdown.html' %}
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+        <span style="font-size:13px; color:var(--text-secondary);">Order Total</span>
+        <span style="font-size:24px; font-weight:800; color:var(--primary); font-family:'Outfit',sans-serif;">₱{{ order.total_amount|floatformat:"2g" }}</span>
+      </div>
+      <div style="font-size:12px; color:var(--text-light);">{{ order.order_services.count }} service{{ order.order_services.count|pluralize }} &bull; {{ order.get_payment_method_display }}</div>
+    </div>
+
+    <form method="post" action="{% url 'payment_process' order.id %}">
+      {% csrf_token %}
+      <h3 style="font-size:15px; font-weight:700; margin-bottom:14px;">Select Payment Method</h3>
+      <div class="pm-options">
+        {% for value, label in payment_methods %}
+          <label class="pm-option">
+            <input type="radio" name="payment_method_type" value="{{ value }}" {% if value == order.payment_method or forloop.first and order.payment_method not in 'gcash,grab_pay,maya' %}checked{% endif %} style="width:16px; height:16px; accent-color:var(--primary);">
+            <span class="pm-option-logo">
+              {% if value == 'gcash' %}GCASH{% elif value == 'grab_pay' %}GRAB{% elif value == 'maya' %}MAYA{% else %}PAY{% endif %}
+            </span>
+            <span class="pm-option-name">{{ label }}</span>
+          </label>
+        {% endfor %}
+      </div>
+      <button type="submit" class="confirm-btn">Pay ₱{{ order.total_amount|floatformat:"2g" }} →</button>
+    </form>
+    <div style="text-align:center; margin-top:12px;">
+      <a href="{% url 'order_detail' order.id %}" style="font-size:13px; color:var(--text-secondary);">Pay later</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

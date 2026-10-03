@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+{% load shop_extras %}
+{% block title %}Payments — {{ shop.name }}{% endblock %}
+{% block content %}
+<div class="page-shell">
+  <div class="page-header">
+    <div>
+      <nav class="page-crumbs" aria-label="Breadcrumb"><a href="{% url 'shop_dashboard' %}">Shop dashboard</a><span class="page-crumbs-sep" aria-hidden="true">/</span><span aria-current="page">Payments</span></nav>
+      <h2>Payments</h2>
+      <p>{{ shop.name }}</p>
+    </div>
+    <a href="{% url 'shop_dashboard' %}" class="btn btn-outline">← Dashboard</a>
+  </div>
+
+  <div class="table-wrapper">
+    <table class="table">
+      <thead>
+        <tr><th>#</th><th>Customer</th><th>Method</th><th>Status</th><th>Total</th><th>Actions</th></tr>
+      </thead>
+      <tbody>
+        {% for order in orders %}
+          <tr>
+            <td><strong>#{{ order.id }}</strong></td>
+            <td>{{ order.customer.get_full_name|default:order.customer.email }}</td>
+            <td>{{ order.get_payment_method_display }}</td>
+            <td><span class="badge badge-payment-{{ order.payment_status }}">{{ order.get_payment_status_display }}</span></td>
+            <td style="font-weight:700; color:var(--primary);">{{ order|order_total }}</td>
+            <td>
+              {% if order.payment_status == 'paid' and order.payment_method != 'cod' %}
+                <form method="post" action="{% url 'initiate_refund' order.id %}" style="display:flex; align-items:center; gap:8px;" data-confirm="The full amount for order #{{ order.id }} will be refunded through PayMongo." data-confirm-title="Refund this order?" data-confirm-action="Issue refund">
+                  {% csrf_token %}
+                  <select name="reason" style="font-size:12px; padding:6px 10px; width:auto;">
+                    <option value="others">Others</option>
+                    <option value="duplicate">Duplicate</option>
+                    <option value="fraudulent">Fraudulent</option>
+                  </select>
+                  <button type="submit" class="btn btn-xs btn-danger">Refund</button>
+                </form>
+              {% else %}
+                <span style="color:var(--text-light);">—</span>
+              {% endif %}
+            </td>
+          </tr>
+        {% empty %}
+          <tr>
+            <td colspan="6" class="table-empty-cell"><i class="bi bi-credit-card" aria-hidden="true"></i> No payment orders yet.</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% include 'includes/pagination.html' %}
+</div>
+{% endblock %}

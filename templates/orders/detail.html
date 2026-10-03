@@ -1,0 +1,235 @@
+{% extends 'base.html' %}
+{% load shop_extras %}
+{% block title %}Order #{{ order.id }} — CLEFRESH{% endblock %}
+{% block extra_head %}
+<style>
+  .pay-card { display: flex; gap: 14px; align-items: flex-start; }
+  .pay-card.is-waiting { border-color: #f3d68a; background: #fffdf6; }
+  .pay-card.is-due { border-color: #9cc9ea; background: #f4f9fd; }
+  .pay-card-icon { width: 44px; height: 44px; flex-shrink: 0; border-radius: 12px; display: flex; align-items: center; justify-content: center;
+                   font-size: 20px; background: #fff6d7; color: #7a5200; }
+  .pay-card.is-due .pay-card-icon { background: #e6f4fb; color: #075c9a; }
+  .pay-card h3 { margin-bottom: 4px !important; font-size: 16.5px !important; }
+  .pay-card p { font-size: 14px; color: var(--text-muted); line-height: 1.55; }
+  .pay-card-due { margin-top: 8px; font-size: 13.5px !important; color: #7a5200 !important; }
+  .pay-card-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+  @media (max-width: 480px) { .pay-card { flex-direction: column; } .pay-card-actions > * { flex: 1; } .pay-card-actions .btn { width: 100%; } }
+</style>
+{% endblock %}
+{% block content %}
+<div class="page-shell">
+  <div class="page-header">
+    <div>
+      <nav class="page-crumbs" aria-label="Breadcrumb"><a href="{% url 'order_list' %}">My orders</a><span class="page-crumbs-sep" aria-hidden="true">/</span><span aria-current="page">Order #{{ order.id }}</span></nav>
+      <h2>Order #{{ order.id }}</h2>
+      <p>{{ order.shop.name }} &bull; {{ order.created_at|date:"M d, Y g:i A" }}</p>
+    </div>
+    <span class="badge badge-status-{{ order.status }}">{{ order.get_status_display }}</span>
+    {% if order.status == 'pending' and user == order.customer %}
+      <form method="post" action="{% url 'cancel_order' order.id %}"
+            data-confirm="This cannot be undone. Orders can only be cancelled while still pending."
+            data-confirm-title="Cancel this order?" data-confirm-action="Yes, cancel order" data-confirm-cancel="Keep order">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-danger btn-sm" id="cancelOrderBtn">Cancel Order</button>
+      </form>
+    {% endif %}
+    {% if user == order.customer and order.can_pay_online %}
+      <a href="{% url 'payment_checkout' order.id %}" class="btn btn-primary"><i class="bi bi-credit-card glyph-icon"></i>{% if order.payment_method == 'cod' %}Pay online{% else %}Pay Now{% endif %}</a>
+    {% endif %}
+  </div>
+
+  <div class="detail-layout">
+
+    <div class="detail-main">
+
+      {% if order.rider and order.status == 'out_for_delivery' %}
+        <div class="card" style="margin-bottom:20px;">
+          <h3><i class="bi bi-geo-alt glyph-icon"></i>Live Rider Tracking</h3>
+          <div id="trackingMap" class="map-container" style="height:260px;"
+               data-order-id="{{ order.id }}"
+               data-delivery-lat="{{ order.delivery_lat }}"
+               data-delivery-lng="{{ order.delivery_lng }}"
+               {% if rider_location %}data-rider-lat="{{ rider_location.latitude }}"
+               data-rider-lng="{{ rider_location.longitude }}"
+               data-rider-updated-at="{{ rider_location.updated_at.isoformat }}"{% endif %}></div>
+          <p id="trackingStatus" class="tracking-status" role="status" aria-live="polite"></p>
+        </div>
+      {% endif %}
+
+
+      {% if user == order.customer and order.status != 'cancelled' and order.status != 'declined' %}
+        {% if order.price_pending %}
+          <div class="card pay-card is-waiting">
+            <div class="pay-card-icon" aria-hidden="true"><i class="bi bi-hourglass-split"></i></div>
+            <div class="pay-card-body">
+              <h3>Waiting for the shop to weigh your laundry</h3>
+              <p>{{ order.shop.name }} will weigh it when it arrives at the shop and confirm the final price.
+                {% if order.payment_method == 'cod' %}We'll notify you with the final price — then you can pay online, or pay the rider in cash on delivery.{% else %}We'll notify you to pay online then — your laundry is delivered after payment.{% endif %}</p>
+            </div>
+          </div>
+        {% elif order.weigh_at_shop or order.awaiting_online_payment %}
+          {% if order.payment_method != 'cod' and order.payment_status != 'paid' and order.status != 'delivered' %}
+            <div class="card pay-card is-due">
+              <div class="pay-card-icon" aria-hidden="true"><i class="bi bi-credit-card"></i></div>
+              <div class="pay-card-body">
+                <h3>{% if order.weigh_at_shop %}Final price confirmed: {{ order|order_total }}{% else %}Payment due: {{ order|order_total }}{% endif %}</h3>
+                <p>{% if order.weigh_at_shop %}Your laundry was weighed on {{ order.price_confirmed_at|date:"M d, g:i A" }}. {% endif %}Pay online so the shop can send it out for delivery.</p>
+                {% if order.payment_due_at %}
+                  <p class="pay-card-due"><i class="bi bi-clock" aria-hidden="true"></i> Please pay by <strong>{{ order.payment_due_at|date:"M d, g:i A" }}</strong>. After that, the order switches to cash on delivery.</p>
+                {% endif %}
+                <div class="pay-card-actions">
+                  <a href="{% url 'payment_checkout' order.id %}" class="btn btn-primary"><i class="bi bi-credit-card" aria-hidden="true"></i> Pay {{ order|order_total }} now</a>
+                  {% if order.status != 'out_for_delivery' %}
+                    <form method="post" action="{% url 'switch_to_cod' order.id %}"
+                          data-confirm="You'll pay {{ order|order_total }} in cash to the rider when your laundry is delivered."
+                          data-confirm-title="Pay on delivery instead?" data-confirm-action="Pay on delivery">
+                      {% csrf_token %}
+                      <button type="submit" class="btn btn-outline">Pay on delivery instead</button>
+                    </form>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+          {% elif order.weigh_at_shop and order.payment_method == 'cod' and order.payment_status != 'paid' and order.status != 'delivered' %}
+            <div class="card pay-card is-due">
+              <div class="pay-card-icon" aria-hidden="true"><i class="bi bi-cash-coin"></i></div>
+              <div class="pay-card-body">
+                <h3>Final price confirmed: {{ order|order_total }}</h3>
+                {% if order.can_pay_online %}
+                  <p>Pay online now with GCash, GrabPay or Maya — or keep cash on delivery and pay the rider when your laundry arrives.</p>
+                  <div class="pay-card-actions">
+                    <a href="{% url 'payment_checkout' order.id %}" class="btn btn-primary"><i class="bi bi-credit-card" aria-hidden="true"></i> Pay {{ order|order_total }} online</a>
+                  </div>
+                {% else %}
+                  <p>Your laundry is on its way. Please have the exact amount ready for the rider.</p>
+                {% endif %}
+              </div>
+            </div>
+          {% endif %}
+        {% endif %}
+      {% endif %}
+
+      <div class="card">
+        <h3><i class="bi bi-box-seam glyph-icon"></i>Order Details</h3>
+        <div class="info-grid">
+          <div>
+            <p class="info-label">Shop</p>
+            <p class="info-value">{{ order.shop.name }}</p>
+          </div>
+          <div>
+            <p class="info-label">Total Amount</p>
+            {% include 'orders/_price_breakdown.html' %}
+            <p class="info-value-primary">{{ order|order_total }}</p>
+          </div>
+          <div>
+            <p class="info-label">Pickup Address</p>
+            <p class="info-value">{{ order.pickup_address }}</p>
+          </div>
+          <div>
+            <p class="info-label">Delivery Address</p>
+            <p class="info-value">{{ order.delivery_address }}</p>
+          </div>
+          <div>
+            <p class="info-label">Pickup Time</p>
+            <p class="info-value">{{ order.pickup_datetime|date:"M d, Y g:i A" }}</p>
+          </div>
+          <div>
+            <p class="info-label">Payment</p>
+            <p class="info-value">{{ order.get_payment_method_display }}</p>
+            <span class="badge badge-payment-{{ order.payment_status }}">{{ order.get_payment_status_display }}</span>
+          </div>
+          {% if order.rider %}
+            <div>
+              <p class="info-label">Rider</p>
+              <p class="info-value">{{ order.rider.get_full_name|default:order.rider.email }}</p>
+            </div>
+          {% endif %}
+          {% if order.notes %}
+            <div class="info-grid-full">
+              <p class="info-label">Notes</p>
+              <p class="info-value">{{ order.notes }}</p>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="card">
+        <h3><i class="bi bi-basket glyph-icon"></i>Services</h3>
+        <div class="table-wrapper">
+          <table class="table">
+            <thead><tr><th>Service</th><th>Qty</th><th>Weight</th><th>Subtotal</th></tr></thead>
+            <tbody>
+              {% for os in order.order_services.all %}
+                <tr>
+                  <td><strong>{{ os.service.get_name_display }}</strong></td>
+                  <td>{{ os.quantity }}</td>
+                  <td>{% if os.weight_kg %}{{ os.weight_kg }} kg{% elif order.price_pending and os.service.price_per_kg %}<span class="badge badge-warning">To be weighed</span>{% else %}—{% endif %}</td>
+                  <td style="color:var(--primary); font-weight:600;">{% if order.price_pending and os.service.price_per_kg %}₱{{ os.service.price_per_kg }}/kg{% else %}₱{{ os.subtotal }}{% endif %}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {% if order.status == 'delivered' %}
+        {% if order.review %}
+          <div class="card" style="background:var(--success-light); border-color:var(--success);">
+            <h3><i class="bi bi-star glyph-icon"></i>Your Review</h3>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span style="color:var(--accent); font-size:18px;" aria-hidden="true">{% for i in "12345" %}{% if forloop.counter <= order.review.rating %}<i class="bi bi-star-fill"></i>{% else %}<i class="bi bi-star"></i>{% endif %}{% endfor %}</span>
+              <span class="sr-only">{{ order.review.rating }} out of 5 stars</span>
+              <span style="font-size:14px;">{{ order.review.comment }}</span>
+            </div>
+          </div>
+        {% else %}
+          <div class="card review-cta">
+            <div class="empty-icon" style="margin-bottom:10px;"><i class="bi bi-star"></i></div>
+            <h3 style="border:none; justify-content:center;">How was your experience?</h3>
+            <p style="color:var(--text-secondary); font-size:13px; margin-bottom:16px;">Your feedback helps other customers find great shops.</p>
+            <a href="{% url 'submit_review' order.id %}" class="btn btn-primary">Leave a Review</a>
+          </div>
+        {% endif %}
+      {% endif %}
+    </div>
+
+    <div class="detail-sidebar">
+      <div class="card detail-sidebar-sticky">
+        <h3><i class="bi bi-clock-history glyph-icon"></i>Status Timeline</h3>
+        <div class="timeline">
+          {% for log in logs %}
+            <div class="timeline-item {% if forloop.last %}active{% else %}done{% endif %}">
+              <h5>{{ log.status|humanize_status }}</h5>
+              {% if log.note %}<p>{{ log.note }}</p>{% endif %}
+              <div class="tl-time">{{ log.timestamp|date:"M d, g:i A" }}</div>
+            </div>
+          {% empty %}
+            <p style="color:var(--text-light); font-size:13px;">No status updates yet.</p>
+          {% endfor %}
+        </div>
+
+        {% if proofs %}
+          <div style="margin-top:20px; padding-top:20px; border-top:1px solid var(--border);">
+            <h3 style="font-size:14px; margin-bottom:12px;"><i class="bi bi-camera glyph-icon"></i>Photo Proofs</h3>
+            {% for proof in proofs %}
+              <div class="proof-item">
+                <span class="badge badge-service">{{ proof.get_proof_type_display }}</span>
+                <img src="{{ proof.photo.url }}" alt="{{ proof.get_proof_type_display }} photo for order #{{ order.id }}" loading="lazy" decoding="async" class="proof-img">
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      </div>
+    </div>
+
+  </div>
+</div>
+
+{% if order.rider and order.status == 'out_for_delivery' %}
+<script>
+  const trackingOrderId = {{ order.id }};
+  const deliveryLat = {{ order.delivery_lat|default:"null" }};
+  const deliveryLng = {{ order.delivery_lng|default:"null" }};
+</script>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,97 @@
+{% extends 'base.html' %}
+{% block title %}{{ shop.name }} — CLEFRESH{% endblock %}
+{% block content %}
+<div class="page-shell">
+
+  <!-- Shop Header -->
+  <div class="shop-detail-header">
+    {% if shop.logo %}
+      <img src="{{ shop.logo.url }}" alt="{{ shop.name }}" class="shop-detail-logo">
+    {% else %}
+      <div class="shop-detail-logo-placeholder" style="background:linear-gradient(135deg,#0E9AA7,#26C6DA);">
+        {{ shop.name|slice:":2"|upper }}
+      </div>
+    {% endif %}
+    <div class="shop-detail-info" style="flex:1;">
+      <h1>{{ shop.name }}</h1>
+      <p><i class="bi bi-geo-alt glyph-icon"></i>{{ shop.address }}</p>
+      {% if shop.contact %}<p><i class="bi bi-telephone glyph-icon"></i>{{ shop.contact }}</p>{% endif %}
+      <p><i class="bi bi-clock glyph-icon"></i>{{ shop.operating_hours_start|time:"g:i A" }} – {{ shop.operating_hours_end|time:"g:i A" }}</p>
+      <div style="display:flex; align-items:center; gap:12px; margin-top:10px; flex-wrap:wrap;">
+        <span style="font-size:14px; font-weight:600; color:var(--text);" aria-hidden="true"><i class="bi bi-star glyph-icon" aria-hidden="true"></i>{{ shop.average_rating }}</span>
+        <span class="sr-only">Rated {{ shop.average_rating }} out of 5 stars</span>
+        <span style="font-size:13px; color:var(--text-secondary);">{{ shop.reviews.count }} review{{ shop.reviews.count|pluralize }}</span>
+        {% if shop.is_open %}
+          <span class="badge badge-open"><i class="bi bi-check2 glyph-icon" aria-hidden="true"></i>Open Now</span>
+        {% else %}
+          <span class="badge badge-closed"><i class="bi bi-x-circle glyph-icon" aria-hidden="true"></i>Closed</span>
+        {% endif %}
+      </div>
+    </div>
+    {% if user.is_authenticated and user.role == 'customer' %}
+      <a href="{% url 'place_order' shop.id %}" class="btn btn-primary btn-lg"><i class="bi bi-basket glyph-icon"></i>Place Order</a>
+    {% elif not user.is_authenticated %}
+      <a href="{% url 'login' %}?next={% url 'shop_detail' shop.id %}" class="btn btn-primary btn-lg" data-login-modal>Login to Order</a>
+    {% endif %}
+  </div>
+
+  {% if shop.description %}
+    <div class="card" style="margin-bottom:24px;"><p style="font-size:14px; color:var(--text-secondary); line-height:1.7;">{{ shop.description }}</p></div>
+  {% endif %}
+
+  <div class="two-col">
+    <div>
+      <div class="card">
+        <h2><i class="bi bi-basket glyph-icon"></i>Services &amp; Pricing</h2>
+        <div class="table-wrapper">
+          <table class="table">
+            <thead><tr><th>Service</th><th>Per KG</th><th>Per Piece</th></tr></thead>
+            <tbody>
+              {% for svc in services %}
+                <tr>
+                  <td><strong>{{ svc.get_name_display }}</strong></td>
+                  <td>{% if svc.price_per_kg %}<span style="color:var(--primary); font-weight:600;">₱{{ svc.price_per_kg }}</span>{% else %}<span style="color:var(--text-light);">—</span>{% endif %}</td>
+                  <td>{% if svc.price_per_piece %}<span style="color:var(--primary); font-weight:600;">₱{{ svc.price_per_piece }}</span>{% else %}<span style="color:var(--text-light);">—</span>{% endif %}</td>
+                </tr>
+              {% empty %}
+                <tr><td colspan="3" class="table-empty-cell"><i class="bi bi-basket" aria-hidden="true"></i> No services listed yet.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Reviews -->
+      <div class="card">
+        <h2><i class="bi bi-star glyph-icon"></i>Customer Reviews</h2>
+        {% for review in reviews %}
+          <div class="review-card">
+            <div class="review-header">
+              <div class="order-avatar" style="background:var(--primary); width:32px; height:32px; font-size:12px;">
+                {{ review.customer.first_name|first|upper|default:"?" }}
+              </div>
+              <strong style="font-size:14px;">{{ review.customer.get_full_name|default:review.customer.email }}</strong>
+              <span aria-hidden="true" style="font-size:14px; letter-spacing:1px;">{% for i in "12345" %}{% if forloop.counter <= review.rating %}<i class="bi bi-star-fill" style="color:#e0a800;"></i>{% else %}<i class="bi bi-star" style="color:#ccd6dd;"></i>{% endif %}{% endfor %}</span>
+              <span class="sr-only">{{ review.rating }} out of 5 stars</span>
+              <span class="review-date">{{ review.created_at|date:"M d, Y" }}</span>
+            </div>
+            {% if review.comment %}<p style="font-size:13px; color:var(--text-secondary); margin-top:6px;">{{ review.comment }}</p>{% endif %}
+          </div>
+        {% empty %}
+          <p style="color:var(--text-light); font-size:13px; text-align:center; padding:16px 0;">No reviews yet. Be the first to review!</p>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div>
+      {% if shop.latitude and shop.longitude %}
+        <div class="card">
+          <h2><i class="bi bi-geo-alt glyph-icon"></i>Location</h2>
+          <div id="shopMap" class="map-container" style="height:260px;"
+               data-lat="{{ shop.latitude }}" data-lng="{{ shop.longitude }}" data-name="{{ shop.name }}"></div>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

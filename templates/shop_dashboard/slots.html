@@ -1,0 +1,86 @@
+{% extends 'base.html' %}
+{% block title %}Delivery Slots — {{ shop.name }}{% endblock %}
+{% block content %}
+<div class="page-shell">
+  <div class="page-header">
+    <div>
+      <nav class="page-crumbs" aria-label="Breadcrumb"><a href="{% url 'shop_dashboard' %}">Shop dashboard</a><span class="page-crumbs-sep" aria-hidden="true">/</span><span aria-current="page">Delivery slots</span></nav>
+      <h2>Delivery Slots</h2>
+      <p>{{ shop.name }}</p>
+    </div>
+    <a href="{% url 'shop_dashboard' %}" class="btn btn-outline">← Dashboard</a>
+  </div>
+
+  <div class="split-layout">
+    <div class="split-aside">
+      <div class="card">
+        <h3><i class="bi bi-calendar3 glyph-icon"></i>Add New Slot</h3>
+        <form method="post" action="{% url 'create_slot' %}">
+          {% csrf_token %}
+          <div class="form-group">
+            <label for="slot-date">Date</label>
+            <input id="slot-date" type="date" name="date" required>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+            <div class="form-group">
+              <label for="slot-start">Start Time</label>
+              <input id="slot-start" type="time" name="time_start" required>
+            </div>
+            <div class="form-group">
+              <label for="slot-end">End Time</label>
+              <input id="slot-end" type="time" name="time_end" required>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="slot-capacity">Max Capacity</label>
+            <input id="slot-capacity" type="number" name="max_capacity" value="5" min="1">
+          </div>
+          <button type="submit" class="btn btn-primary btn-full">Add Slot</button>
+        </form>
+      </div>
+    </div>
+
+    <div class="split-main">
+      <div class="table-wrapper">
+        <table class="table">
+          <thead>
+            <tr><th>Date</th><th>Time</th><th>Bookings</th><th>Capacity</th><th>Status</th><th></th></tr>
+          </thead>
+          <tbody>
+            {% for slot in slots %}
+              <tr>
+                <td><strong>{{ slot.date|date:"M d, Y" }}</strong></td>
+                <td>{{ slot.time_start|time:"g:i A" }} – {{ slot.time_end|time:"g:i A" }}</td>
+                <td>{{ slot.current_bookings }}</td>
+                <td>{{ slot.max_capacity }}</td>
+                <td>
+                  <div class="slot-bar">
+                    <div class="slot-bar-fill {% if slot.capacity_percent >= 100 %}full{% elif slot.capacity_percent >= 80 %}mid{% else %}low{% endif %}" style="width:{{ slot.capacity_percent }}%;"></div>
+                  </div>
+                  {% if not slot.is_available %}
+                    <span class="badge badge-danger">Full</span>
+                  {% elif slot.capacity_percent >= 80 %}
+                    <span class="badge badge-warning">Almost Full</span>
+                  {% else %}
+                    <span class="badge badge-success">Available</span>
+                  {% endif %}
+                </td>
+                <td>
+                  <form method="post" action="{% url 'delete_slot' slot.id %}" data-confirm="This delivery slot will no longer be offered to customers." data-confirm-title="Delete this slot?" data-confirm-action="Delete slot">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-xs btn-danger">Delete</button>
+                  </form>
+                </td>
+              </tr>
+            {% empty %}
+              <tr>
+                <td colspan="6" class="table-empty-cell"><i class="bi bi-calendar3" aria-hidden="true"></i> No upcoming slots. Create your first slot.</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

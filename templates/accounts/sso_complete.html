@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+{% block title %}Complete Profile — CLEFRESH{% endblock %}
+{% block content %}
+<div class="acc-page">
+  <div class="acc-card acc-card-wide">
+    <span class="acc-logo"><span class="brand-cle">CLE</span><span class="brand-fresh">FRESH</span></span>
+    <h1 class="acc-title">Almost there! 🎉</h1>
+    <p class="acc-sub">Tell us how you'll be using CLEFRESH. This sets up the right workspace for you.</p>
+    <form method="post">
+      {% csrf_token %}
+      <fieldset style="border:0;padding:0;margin:0;">
+        <legend class="sr-only">Choose your role</legend>
+        <div class="role-selector">
+          <label class="role-option">
+            <input type="radio" name="role" value="customer" required>
+            <div class="role-card">
+              <div class="role-icon" aria-hidden="true"><i class="bi bi-person"></i></div>
+              <div>
+                <strong>Customer</strong>
+                <p>I want to book laundry pick-up &amp; delivery</p>
+              </div>
+            </div>
+          </label>
+          <label class="role-option">
+            <input type="radio" name="role" value="shop_owner">
+            <div class="role-card">
+              <div class="role-icon" aria-hidden="true"><i class="bi bi-shop"></i></div>
+              <div>
+                <strong>Shop Owner</strong>
+                <p>I run a laundry shop and want to accept orders</p>
+              </div>
+            </div>
+          </label>
+          <label class="role-option">
+            <input type="radio" name="role" value="rider">
+            <div class="role-card">
+              <div class="role-icon" aria-hidden="true"><i class="bi bi-bicycle"></i></div>
+              <div>
+                <strong>Rider</strong>
+                <p>I want to deliver laundry orders</p>
+              </div>
+            </div>
+          </label>
+        </div>
+      </fieldset>
+      <button type="submit" class="lf-submit-btn" style="margin-top:20px;">Continue <i class="bi bi-arrow-right" aria-hidden="true"></i></button>
+    </form>
+  </div>
+</div>
+{% endblock %}

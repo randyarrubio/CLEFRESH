@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+{% block title %}Shop Dashboard — CLEFRESH{% endblock %}
+{% block content %}
+<div class="page-shell">
+  <div class="empty-state">
+    <div class="empty-icon"><i class="bi bi-shop"></i></div>
+    {% if pending %}
+      <h3>Your shop is pending approval</h3>
+      <p>Our admin team is reviewing your shop registration. You'll receive an email notification once it's approved.</p>
+    {% elif existing_shop.status == 'suspended' %}
+      <h3>Your shop is suspended</h3>
+      <p>{{ existing_shop.name }} is hidden from customers. Please contact support to have it reinstated.</p>
+    {% elif existing_shop.status == 'rejected' %}
+      <h3>Your shop registration was rejected</h3>
+      {% if existing_shop.rejection_reason %}<p>Reason: {{ existing_shop.rejection_reason }}</p>{% endif %}
+      <a href="{% url 'register_shop' %}" class="btn btn-primary btn-lg">Update and Resubmit →</a>
+    {% else %}
+      <h3>You don't have a shop yet</h3>
+      <p>Register your laundry shop to start accepting orders from customers.</p>
+      <a href="{% url 'register_shop' %}" class="btn btn-primary btn-lg">Register Your Shop →</a>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

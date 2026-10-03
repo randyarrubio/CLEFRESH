@@ -1,0 +1,77 @@
+{% extends 'base.html' %}
+{% block title %}Users — Admin{% endblock %}
+{% block content %}
+<div class="page-shell">
+  <div class="page-header">
+    <div>
+      <nav class="page-crumbs" aria-label="Breadcrumb"><a href="{% url 'admin_dashboard' %}">Admin panel</a><span class="page-crumbs-sep" aria-hidden="true">/</span><span aria-current="page">Users</span></nav>
+      <h2>Manage Users</h2>
+      <p>View and manage platform users</p>
+    </div>
+    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+      <a href="{% url 'admin_riders' %}" class="btn btn-primary"><i class="bi bi-person-vcard glyph-icon"></i>Rider Applications</a>
+      <a href="{% url 'admin_dashboard' %}" class="btn btn-outline">← Dashboard</a>
+    </div>
+  </div>
+
+  <form method="get" style="margin-bottom:20px;">
+    <div class="sub-nav">
+      <button type="submit" name="role" value="" class="sub-tab {% if not role_filter %}active{% endif %}">All Roles</button>
+      <button type="submit" name="role" value="customer" class="sub-tab {% if role_filter == 'customer' %}active{% endif %}"><i class="bi bi-cart glyph-icon"></i>Customers</button>
+      <button type="submit" name="role" value="shop_owner" class="sub-tab {% if role_filter == 'shop_owner' %}active{% endif %}"><i class="bi bi-shop glyph-icon"></i>Shop Owners</button>
+      <button type="submit" name="role" value="rider" class="sub-tab {% if role_filter == 'rider' %}active{% endif %}"><i class="bi bi-bicycle glyph-icon"></i>Riders</button>
+    </div>
+  </form>
+
+  <div class="table-wrapper">
+    <table class="table">
+      <thead>
+        <tr><th>Email</th><th>Name</th><th>Role</th><th>SSO</th><th>Status</th><th>Joined</th><th></th></tr>
+      </thead>
+      <tbody>
+        {% for u in users %}
+          <tr>
+            <td><strong>{{ u.email }}</strong></td>
+            <td>{{ u.get_full_name|default:"—" }}</td>
+            <td>
+              <span class="badge badge-role-{{ u.role|default:'default' }}">
+                {{ u.role|default:"—" }}
+              </span>
+            </td>
+            <td>{{ u.sso_provider|default:"—" }}</td>
+            <td>
+              {% if u.is_active %}
+                <span class="badge badge-success">Active</span>
+              {% else %}
+                <span class="badge badge-danger">Inactive</span>
+              {% endif %}
+            </td>
+            <td>{{ u.date_joined|date:"M d, Y" }}</td>
+            <td>
+              <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                <form method="post" action="{% url 'admin_toggle_user' u.id %}" style="display:inline;">
+                  {% csrf_token %}
+                  <button type="submit" class="btn btn-xs {% if u.is_active %}btn-warning{% else %}btn-primary{% endif %}">
+                    {% if u.is_active %}Deactivate{% else %}Activate{% endif %}
+                  </button>
+                </form>
+                {% if not u.is_superuser and u.id != request.user.id %}
+                  <form method="post" action="{% url 'admin_delete_user' u.id %}" style="display:inline;" data-confirm="This permanently deletes {{ u.email }} and cascades to their orders, shops, and other data. This cannot be undone." data-confirm-title="Delete this user?" data-confirm-action="Delete user">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-xs btn-danger">Delete</button>
+                  </form>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+        {% empty %}
+          <tr>
+            <td colspan="7" class="table-empty-cell"><i class="bi bi-people" aria-hidden="true"></i> No users found.</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% include 'includes/pagination.html' %}
+</div>
+{% endblock %}

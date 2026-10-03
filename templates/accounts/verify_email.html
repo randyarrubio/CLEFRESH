@@ -1,0 +1,178 @@
+{% extends 'base.html' %}
+{% block title %}Verify your email — CLEFRESH{% endblock %}
+
+{% block extra_head %}
+<style>
+  .ve-page {
+    min-height: calc(100vh - 68px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 16px 56px;
+    background: radial-gradient(ellipse at 20% 30%, rgba(14,154,167,.12), transparent 40%),
+                radial-gradient(ellipse at 80% 70%, rgba(18,135,217,.10), transparent 40%),
+                #f0f8fa;
+  }
+  .ve-card {
+    width: min(440px, 100%);
+    border-radius: 18px;
+    background: #fff;
+    padding: 32px 28px;
+    box-shadow: 0 20px 60px rgba(7,50,69,.18);
+    border: 1px solid rgba(14,154,167,.1);
+    animation: veIn .35s cubic-bezier(.2,.8,.2,1) both;
+  }
+  @keyframes veIn { from { opacity:0; transform:translateY(18px) scale(.97); } to { opacity:1; transform:none; } }
+  @media (prefers-reduced-motion: reduce) { .ve-card { animation: none; } }
+  .ve-icon {
+    width: 56px; height: 56px;
+    border-radius: 14px;
+    background: var(--accent, #f9ca47);
+    color: #4a2e00;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 26px;
+    margin: 0 auto 16px;
+  }
+  .ve-title { text-align: center; font-size: 22px; font-weight: 800; color: #0b1f33; margin: 0 0 6px; }
+  .ve-subtitle { text-align: center; font-size: 13px; color: #6c7d8b; margin: 0 0 6px; line-height: 1.5; }
+  .ve-email { text-align: center; font-size: 14px; color: var(--primary, #1287d9); font-weight: 700; margin: 0 0 22px; }
+  .ve-code-input {
+    width: 100%;
+    text-align: center;
+    font-family: 'Outfit', sans-serif;
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: 12px;
+    padding: 16px 12px;
+    border: 1.5px solid #d7e3ea;
+    border-radius: 12px;
+    background: #f7fafc;
+    color: #0b1f33;
+  }
+  .ve-code-input:focus {
+    border-color: var(--primary, #1287d9);
+    background: #fff;
+    box-shadow: 0 0 0 3px rgba(18,135,217,.12);
+    outline: none;
+  }
+  .ve-submit {
+    width: 100%;
+    margin-top: 16px;
+    padding: 13px;
+    border: 0;
+    border-radius: 10px;
+    background: var(--primary, #1287d9);
+    color: #fff;
+    font-weight: 800;
+    font-size: 14px;
+    cursor: pointer;
+    transition: opacity .15s;
+  }
+  .ve-submit:hover { opacity: .92; }
+  .ve-resend-row {
+    margin-top: 14px;
+    text-align: center;
+    font-size: 13px;
+    color: #6c7d8b;
+  }
+  .ve-resend-form { display: inline; }
+  .ve-resend-btn {
+    background: none;
+    border: 0;
+    padding: 0;
+    color: var(--primary, #1287d9);
+    font-weight: 700;
+    cursor: pointer;
+    font-size: 13px;
+  }
+  .ve-resend-btn[disabled] { color: #94a3af; cursor: not-allowed; }
+  .ve-resend-btn:hover:not([disabled]) { text-decoration: underline; }
+  .ve-help {
+    margin-top: 22px;
+    padding-top: 16px;
+    border-top: 1px solid #edf2f5;
+    text-align: center;
+    font-size: 12px;
+    color: #94a3af;
+    line-height: 1.6;
+  }
+  .ve-help a { color: var(--primary, #1287d9); font-weight: 600; text-decoration: none; }
+  .ve-help a:hover { text-decoration: underline; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="ve-page">
+  <div class="ve-card">
+    <div class="ve-icon"><i class="bi bi-envelope-check"></i></div>
+    <h1 class="ve-title">Check your email</h1>
+    <p class="ve-subtitle">We sent a 6-digit verification code to</p>
+    <p class="ve-email">{{ masked_email }}</p>
+    {% if debug_code %}
+      <p class="ve-subtitle" style="margin-bottom:18px;">Development code: <strong>{{ debug_code }}</strong></p>
+    {% endif %}
+
+    <form method="post" autocomplete="off">
+      {% csrf_token %}
+      <input
+        class="ve-code-input"
+        type="text"
+        name="code"
+        inputmode="numeric"
+        pattern="[0-9]{6}"
+        maxlength="6"
+        required
+        autofocus
+        placeholder="------"
+        aria-label="6-digit verification code"
+        id="veCodeInput">
+      <button type="submit" class="ve-submit">Verify email <i class="bi bi-arrow-right" aria-hidden="true"></i></button>
+    </form>
+
+    <div class="ve-resend-row">
+      Didn't get the code?
+      <form method="post" action="{% if resend_url %}{{ resend_url }}{% else %}{% url 'verify_email_resend' %}{% endif %}" class="ve-resend-form">
+        {% csrf_token %}
+        <button type="submit" class="ve-resend-btn" id="veResendBtn"{% if cooldown_left > 0 %} disabled{% endif %}>
+          {% if cooldown_left > 0 %}
+            Resend in <span id="veCooldown">{{ cooldown_left }}</span>s
+          {% else %}
+            Resend code
+          {% endif %}
+        </button>
+      </form>
+    </div>
+
+    <div class="ve-help">
+      Wrong email? <a href="{% if cancel_url %}{{ cancel_url }}{% else %}{% url 'logout' %}{% endif %}"{% if not cancel_url %} data-logout{% endif %}>{% if cancel_text %}{{ cancel_text }}{% else %}Sign out{% endif %}</a> and register again.
+    </div>
+  </div>
+</div>
+
+<script>
+  (function () {
+    var input = document.getElementById('veCodeInput');
+    if (input) {
+      input.addEventListener('input', function () {
+        this.value = this.value.replace(/\D/g, '').slice(0, 6);
+      });
+    }
+
+    var btn = document.getElementById('veResendBtn');
+    var span = document.getElementById('veCooldown');
+    if (btn && span) {
+      var remaining = parseInt(span.textContent, 10) || 0;
+      var timer = setInterval(function () {
+        remaining -= 1;
+        if (remaining <= 0) {
+          clearInterval(timer);
+          btn.removeAttribute('disabled');
+          btn.textContent = 'Resend code';
+        } else {
+          span.textContent = remaining;
+        }
+      }, 1000);
+    }
+  })();
+</script>
+{% endblock %}

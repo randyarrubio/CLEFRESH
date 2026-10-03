@@ -1,0 +1,134 @@
+{% extends 'base.html' %}
+{% block title %}Shops — Admin{% endblock %}
+{% block content %}
+<div class="page-shell">
+  <div class="page-header">
+    <div>
+      <nav class="page-crumbs" aria-label="Breadcrumb"><a href="{% url 'admin_dashboard' %}">Admin panel</a><span class="page-crumbs-sep" aria-hidden="true">/</span><span aria-current="page">Shops</span></nav>
+      <h2>Manage Shops</h2>
+      <p>Review and approve laundry shop registrations</p>
+    </div>
+    <a href="{% url 'admin_dashboard' %}" class="btn btn-outline">← Dashboard</a>
+  </div>
+
+  <div class="sub-nav" style="margin-bottom:24px;">
+    <a href="{% url 'admin_shops' %}" class="sub-tab {% if not status_filter %}active{% endif %}"><i class="bi bi-grid-3x3-gap"></i> All</a>
+    <a href="?status=pending" class="sub-tab {% if status_filter == 'pending' %}active{% endif %}"><i class="bi bi-hourglass-split"></i> Pending</a>
+    <a href="?status=approved" class="sub-tab {% if status_filter == 'approved' %}active{% endif %}"><i class="bi bi-check2-circle"></i> Approved</a>
+    <a href="?status=suspended" class="sub-tab {% if status_filter == 'suspended' %}active{% endif %}"><i class="bi bi-slash-circle"></i> Suspended</a>
+    <a href="?status=rejected" class="sub-tab {% if status_filter == 'rejected' %}active{% endif %}"><i class="bi bi-x-circle"></i> Rejected</a>
+  </div>
+
+  <div class="table-wrapper">
+    <table class="table">
+      <thead>
+        <tr><th>Shop</th><th>Owner</th><th>Status</th><th>Address</th><th>Date</th><th>Actions</th></tr>
+      </thead>
+      <tbody>
+        {% for shop in shops %}
+          <tr>
+            <td>
+              <div style="display:flex; align-items:center; gap:10px;">
+                {% if shop.logo %}
+                  <img src="{{ shop.logo.url }}" alt="{{ shop.name }}" class="table-shop-avatar" loading="lazy" decoding="async">
+                {% else %}
+                  <div style="width:32px;height:32px;border-radius:8px;background:var(--primary);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:12px;font-family:'Outfit',sans-serif;">{{ shop.name|slice:":2"|upper }}</div>
+                {% endif %}
+                <strong>{{ shop.name }}</strong>
+              </div>
+            </td>
+            <td>
+              {{ shop.owner.email }}
+              {% if shop.owner_government_id or shop.owner_selfie_with_id %}
+                <div style="font-size:12px; margin-top:4px;">
+                  {% if shop.owner_government_id %}<a href="{% url 'serve_shop_doc' shop.id 'owner_government_id' %}" target="_blank" rel="noopener"><i class="bi bi-person-badge"></i> ID</a>{% endif %}
+                  {% if shop.owner_selfie_with_id %}<a href="{% url 'serve_shop_doc' shop.id 'owner_selfie_with_id' %}" target="_blank" rel="noopener" style="margin-left:8px;"><i class="bi bi-camera"></i> Selfie</a>{% endif %}
+                </div>
+              {% elif shop.status == 'pending' %}
+                <div style="font-size:12px; color:var(--text-light); margin-top:4px;">No ID documents</div>
+              {% endif %}
+            </td>
+            <td><span class="badge badge-shop-{{ shop.status }}">{{ shop.get_status_display }}</span></td>
+            <td style="font-size:12px; color:var(--text-secondary);">{{ shop.address|truncatechars:40 }}</td>
+            <td>{{ shop.created_at|date:"M d, Y" }}</td>
+            <td>
+              <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                {% if shop.status == 'pending' %}
+                  <form method="post" action="{% url 'admin_shop_action' shop.id %}" style="display:inline;">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="approve">
+                    <button type="submit" class="btn btn-xs btn-success">✓ Approve</button>
+                  </form>
+                  <button class="btn btn-xs btn-danger" onclick="toggleRejectForm({{ shop.id }})">✕ Reject</button>
+                {% endif %}
+                {% if shop.status == 'approved' %}
+                  <form method="post" action="{% url 'admin_shop_action' shop.id %}" style="display:inline;">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="suspend">
+                    <button type="submit" class="btn btn-xs btn-warning">
+                      <i class="bi bi-slash-circle"></i> Suspend
+                    </button>
+                  </form>
+                {% endif %}
+                {% if shop.status == 'suspended' %}
+                  <form method="post" action="{% url 'admin_shop_action' shop.id %}" style="display:inline;">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="unsuspend">
+                    <button type="submit" class="btn btn-xs btn-success">
+                      <i class="bi bi-check2-circle"></i> Reinstate
+                    </button>
+                  </form>
+                {% endif %}
+                {% if shop.status != 'pending' %}
+                  <button class="btn btn-xs btn-danger" onclick="toggleDeleteConfirm({{ shop.id }})">
+                    <i class="bi bi-trash"></i> Delete
+                  </button>
+                {% endif %}
+              </div>
+              {% if shop.status == 'pending' %}
+                <form method="post" action="{% url 'admin_shop_action' shop.id %}" id="reject-form-{{ shop.id }}" style="display:none; margin-top:8px;">
+                  {% csrf_token %}
+                  <input type="hidden" name="action" value="reject">
+                  <div style="display:flex; gap:8px;">
+                    <input type="text" name="reason" placeholder="Rejection reason" required style="font-size:12px; padding:8px 10px;">
+                    <button type="submit" class="btn btn-xs btn-danger">Confirm</button>
+                  </div>
+                </form>
+              {% endif %}
+              {% if shop.status != 'pending' %}
+                <form method="post" action="{% url 'admin_shop_action' shop.id %}" id="delete-confirm-{{ shop.id }}" style="display:none; margin-top:8px;">
+                  {% csrf_token %}
+                  <input type="hidden" name="action" value="delete">
+                  <div style="background:#fff1f2; border:1px solid #fca5a5; border-radius:8px; padding:10px 12px; font-size:12px;">
+                    <p style="margin:0 0 8px; color:#b91c1c; font-weight:600;">Delete "{{ shop.name }}"?</p>
+                    <p style="margin:0 0 10px; color:#6b7280;">This will permanently delete the shop and all its orders. This cannot be undone.</p>
+                    <div style="display:flex; gap:8px;">
+                      <button type="submit" class="btn btn-xs btn-danger">Yes, Delete</button>
+                      <button type="button" class="btn btn-xs btn-outline" onclick="toggleDeleteConfirm({{ shop.id }})">Cancel</button>
+                    </div>
+                  </div>
+                </form>
+              {% endif %}
+            </td>
+          </tr>
+        {% empty %}
+          <tr>
+            <td colspan="6" class="table-empty-cell"><i class="bi bi-shop" aria-hidden="true"></i> No shops found.</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+function toggleRejectForm(id) {
+  const form = document.getElementById('reject-form-' + id);
+  form.style.display = form.style.display === 'none' ? 'block' : 'none';
+}
+function toggleDeleteConfirm(id) {
+  const form = document.getElementById('delete-confirm-' + id);
+  form.style.display = form.style.display === 'none' ? 'block' : 'none';
+}
+</script>
+{% endblock %}

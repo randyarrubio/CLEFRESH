@@ -1,0 +1,273 @@
+{% extends 'base.html' %}
+{% load shop_extras %}
+{% block title %}Rider Workflow - Order #{{ order.id }}{% endblock %}
+{% block content %}
+<div class="rw">
+  <section class="page-header">
+    <div>
+      <nav class="page-crumbs" aria-label="Breadcrumb"><a href="{% url 'rider_dashboard' %}">My tasks</a><span class="page-crumbs-sep" aria-hidden="true">/</span><span aria-current="page">Order #{{ order.id }}</span></nav>
+      <h2>Order #{{ order.id }}</h2>
+      <p>{{ order.shop.name }} - {{ order.pickup_datetime|date:"M d, Y g:i A" }}</p>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:flex-end;">
+      <span class="badge badge-status-{{ order.status }}">{{ order.get_status_display }}</span>
+      <a href="{% url 'rider_dashboard' %}" class="btn btn-outline"><i class="bi bi-arrow-left"></i>Dashboard</a>
+    </div>
+  </section>
+
+  <div class="rw-grid">
+    <main>
+      <section class="rw-panel">
+        <div class="rw-map">
+          <svg class="rw-route" viewBox="0 0 720 260" preserveAspectRatio="none">
+            <path d="M340 120 Q520 40 590 62" fill="none" stroke="#1287d9" stroke-width="3" stroke-dasharray="8 7"/>
+            <path d="M340 120 Q210 168 145 184" fill="none" stroke="#13b8c8" stroke-width="3" stroke-dasharray="8 7"/>
+            <path d="M145 184 Q430 230 610 205" fill="none" stroke="#2ecc71" stroke-width="3" stroke-dasharray="8 7"/>
+          </svg>
+          <div class="rw-pin rw-you"><span class="rw-dot"></span><span>You</span></div>
+          <div class="rw-pin rw-pickup"><span class="rw-dot"></span><span>Pickup</span></div>
+          <div class="rw-pin rw-shop"><span class="rw-dot"></span><span>Shop</span></div>
+          <div class="rw-pin rw-delivery"><span class="rw-dot"></span><span>Delivery</span></div>
+          {% if GOOGLE_MAPS_API_KEY and order.status != 'delivered' %}
+            <div id="riderNavMap" class="rw-map-live" role="img" aria-label="Map of your route"
+                 data-stage="{% if order.status == 'accepted' %}pickup{% elif order.status == 'ready' or order.status == 'out_for_delivery' %}delivery{% else %}shop{% endif %}"
+                 data-pickup-lat="{{ order.pickup_lat|default:'' }}" data-pickup-lng="{{ order.pickup_lng|default:'' }}"
+                 data-shop-lat="{{ order.shop.latitude|default:'' }}" data-shop-lng="{{ order.shop.longitude|default:'' }}"
+                 data-delivery-lat="{{ order.delivery_lat|default:'' }}" data-delivery-lng="{{ order.delivery_lng|default:'' }}"></div>
+          {% endif %}
+          {% if order.status != 'delivered' %}
+            {% if order.status == 'accepted' %}{% firstof order.pickup_address as nav_address %}{% elif order.status == 'ready' or order.status == 'out_for_delivery' %}{% firstof order.delivery_address as nav_address %}{% else %}{% firstof order.shop.address as nav_address %}{% endif %}
+            <a class="rw-nav-btn" target="_blank" rel="noopener"
+               href="https://www.google.com/maps/dir/?api=1&amp;destination={{ nav_address|urlencode }}">
+              <i class="bi bi-sign-turn-right" aria-hidden="true"></i>
+              Navigate to {% if order.status == 'accepted' %}pickup{% elif order.status == 'ready' or order.status == 'out_for_delivery' %}customer{% else %}shop{% endif %}
+            </a>
+          {% endif %}
+        </div>
+        <div class="rw-body">
+          <div class="rw-steps">
+            <div class="rw-step {% if order.status != 'accepted' %}done{% else %}active{% endif %}" data-num="1">Pickup</div>
+            <div class="rw-step {% if order.status == 'picked_up' %}active{% elif order.status != 'accepted' %}done{% endif %}" data-num="2">Drop shop</div>
+            <div class="rw-step {% if order.status in processing_statuses or order.status == 'ready' or order.status == 'out_for_delivery' %}active{% elif order.status == 'delivered' %}done{% endif %}" data-num="3">Deliver</div>
+            <div class="rw-step {% if order.status == 'delivered' %}done active{% endif %}" data-num="4">Done</div>
+          </div>
+
+          <div class="rw-panel rw-focus">
+            <div class="rw-focus-head">
+              <div>
+                {% if order.status == 'accepted' %}
+                  <h3>Pickup from customer</h3>
+                {% elif order.status == 'picked_up' %}
+                  <h3>Drop laundry at shop</h3>
+                {% elif order.status == 'ready' or order.status == 'out_for_delivery' %}
+                  <h3>Deliver to customer</h3>
+                {% elif order.status == 'delivered' %}
+                  <h3>Job complete</h3>
+                {% else %}
+                  <h3>Current task</h3>
+                {% endif %}
+              </div>
+              {% if order.payment_method == 'cod' %}<span class="badge badge-cod">COD</span>{% endif %}
+            </div>
+            <div class="rw-info">
+              <div class="rw-row"><i class="bi bi-person"></i><span><strong>Customer:</strong> {{ order.customer.get_full_name|default:order.customer.email }}</span></div>
+              <div class="rw-row"><i class="bi bi-shop"></i><span><strong>Shop:</strong> {{ order.shop.name }}</span></div>
+              <div class="rw-row"><i class="bi bi-geo-alt"></i><span><strong>Pickup:</strong> {{ order.pickup_address }}</span></div>
+              <div class="rw-row"><i class="bi bi-house-door"></i><span><strong>Delivery:</strong> {{ order.delivery_address }}</span></div>
+            </div>
+            {% if order.notes %}<div class="rw-note"><i class="bi bi-chat-dots"></i> {{ order.notes }}</div>{% endif %}
+          </div>
+
+          <div class="rw-card rw-panel">
+            <h3><i class="bi bi-receipt"></i>Order details</h3>
+            <div class="rw-facts">
+              <div class="rw-fact"><span>Payment</span><strong>{{ order.get_payment_method_display }}</strong></div>
+              <div class="rw-fact"><span>Payment status</span><strong>{{ order.get_payment_status_display }}</strong></div>
+              <div class="rw-fact"><span>Total</span><strong>{{ order|order_total }}</strong></div>
+              <div class="rw-fact"><span>Schedule</span><strong>{{ order.pickup_datetime|date:"M d, g:i A" }}</strong></div>
+            </div>
+          </div>
+
+          <div class="rw-card rw-panel">
+            <h3><i class="bi bi-arrow-repeat"></i>Next action</h3>
+            {% if order.status != 'delivered' %}
+              <form method="post" action="{% url 'rider_update_status' order.id %}" class="rw-action-grid">
+                {% csrf_token %}
+                {% if order.status == 'accepted' %}
+                  <input type="hidden" name="status" value="picked_up">
+                  {% if not has_pickup_proof %}
+                    <div class="rw-proof-guard"><i class="bi bi-camera"></i> Upload a pickup proof photo before confirming pickup.</div>
+                  {% endif %}
+                  {% if has_pickup_proof %}
+                    <button type="submit" class="btn btn-primary btn-full"><i class="bi bi-check2-circle"></i>Confirm pickup</button>
+                  {% else %}
+                    <button type="button" class="btn btn-primary btn-full" data-rider-proof-warning="Upload a pickup proof photo before confirming pickup."><i class="bi bi-check2-circle"></i>Confirm pickup</button>
+                  {% endif %}
+                {% elif order.status == 'picked_up' %}
+                  {% if has_dropoff_proof %}
+                    <p style="color:var(--text-secondary);text-align:center;padding:8px 0;"><i class="bi bi-shop" style="color:#0E9AA7;"></i> Laundry dropped off at shop. Waiting for shop to finish processing.</p>
+                  {% else %}
+                    <div class="rw-proof-guard"><i class="bi bi-camera"></i> Upload a shop drop-off proof photo to confirm drop-off.</div>
+                    <button type="button" class="btn btn-primary btn-full" data-rider-proof-warning="Upload a shop drop-off proof photo to confirm drop-off."><i class="bi bi-shop"></i>Confirm shop drop-off</button>
+                  {% endif %}
+                {% elif order.status == 'ready' %}
+                  <input type="hidden" name="status" value="out_for_delivery">
+                  {% if delivery_block %}
+                    <div class="rw-proof-guard"><i class="bi bi-hourglass-split"></i> Not ready to deliver: {{ delivery_block }}</div>
+                  {% endif %}
+                  {% if not has_dropoff_proof %}
+                    <div class="rw-proof-guard"><i class="bi bi-camera"></i> Upload a shop drop-off proof photo before confirming.</div>
+                  {% endif %}
+                  {% if has_dropoff_proof %}
+                    <button type="submit" class="btn btn-primary btn-full"><i class="bi bi-truck"></i>Confirm out for delivery</button>
+                  {% else %}
+                    <button type="button" class="btn btn-primary btn-full" data-rider-proof-warning="Upload a shop drop-off proof photo before confirming."><i class="bi bi-truck"></i>Confirm out for delivery</button>
+                  {% endif %}
+                {% elif order.status == 'out_for_delivery' %}
+                  <input type="hidden" name="status" value="delivered">
+                  {% if order.payment_method == 'cod' and order.payment_status != 'paid' %}
+                    <label class="checkbox-label"><input type="checkbox" name="cod_collected" required style="width:auto;"> I collected <strong>₱{{ order.total_amount|floatformat:"2g" }}</strong> in cash from the customer</label>
+                  {% endif %}
+                  {% if not has_delivery_proof %}
+                    <div class="rw-proof-guard"><i class="bi bi-camera"></i> Upload a delivery proof photo before confirming delivery.</div>
+                  {% endif %}
+                  {% if has_delivery_proof %}
+                    <button type="submit" class="btn btn-primary btn-full"><i class="bi bi-house-check"></i>Confirm delivery</button>
+                  {% else %}
+                    <button type="button" class="btn btn-primary btn-full" data-rider-proof-warning="Upload a delivery proof photo before confirming delivery."><i class="bi bi-house-check"></i>Confirm delivery</button>
+                  {% endif %}
+                {% else %}
+                  <p style="color:var(--text-secondary);">This order is waiting for shop processing before the next rider action.</p>
+                {% endif %}
+              </form>
+            {% else %}
+              <div style="text-align:center;padding:14px;color:#2f6717;">
+                <i class="bi bi-check-circle" style="font-size:42px;color:#2ecc71;"></i>
+                <h3 style="margin-top:8px;">Delivery complete</h3>
+                <p style="color:var(--text-secondary);">This job is done.</p>
+                {% if order.payment_method == 'cod' and order.payment_status != 'paid' %}
+                  <form method="post" action="{% url 'confirm_cash_received' order.id %}" style="margin-top:12px;"
+                        data-confirm="Only confirm if you collected the full amount from the customer."
+                        data-confirm-title="Cash received for order #{{ order.id }}?" data-confirm-action="Yes, cash received" data-confirm-cancel="Not yet">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-cash-coin"></i> Confirm ₱{{ order.total_amount|floatformat:"2g" }} cash received</button>
+                  </form>
+                {% endif %}
+              </div>
+            {% endif %}
+          </div>
+
+          <div class="rw-card rw-panel">
+            <h3><i class="bi bi-camera"></i>Photo proof</h3>
+            {% if order.status == 'accepted' and not has_pickup_proof %}
+              <form method="post" enctype="multipart/form-data" action="{% url 'upload_proof' order.id %}" class="rw-action-grid">
+                {% csrf_token %}
+                <input type="hidden" name="proof_type" value="pickup">
+                <div class="rw-photo">
+                  <i class="bi bi-camera"></i>
+                  <label style="font-weight:800;color:#172033;">Upload pickup proof</label>
+                  <input type="file" name="photo" accept="image/*" required style="margin-top:10px;">
+                </div>
+                <button type="submit" class="btn btn-outline btn-full">Upload Photo</button>
+              </form>
+            {% elif current_proof_type == 'dropoff' and not has_dropoff_proof %}
+              <form method="post" enctype="multipart/form-data" action="{% url 'upload_proof' order.id %}" class="rw-action-grid">
+                {% csrf_token %}
+                <input type="hidden" name="proof_type" value="dropoff">
+                <div class="rw-photo">
+                  <i class="bi bi-camera"></i>
+                  <label style="font-weight:800;color:#172033;">Upload drop-off proof</label>
+                  <input type="file" name="photo" accept="image/*" required style="margin-top:10px;">
+                </div>
+                <button type="submit" class="btn btn-outline btn-full">Upload Photo</button>
+              </form>
+            {% elif order.status == 'out_for_delivery' and not has_delivery_proof %}
+              <form method="post" enctype="multipart/form-data" action="{% url 'upload_proof' order.id %}" class="rw-action-grid">
+                {% csrf_token %}
+                <input type="hidden" name="proof_type" value="delivery">
+                <div class="rw-photo">
+                  <i class="bi bi-camera"></i>
+                  <label style="font-weight:800;color:#172033;">Upload delivery proof</label>
+                  <input type="file" name="photo" accept="image/*" required style="margin-top:10px;">
+                </div>
+                {% if order.payment_method == 'cod' and order.payment_status != 'paid' %}
+                  {# Uploading delivery proof completes the order only when the cash is confirmed too. #}
+                  <label class="checkbox-label"><input type="checkbox" name="cod_collected" style="width:auto;"> I collected <strong>₱{{ order.total_amount|floatformat:"2g" }}</strong> in cash from the customer</label>
+                {% endif %}
+                <button type="submit" class="btn btn-outline btn-full">Upload Photo</button>
+              </form>
+            {% elif order.status not in 'delivered' %}
+              <p style="color:#2ecc71;font-weight:700;text-align:center;padding:8px 0;">
+                <i class="bi bi-check-circle-fill"></i> Photo proof already submitted for this step.
+              </p>
+            {% endif %}
+            {% for proof in proofs %}
+              <div class="rw-proof">
+                <span class="badge badge-service">{{ proof.get_proof_type_display }}</span>
+                <img src="{{ proof.photo.url }}" alt="proof" loading="lazy" decoding="async">
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <aside class="rw-panel rw-card rw-side">
+      <h3><i class="bi bi-list-check"></i>Status timeline</h3>
+      <div class="rw-timeline">
+        {% for log in logs %}
+          <div class="rw-log {% if forloop.last %}active{% endif %}">
+            <h5>{{ log.status|humanize_status }}</h5>
+            <span>{{ log.timestamp|date:"M d, g:i A" }}</span>
+          </div>
+        {% empty %}
+          <p style="color:var(--text-light); font-size:13px;">No status updates yet.</p>
+        {% endfor %}
+      </div>
+    </aside>
+  </div>
+</div>
+
+<div class="rw-proof-modal" id="riderProofWarningModal" aria-hidden="true">
+  <div class="rw-proof-modal-backdrop" data-rider-proof-close></div>
+  <div class="rw-proof-modal-card" role="dialog" aria-modal="true" aria-labelledby="riderProofWarningTitle">
+    <div class="rw-proof-modal-icon"><i class="bi bi-camera"></i></div>
+    <h3 id="riderProofWarningTitle">Photo proof required</h3>
+    <p id="riderProofWarningText">Upload a proof photo before confirming this action.</p>
+    <button type="button" class="btn btn-primary btn-full" data-rider-proof-close>OK</button>
+  </div>
+</div>
+
+<script>
+  const riderId = {{ request.user.id }};
+  // Location is only shared while the customer can see it (out for delivery).
+  const isRiderPage = {% if order.status == 'out_for_delivery' %}true{% else %}false{% endif %};
+
+  (function () {
+    const modal = document.getElementById('riderProofWarningModal');
+    const text = document.getElementById('riderProofWarningText');
+    if (!modal || !text) return;
+
+    function closeModal() {
+      modal.classList.remove('is-open');
+      modal.setAttribute('aria-hidden', 'true');
+      document.body.classList.remove('rider-message-open');
+    }
+
+    document.querySelectorAll('[data-rider-proof-warning]').forEach((button) => {
+      button.addEventListener('click', () => {
+        text.textContent = button.getAttribute('data-rider-proof-warning') || 'Upload a proof photo before confirming this action.';
+        modal.classList.add('is-open');
+        modal.setAttribute('aria-hidden', 'false');
+        document.body.classList.add('rider-message-open');
+      });
+    });
+    document.querySelectorAll('[data-rider-proof-close]').forEach((button) => {
+      button.addEventListener('click', closeModal);
+    });
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') closeModal();
+    });
+  })();
+</script>
+{% endblock %}

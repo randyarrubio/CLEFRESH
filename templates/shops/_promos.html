@@ -1,0 +1,17 @@
+{# Live promos for one shop. Context: promos (iterable of Promotion), optional compact=True #}
+{% if promos %}
+  <div class="promo-list{% if compact %} promo-list-compact{% endif %}">
+    {% for promo in promos %}
+      <article class="promo-card">
+        <span class="promo-tag"><i class="bi bi-tag-fill" aria-hidden="true"></i>{{ promo.discount_label }}</span>
+        <div class="promo-body">
+          <h4 class="promo-title">{{ promo.title }}</h4>
+          {% if promo.description and not compact %}<p class="promo-desc">{{ promo.description }}</p>{% endif %}
+          <p class="promo-meta">
+            Valid until {{ promo.end_date|date:"M j, Y" }}{% if promo.min_order_amount %} · Min. order ₱{{ promo.min_order_amount }}{% endif %}
+          </p>
+        </div>
+      </article>
+    {% endfor %}
+  </div>
+{% endif %}

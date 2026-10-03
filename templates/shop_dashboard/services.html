@@ -1,0 +1,73 @@
+{% extends 'base.html' %}
+{% block title %}Services — {{ shop.name }}{% endblock %}
+{% block content %}
+<div class="page-shell">
+  <div class="page-header">
+    <div>
+      <nav class="page-crumbs" aria-label="Breadcrumb"><a href="{% url 'shop_dashboard' %}">Shop dashboard</a><span class="page-crumbs-sep" aria-hidden="true">/</span><span aria-current="page">Services</span></nav>
+      <h2>Services & Pricing</h2>
+      <p>{{ shop.name }}</p>
+    </div>
+    <a href="{% url 'shop_dashboard' %}" class="btn btn-outline">← Dashboard</a>
+  </div>
+
+  <div class="split-layout">
+    <div class="split-aside">
+      <div class="card">
+        <h3><i class="bi bi-plus-circle glyph-icon"></i>Add Service</h3>
+        <form method="post" action="{% url 'create_service' %}">
+          {% csrf_token %}
+          <div class="form-group">
+            <label for="svc-name">Service Type</label>
+            <select id="svc-name" name="name">
+              <option value="wash">Wash</option>
+              <option value="dry">Dry</option>
+              <option value="fold">Fold</option>
+              <option value="iron">Iron</option>
+              <option value="dry_clean">Dry Clean</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="svc-price-kg">Price per KG (₱)</label>
+            <input id="svc-price-kg" type="number" name="price_per_kg" step="0.01" min="0" placeholder="Leave blank if not applicable">
+          </div>
+          <div class="form-group">
+            <label for="svc-price-piece">Price per Piece (₱)</label>
+            <input id="svc-price-piece" type="number" name="price_per_piece" step="0.01" min="0" placeholder="Leave blank if not applicable">
+          </div>
+          <button type="submit" class="btn btn-primary btn-full">Add Service</button>
+        </form>
+      </div>
+    </div>
+
+    <div class="split-main">
+      <div class="table-wrapper">
+        <table class="table">
+          <thead>
+            <tr><th>Service</th><th>Per KG</th><th>Per Piece</th><th></th></tr>
+          </thead>
+          <tbody>
+            {% for svc in services %}
+              <tr>
+                <td><strong>{{ svc.get_name_display }}</strong></td>
+                <td>{% if svc.price_per_kg %}₱{{ svc.price_per_kg }}{% else %}<span style="color:var(--text-light);">—</span>{% endif %}</td>
+                <td>{% if svc.price_per_piece %}₱{{ svc.price_per_piece }}{% else %}<span style="color:var(--text-light);">—</span>{% endif %}</td>
+                <td>
+                  <form method="post" action="{% url 'delete_service' svc.id %}" data-confirm="Customers will no longer be able to book {{ svc.get_name_display }}. Services with past orders can't be deleted." data-confirm-title="Delete this service?" data-confirm-action="Delete service">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-xs btn-danger">Delete</button>
+                  </form>
+                </td>
+              </tr>
+            {% empty %}
+              <tr>
+                <td colspan="4" class="table-empty-cell"><i class="bi bi-basket" aria-hidden="true"></i> No services yet. Add your first service above.</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
