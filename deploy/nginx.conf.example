@@ -1,7 +1,8 @@
 # CLEFRESH — example nginx site config (production).
 # Assumes: gunicorn on 127.0.0.1:8000, project at /srv/clefresh, TLS certs already issued.
 # Matching .env: DEBUG=False, STATIC_HASHED_FILENAMES=True, CLIENT_IP_HEADER=HTTP_X_REAL_IP,
-#                SESSION_COOKIE_SECURE=True, CSRF_COOKIE_SECURE=True, SECURE_SSL_REDIRECT=True
+#                TRUST_X_FORWARDED_PROTO=True, SESSION_COOKIE_SECURE=True,
+#                CSRF_COOKIE_SECURE=True, SECURE_SSL_REDIRECT=True, DATABASE_URL=postgresql://...
 # Deploy: python manage.py collectstatic --noinput   (writes hashed files to staticfiles/)
 
 server {

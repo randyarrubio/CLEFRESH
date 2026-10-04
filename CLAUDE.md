@@ -65,7 +65,8 @@ Laundry shop booking platform. Customers find nearby laundry shops, book pickup/
 - `DJANGO_ADMIN_URL` env var controls the Django admin path (default: `django-admin/`) — change in production
 - **Google Maps API key** only injected into templates on `/`, `/orders/`, `/rider/`, `/shops/`, `/shop-dashboard/` — not global
 - **PayMongo public key** only injected on `/payment/` paths — not global
-- **No Django email backend configured** — all email including forgot-password and shop-owner verification code goes through Formspree (`utils/email_notifications.py`).
+- `NOTIFICATIONS_SSE` (default True) — set False on PythonAnywhere; bell falls back to 30 s polling. Deploy guide: `deploy/PYTHONANYWHERE.md`
+- **SMTP is required for transactional email** — password resets and verification codes are never sent through Formspree. Formspree is used only for non-sensitive notification fallback; configure SMTP in production (`utils/email_notifications.py`).
 
 ## Security Hardening (implemented)
 | Feature | Location |
@@ -163,7 +164,7 @@ Role-based rendering in `home_view`:
 
 ## Important Patterns
 - Role guard decorator: `@role_required('shop_owner')` from `accounts/decorators.py`
-- Email sending: always use `utils/email_notifications.py` + log with `EmailLog` model. Sends via Formspree — no SMTP configured.
+- Email sending: always use `utils/email_notifications.py` + log with `EmailLog` model. SMTP is preferred and required for password resets and verification codes; Formspree is not transactional email.
 - Geocoding: `utils/geocode.py` — called automatically in `Shop.save()`
 - Status display for `OrderStatusLog`: use `{% load shop_extras %}` then `{{ log.status|humanize_status }}` — preferred over `get_status_display()` in templates
 - Rider doc URLs: use `{% url 'serve_rider_doc' filename %}` — never link to `/media/rider_docs/` directly
@@ -177,7 +178,7 @@ Role-based rendering in `home_view`:
 - Broadcast: modal only — `admin_broadcast_view` always redirects after POST, never renders `broadcast.html`
 
 ## Known Limitations / To Do
-- Forgot-password emails and shop-owner verification codes go through Formspree. Delivery depends on Formspree plan/config. For guaranteed delivery, configure Django SMTP (`EMAIL_BACKEND`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD` in `.env`) and switch `utils/email_notifications.py` to use `django.core.mail.send_mail`.
+- Forgot-password emails and shop-owner verification codes require SMTP (`EMAIL_HOST`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD` in `.env`). Formspree does not deliver transactional messages to arbitrary recipients.
 - Rider docs auth view works in dev; in production the web server (nginx) must block `/media/rider_docs/` direct access.
 - `SECURE_HSTS_SECONDS` defaults to 0 — enable in production via `.env`.
 
@@ -234,7 +235,7 @@ Role-based rendering in `home_view`:
 - `@login_required` from `django.contrib.auth.decorators`
 - `@role_required('role')` from `accounts/decorators.py`
 - SSO completion view: `accounts/views.sso_complete_view`
-- Forgot password: custom flow at `/auth/forgot-password/` using `default_token_generator` + Formspree
+- Forgot password: custom flow at `/auth/forgot-password/` using `default_token_generator` + SMTP (`utils/email_notifications.py`)
 
 ### Code Review
 - Flag: N+1 queries, missing `@login_required` / `@role_required`, centavo unit errors, unvalidated input, `PHP` currency symbol (should be `₱`), `|title|cut:"_"` on status fields (use `|humanize_status`), direct `/media/rider_docs/` links (use `serve_rider_doc`), bypassing `valid_transitions` in order status updates

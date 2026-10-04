@@ -18,4 +18,5 @@ def paymongo_public_key(request):
 def navigation_context(request):
     return {
         'is_shop_owner_area': request.path.startswith('/shop-dashboard/'),
+        'NOTIFICATIONS_SSE': settings.NOTIFICATIONS_SSE,
     }

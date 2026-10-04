@@ -1,8 +1,9 @@
 import json
 import time
 
+from django.conf import settings
 from django.contrib.auth.decorators import login_required
-from django.http import JsonResponse, StreamingHttpResponse
+from django.http import Http404, JsonResponse, StreamingHttpResponse
 from django.views.decorators.http import require_POST
 
 from .models import Notification
@@ -108,6 +109,8 @@ def _sse_generator(user_id, resume_after_id):
 
 @login_required
 def notifications_stream_view(request):
+    if not settings.NOTIFICATIONS_SSE:
+        raise Http404
     # Honor Last-Event-ID for reconnect — avoids re-toasting already-seen events
     try:
         resume_after_id = int(request.headers.get('Last-Event-ID', 0))

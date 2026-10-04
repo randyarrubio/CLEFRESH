@@ -145,7 +145,7 @@
   </style>
   {% block extra_head %}{% endblock %}
 </head>
-<body>
+<body{% if not NOTIFICATIONS_SSE %} data-notif-sse="off"{% endif %}>
   <a href="#main-content" class="skip-link">Skip to main content</a>
   <div class="site-water-bg" aria-hidden="true">
     <span class="site-bubble site-bubble-1"></span>
@@ -231,7 +231,7 @@
         <a href="{% url 'profile' %}" class="topbar-avatar">
           {{ user.first_name|first|upper|default:user.email|first|upper }}{{ user.last_name|first|upper|default:"" }}
         </a>
-        <a href="{% url 'logout' %}" class="btn btn-ghost btn-sm" data-logout>Logout</a>
+        <a href="{% url 'logout' %}" class="btn btn-ghost btn-sm topbar-logout" data-logout>Logout</a>
       {% else %}
         <a href="{% url 'login' %}" class="btn btn-ghost btn-sm" data-login-modal>Login</a>
         <a href="{% url 'register' %}" class="btn btn-sm topbar-register" data-register-modal>Register</a>

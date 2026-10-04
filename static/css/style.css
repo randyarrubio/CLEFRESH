@@ -1453,7 +1453,12 @@ textarea { resize: vertical; min-height: 80px; }
   .topbar-logo-text > span { display: none; }
   .topbar-nav { gap: 2px; }
   .topbar-nav a { padding: 6px 10px; font-size: 12px; }
-  .topbar-right .btn-ghost { display: none; }
+  .topbar-logout { display: none; }
+}
+
+@media (max-width: 420px) {
+  .topbar-right { gap: 6px; }
+  .topbar-right .btn-sm { padding: 6px 10px; font-size: 12px; }
 }
 
 @media (max-width: 768px) {

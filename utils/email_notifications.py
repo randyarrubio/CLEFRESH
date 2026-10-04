@@ -11,7 +11,7 @@ _SENSITIVE_EVENTS = {'email_verification', 'password_reset'}
 
 
 def _smtp_configured():
-    return bool(getattr(settings, 'EMAIL_HOST', '') and getattr(settings, 'EMAIL_HOST_USER', ''))
+    return bool(getattr(settings, 'EMAIL_HOST', ''))
 
 
 def _deliver_smtp(recipient_email, subject, body):
@@ -34,10 +34,10 @@ def _deliver_formspree(payload, recipient_email, subject, body_preview, order, e
         if _smtp_configured():
             _deliver_smtp(recipient_email, subject, payload['message'])
             status_code = 202
-        elif event_type in _SENSITIVE_EVENTS and not settings.DEBUG:
-            # Formspree delivers to the form owner, not the recipient: a reset link or code
-            # sent that way would land in someone else's inbox. Production needs SMTP.
-            logger.error("Email event %s for %s not sent: configure SMTP (EMAIL_HOST) to send codes and reset links.",
+        elif event_type in _SENSITIVE_EVENTS:
+            # Formspree is a contact-form relay, not a transactional mail service. Never
+            # send reset links or verification codes to a third-party form inbox.
+            logger.error("Email event %s for %s not sent: configure SMTP to deliver transactional email.",
                          event_type, recipient_email)
         elif settings.FORMSPREE_ENDPOINT:
             response = requests.post(

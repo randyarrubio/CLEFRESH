@@ -50,6 +50,11 @@ MIDDLEWARE = [
     'allauth.account.middleware.AccountMiddleware',
 ]
 
+# Enable only when TLS is terminated by a trusted reverse proxy.
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https') if config(
+    'TRUST_X_FORWARDED_PROTO', default=False, cast=bool
+) else None
+
 ROOT_URLCONF = 'clefresh.urls'
 
 TEMPLATES = [{
@@ -74,12 +79,48 @@ TEMPLATES = [{
 
 WSGI_APPLICATION = 'clefresh.wsgi.application'
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+_DATABASE_URL = config('DATABASE_URL', default='').strip()
+if _DATABASE_URL:
+    from urllib.parse import parse_qs, unquote, urlparse
+
+    _db_url = urlparse(_DATABASE_URL)
+    if _db_url.scheme in ('postgres', 'postgresql'):
+        _db_options = parse_qs(_db_url.query)
+        DATABASES = {'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': unquote(_db_url.path.lstrip('/')),
+            'USER': unquote(_db_url.username or ''),
+            'PASSWORD': unquote(_db_url.password or ''),
+            'HOST': _db_url.hostname or '',
+            'PORT': str(_db_url.port or 5432),
+            'CONN_MAX_AGE': config('DB_CONN_MAX_AGE', default=60, cast=int),
+            'OPTIONS': {'sslmode': _db_options.get('sslmode', ['prefer'])[0]},
+        }}
+    elif _db_url.scheme == 'sqlite':
+        _sqlite_name = unquote(_db_url.path)
+        if _db_url.netloc == 'localhost':
+            _sqlite_name = _sqlite_name.lstrip('/')
+        elif _db_url.netloc:
+            _sqlite_name = f'//{_db_url.netloc}{_sqlite_name}'
+        elif _sqlite_name.startswith('//'):
+            _sqlite_name = _sqlite_name[1:]
+        DATABASES = {'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': _sqlite_name or str(BASE_DIR / 'db.sqlite3'),
+        }}
+    else:
+        from django.core.exceptions import ImproperlyConfigured
+        raise ImproperlyConfigured('DATABASE_URL must use postgres://, postgresql://, or sqlite://.')
+    if not DATABASES['default']['NAME']:
+        from django.core.exceptions import ImproperlyConfigured
+        raise ImproperlyConfigured('DATABASE_URL must include a database name.')
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
     }
-}
 
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
@@ -169,6 +210,10 @@ else:
 PAYMENT_REMINDER_HOURS = [int(h) for h in config('PAYMENT_REMINDER_HOURS', default='24,48', cast=Csv())]
 PAYMENT_DUE_HOURS = config('PAYMENT_DUE_HOURS', default=72, cast=int)
 
+# Live notifications over SSE hold one worker per open tab. Turn off on hosts with a few
+# sync workers (PythonAnywhere/uWSGI) — the bell then polls /api/notifications/ every 30 s.
+NOTIFICATIONS_SSE = config('NOTIFICATIONS_SSE', default=True, cast=bool)
+
 # API Keys
 PAYMONGO_SECRET_KEY = config('PAYMONGO_SECRET_KEY', default='')
 PAYMONGO_PUBLIC_KEY = config('PAYMONGO_PUBLIC_KEY', default='')
@@ -183,8 +228,10 @@ EMAIL_BACKEND = config(
 EMAIL_HOST = config('EMAIL_HOST', default='')
 EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
 EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True, cast=bool)
+EMAIL_USE_SSL = config('EMAIL_USE_SSL', default=False, cast=bool)
 EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
 EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
+EMAIL_TIMEOUT = config('EMAIL_TIMEOUT', default=10, cast=int)
 DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default=EMAIL_HOST_USER or 'noreply@clefresh.local')
 
 LOGGING = {

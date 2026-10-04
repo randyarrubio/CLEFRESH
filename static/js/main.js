@@ -185,8 +185,8 @@ function _startPollingFallback() {
 function connectNotifSSE() {
   if (!document.getElementById('notifBadge')) return;
 
-  if (!window.EventSource) {
-    // Browser doesn't support SSE — use polling
+  if (!window.EventSource || document.body.dataset.notifSse === 'off') {
+    // No SSE support, or disabled server-side (NOTIFICATIONS_SSE=False) — use polling
     _startPollingFallback();
     return;
   }
