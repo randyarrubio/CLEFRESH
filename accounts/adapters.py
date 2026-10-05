@@ -52,3 +52,13 @@ class SocialAccountAdapter(DefaultSocialAccountAdapter):
         request.session['pending_google_sso'] = sociallogin.serialize()
         start_pending_sso_verification(request, email, sociallogin.user.get_full_name())
         raise ImmediateHttpResponse(redirect('sso_verify_email'))
+    
+    def on_authentication_error(self, request, provider, error=None, exception=None, extra_context=None):
+        import logging
+        logging.getLogger(__name__).warning(
+            'Google login failed: provider=%s error=%s exception=%r',
+            getattr(provider, 'id', provider), error, exception,
+        )
+        return super().on_authentication_error(
+            request, provider, error=error, exception=exception, extra_context=extra_context,
+        )
