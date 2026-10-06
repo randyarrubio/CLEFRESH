@@ -49,12 +49,12 @@
             <td>{{ u.date_joined|date:"M d, Y" }}</td>
             <td>
               <div style="display:flex; gap:6px; flex-wrap:wrap;">
-                <form method="post" action="{% url 'admin_toggle_user' u.id %}" style="display:inline;">
-                  {% csrf_token %}
-                  <button type="submit" class="btn btn-xs {% if u.is_active %}btn-warning{% else %}btn-primary{% endif %}">
-                    {% if u.is_active %}Deactivate{% else %}Activate{% endif %}
-                  </button>
-                </form>
+                {% if not u.is_active %}
+                  <form method="post" action="{% url 'admin_toggle_user' u.id %}" style="display:inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-xs btn-primary">Activate</button>
+                  </form>
+                {% endif %}
                 {% if not u.is_superuser and u.id != request.user.id %}
                   <form method="post" action="{% url 'admin_delete_user' u.id %}" style="display:inline;" data-confirm="This permanently deletes {{ u.email }} and cascades to their orders, shops, and other data. This cannot be undone." data-confirm-title="Delete this user?" data-confirm-action="Delete user">
                     {% csrf_token %}
