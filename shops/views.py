@@ -379,7 +379,7 @@ INFO_PAGES = {
                 'body': [
                     'The admin panel covers shop approvals, rider verification, user management, order oversight, transaction history, business analytics, and broadcast announcements.',
                     'Shops can be approved, rejected, suspended (hidden from customers and locked from the owner dashboard, but reinstatable), or permanently deleted. Deletion also removes the shop\'s orders, so use it carefully.',
-                    'Riders are approved or rejected (with a reason) after their documents are reviewed. Rejecting a rider releases any jobs they have not yet picked up. User accounts can be deleted, and inactive accounts can be reactivated.',
+                    'Riders are approved or rejected (with a reason) after their documents are reviewed. Rejecting a rider releases any jobs they have not yet picked up. User accounts can be activated, deactivated, or deleted (admin accounts cannot be deactivated).',
                     'Broadcast announcements are sent from the Broadcast nav link and reach every user as an in-app notification.',
                 ],
             },

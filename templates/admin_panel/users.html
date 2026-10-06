@@ -49,10 +49,12 @@
             <td>{{ u.date_joined|date:"M d, Y" }}</td>
             <td>
               <div style="display:flex; gap:6px; flex-wrap:wrap;">
-                {% if not u.is_active %}
+                {% if not u.is_superuser and u.role != 'admin' %}
                   <form method="post" action="{% url 'admin_toggle_user' u.id %}" style="display:inline;">
                     {% csrf_token %}
-                    <button type="submit" class="btn btn-xs btn-primary">Activate</button>
+                    <button type="submit" class="btn btn-xs {% if u.is_active %}btn-warning{% else %}btn-primary{% endif %}">
+                      {% if u.is_active %}Deactivate{% else %}Activate{% endif %}
+                    </button>
                   </form>
                 {% endif %}
                 {% if not u.is_superuser and u.id != request.user.id %}
