@@ -233,7 +233,18 @@ EMAIL_USE_SSL = config('EMAIL_USE_SSL', default=False, cast=bool)
 EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
 EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
 EMAIL_TIMEOUT = config('EMAIL_TIMEOUT', default=10, cast=int)
+# Send notification emails in a background thread. Set False where threads don't run (PythonAnywhere).
+EMAIL_ASYNC = config('EMAIL_ASYNC', default=True, cast=bool)
 DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default=EMAIL_HOST_USER or 'noreply@clefresh.local')
+# HTTPS email API for hosts that block SMTP (Railway Free/Hobby), e.g.
+# EMAIL_BACKEND=anymail.backends.brevo.EmailBackend + BREVO_API_KEY.
+ANYMAIL = {
+    key: value for key, value in {
+        'BREVO_API_KEY': config('BREVO_API_KEY', default=''),
+        'RESEND_API_KEY': config('RESEND_API_KEY', default=''),
+        'SENDGRID_API_KEY': config('SENDGRID_API_KEY', default=''),
+    }.items() if value
+}
 
 LOGGING = {
     'version': 1,

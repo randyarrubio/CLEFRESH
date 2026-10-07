@@ -11,7 +11,8 @@ _SENSITIVE_EVENTS = {'email_verification', 'password_reset'}
 
 
 def _smtp_configured():
-    return bool(getattr(settings, 'EMAIL_HOST', ''))
+    # SMTP host, or an HTTPS API backend (anymail) for hosts that block SMTP ports (Railway).
+    return bool(getattr(settings, 'EMAIL_HOST', '')) or 'anymail' in settings.EMAIL_BACKEND
 
 
 def _deliver_smtp(recipient_email, subject, body):
@@ -24,10 +25,10 @@ def _deliver_smtp(recipient_email, subject, body):
     )
 
 
-def _deliver_formspree(payload, recipient_email, subject, body_preview, order, event_type):
-    """Run in a background thread: POST to Formspree and write EmailLog.
+def _deliver_formspree(payload, recipient_email, subject, body_preview, order, event_type, in_thread=True):
+    """Deliver via SMTP (or Formspree fallback) and write EmailLog.
 
-    The view returns immediately; this thread closes its own DB connection.
+    When run in a background thread, closes the thread's own DB connection afterwards.
     """
     status_code = None
     try:
@@ -69,7 +70,8 @@ def _deliver_formspree(payload, recipient_email, subject, body_preview, order, e
     except Exception:
         logger.exception("Failed to write EmailLog: event=%s recipient=%s", event_type, recipient_email)
     finally:
-        connection.close()
+        if in_thread:
+            connection.close()
 
 
 def send_email_notification(event_type, user, order=None, extra=None, force=False):
@@ -190,8 +192,10 @@ def send_email_notification(event_type, user, order=None, extra=None, force=Fals
     else:
         body_preview = tmpl['body'][:200]
 
-    threading.Thread(
-        target=_deliver_formspree,
-        args=(payload, user.email, tmpl['subject'], body_preview, order, event_type),
-        daemon=True,
-    ).start()
+    args = (payload, user.email, tmpl['subject'], body_preview, order, event_type)
+    # Codes and reset links are sent inline: the user is waiting for them, and hosts like
+    # PythonAnywhere (uWSGI without threads) never run background threads.
+    if event_type in _SENSITIVE_EVENTS or not getattr(settings, 'EMAIL_ASYNC', True):
+        _deliver_formspree(*args, in_thread=False)
+    else:
+        threading.Thread(target=_deliver_formspree, args=args, daemon=True).start()

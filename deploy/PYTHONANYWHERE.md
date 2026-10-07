@@ -45,6 +45,8 @@ EMAIL_USE_TLS=True
 EMAIL_HOST_USER=clefresh26@gmail.com
 EMAIL_HOST_PASSWORD=
 DEFAULT_FROM_EMAIL=CLEFRESH <clefresh26@gmail.com>
+# uWSGI here doesn't run background threads; send email inline
+EMAIL_ASYNC=False
 
 PAYMONGO_SECRET_KEY=
 PAYMONGO_PUBLIC_KEY=
