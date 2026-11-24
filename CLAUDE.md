@@ -75,6 +75,8 @@ Laundry shop booking platform. Customers find nearby laundry shops, book pickup/
 - `DJANGO_ADMIN_URL` env var controls the Django admin path (default: `django-admin/`) — change in production
 - **Google Maps API key** only injected into templates on `/`, `/orders/`, `/rider/`, `/shops/`, `/shop-dashboard/` — not global
 - **PayMongo public key** only injected on `/payment/` paths — not global
+- **Media on Railway:** uploads live on the `clefresh-volume` volume mounted at `/app/media`; with no nginx, Django serves public uploads (`SERVE_MEDIA`, default True — set False behind nginx). Private folders stay 404 (`clefresh/urls.py`)
+- Real Cantilan shops: `python manage.py seed_cantilan_shops` (photos in `shop data/`, demo owner logins written to git-ignored `shop data/demo_logins*.txt`)
 - `COD_TRUSTED_MIN_ORDERS` (default 1), `LOYALTY_PESOS_PER_POINT` (default 20), `LOYALTY_MAX_REDEEM_PERCENT` (default 50) — `.env` overrides
 - **PWA service worker** never caches pages (personal data) — only static files, **network-first** (names aren't hashed, so cache-first would pin old CSS/JS); it bypasses `/payment/`, `/auth/`, `/api/`, admin, `/media/`. Bump `SW_VERSION` in `clefresh/pwa.py` when changing caching rules
 - `NOTIFICATIONS_SSE` (default True) — set False on PythonAnywhere; bell falls back to 30 s polling. Deploy guide: `deploy/PYTHONANYWHERE.md`

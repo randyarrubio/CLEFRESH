@@ -137,6 +137,9 @@ USE_TZ = True
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
+# Serve uploads through Django when no web server does (Railway). Set False behind nginx,
+# which serves /media/ itself (deploy/nginx.conf.example).
+SERVE_MEDIA = config('SERVE_MEDIA', default=True, cast=bool)
 
 STATIC_URL = '/static/'
 STATICFILES_DIRS = [BASE_DIR / 'static']

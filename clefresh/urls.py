@@ -39,3 +39,15 @@ urlpatterns = [
     # Private uploads are only reachable through the permission-checked views in accounts.
     re_path(r'^media/(rider_docs|face_selfies|id_documents|shop_docs)/', _private_media_404),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+
+if not settings.DEBUG and settings.SERVE_MEDIA:
+    # No nginx in front (e.g. Railway): Django serves the public uploads (shop photos, avatars,
+    # proof photos) from the media volume. Private folders are 404'd by the rule above first.
+    from django.views.decorators.cache import cache_control
+    from django.views.static import serve as _serve
+
+    @cache_control(max_age=86400, public=True)
+    def _serve_public_media(request, path):
+        return _serve(request, path, document_root=settings.MEDIA_ROOT)
+
+    urlpatterns += [re_path(r'^media/(?P<path>.*)$', _serve_public_media)]
