@@ -41,6 +41,9 @@ class WeighAtShopTests(TestCase):
         mk = lambda email, role: User.objects.create_user(
             username=email, email=email, password='Pass1234!', role=role, email_verified=True)
         self.customer = mk('c@e.com', 'customer')
+        self.customer.face_verified_at = timezone.now()  # booking requires the face + ID check
+        self.customer.id_status = 'verified'
+        self.customer.save(update_fields=['face_verified_at', 'id_status'])
         self.owner = mk('o@e.com', 'shop_owner')
         self.rider = mk('r@e.com', 'rider')
         RiderProfile.objects.create(user=self.rider, is_submitted=True, approval_status='approved')

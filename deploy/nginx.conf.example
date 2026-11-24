@@ -37,6 +37,8 @@ server {
     # ── Uploaded media ──────────────────────────────────────────
     # Private documents are only served through Django views with permission checks.
     location ^~ /media/rider_docs/  { deny all; }
+    location ^~ /media/face_selfies/ { deny all; }
+    location ^~ /media/id_documents/ { deny all; }
     location ^~ /media/shop_docs/   { deny all; }
     location /media/ {
         alias /srv/clefresh/media/;

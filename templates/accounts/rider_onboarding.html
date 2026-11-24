@@ -52,7 +52,8 @@
   .toggle-row:last-child { border-bottom: 0; }
   .toggle-row input { width: auto; }
   .doc-row { display: flex; gap: 8px; }
-  .doc-upload { flex: 1; border: 1px dashed #c9d7e0; border-radius: 10px; padding: 12px; text-align: center; margin-bottom: 8px; }
+  .doc-upload { flex: 1; min-width: 0; border: 1px dashed #c9d7e0; border-radius: 10px; padding: 12px; text-align: center; margin-bottom: 8px; }
+  .doc-upload input[type="file"] { width: 100%; max-width: 100%; box-sizing: border-box; }
   .doc-upload i { color: #8a98a5; font-size: 20px; display: block; margin-bottom: 6px; }
   .doc-upload-lbl { font-size: 12px; color: #586b7a; font-weight: 800; margin-bottom: 5px; }
   .doc-on-file { display: inline-block; margin-left: 4px; padding: 1px 7px; border-radius: 999px; background: #eaf6e2; color: #2f6717; font-size: 10px; }

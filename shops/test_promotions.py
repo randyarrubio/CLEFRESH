@@ -32,6 +32,9 @@ class PromotionTests(TestCase):
         self.owner = mk('o@example.com', 'shop_owner')
         self.other_owner = mk('o2@example.com', 'shop_owner')
         self.customer = mk('c@example.com', 'customer')
+        self.customer.face_verified_at = timezone.now()  # booking requires the face + ID check
+        self.customer.id_status = 'verified'
+        self.customer.save(update_fields=['face_verified_at', 'id_status'])
         self.shop = Shop.objects.create(owner=self.owner, name='Suds', address='Tandag', status='approved')
         self.other_shop = Shop.objects.create(owner=self.other_owner, name='Other', address='Tandag', status='approved')
         Service.objects.create(shop=self.shop, name='wash', price_per_kg='40.00')

@@ -76,6 +76,8 @@ Laundry shop booking platform. Customers find nearby laundry shops, book pickup/
 | File magic byte validation | PIL verify for images, `%PDF` header for PDFs (`utils/validators.py`) |
 | UUID upload paths | All `ImageField` / `FileField` fields across all apps |
 | Rider doc auth serving | `/auth/media/rider-docs/<filename>` — login + ownership check required |
+| Customer ID + face check | At `/auth/face-check/`: valid-ID photo + live selfie with MediaPipe liveness (server-issued 2-step challenge, single-use nonce, 180 s TTL). Server matches selfie ↔ ID face with OpenCV YuNet + SFace (`utils/face_match.py`, models in `utils/face_models/`, cosine ≥ 0.363 → `id_status='verified'`); low score or matcher offline → `pending_review` for admins at `/admin-panel/id-reviews/`. Booking (`place_order_view`) requires `face_verified_at` + `id_status='verified'` (`User.needs_face_verification`). Files served only via `/auth/media/face-selfies/` and `/auth/media/id-documents/` (owner/admin) |
+| Private media block | `clefresh/urls.py` 404s `/media/rider_docs|face_selfies|id_documents|shop_docs/` even when `DEBUG` serves media |
 | Session security | `register_form_data` session key stores only non-sensitive fields (no passwords) |
 | Rider location gating | Coordinates only returned when `order.status == 'out_for_delivery'` |
 | Geocode rate limit | 30 calls / hour per user (`maps/views.py`) |

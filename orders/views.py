@@ -7,6 +7,7 @@ from django.http import Http404, JsonResponse
 from django.db import transaction
 from django.db.models import Count, F
 from django.utils import timezone
+from django.urls import reverse
 from .models import Order, OrderService, OrderStatusLog, PhotoProof
 from shops.models import DeliverySlot, Promotion, Service, Shop
 from notifications.models import Notification
@@ -150,6 +151,12 @@ def place_order_view(request, shop_id):
     if request.user.role != 'customer':
         messages.error(request, 'Only customers can place orders.')
         return redirect('shop_detail', shop_id=shop_id)
+    if request.user.needs_face_verification:
+        if request.user.id_status == 'pending_review':
+            messages.info(request, 'Your ID is still being reviewed. You can book once it is approved.')
+        else:
+            messages.info(request, 'Please verify your identity (valid ID + quick face check) before booking.')
+        return redirect(f"{reverse('face_verify')}?next={request.path}")
 
     services = shop.services.all()
     today = timezone.localdate()

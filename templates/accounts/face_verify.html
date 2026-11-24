@@ -1,0 +1,447 @@
+{% extends 'base.html' %}
+{% block title %}Face check — CLEFRESH{% endblock %}
+
+{% block extra_head %}
+<style>
+  .fv-page {
+    min-height: calc(100vh - 68px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 16px 56px;
+    background: radial-gradient(ellipse at 20% 30%, rgba(14,154,167,.12), transparent 40%),
+                radial-gradient(ellipse at 80% 70%, rgba(18,135,217,.10), transparent 40%),
+                #f0f8fa;
+  }
+  .fv-card {
+    width: min(480px, 100%);
+    border-radius: 18px;
+    background: #fff;
+    padding: 32px 28px;
+    box-shadow: 0 20px 60px rgba(7,50,69,.18);
+    border: 1px solid rgba(14,154,167,.1);
+  }
+  .fv-icon {
+    width: 56px; height: 56px;
+    border-radius: 14px;
+    background: var(--accent, #f9ca47);
+    color: #4a2e00;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 26px;
+    margin: 0 auto 16px;
+  }
+  .fv-title { text-align: center; font-size: 22px; font-weight: 800; color: #0b1f33; margin: 0 0 6px; }
+  .fv-subtitle { text-align: center; font-size: 13px; color: #6c7d8b; margin: 0 0 20px; line-height: 1.5; }
+  .fv-stage {
+    position: relative;
+    aspect-ratio: 4 / 3;
+    border-radius: 14px;
+    overflow: hidden;
+    background: #0b1f33;
+    margin-bottom: 16px;
+  }
+  .fv-stage video {
+    width: 100%; height: 100%;
+    object-fit: cover;
+    transform: scaleX(-1);              /* mirror preview so head turns feel natural */
+  }
+  .fv-oval {
+    position: absolute;
+    inset: 10% 24%;
+    border: 3px dashed rgba(255,255,255,.7);
+    border-radius: 50%;
+    pointer-events: none;
+    transition: border-color .2s;
+  }
+  .fv-oval.ok { border-color: #34d399; border-style: solid; }
+  .fv-placeholder {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+    color: #cfe3ee; font-size: 13px; text-align: center; padding: 16px;
+  }
+  .fv-placeholder i { font-size: 40px; }
+  .fv-steps { display: flex; gap: 8px; justify-content: center; margin-bottom: 10px; }
+  .fv-step {
+    font-size: 12px; font-weight: 700;
+    padding: 5px 10px;
+    border-radius: 999px;
+    background: #eef4f8;
+    color: #6c7d8b;
+  }
+  .fv-step.active { background: rgba(18,135,217,.12); color: var(--primary, #1287d9); }
+  .fv-step.done { background: rgba(16,185,129,.14); color: #047857; }
+  .fv-status {
+    min-height: 22px;
+    text-align: center;
+    font-size: 15px;
+    font-weight: 700;
+    color: #0b1f33;
+    margin: 0 0 16px;
+  }
+  .fv-status.error { color: #b42318; }
+  .fv-consent {
+    display: flex; gap: 10px; align-items: flex-start;
+    font-size: 12.5px; color: #4b5d6b; line-height: 1.5;
+    background: #f7fafc;
+    border: 1px solid #e3ecf2;
+    border-radius: 10px;
+    padding: 12px;
+    margin-bottom: 14px;
+  }
+  .fv-consent input { margin-top: 3px; flex-shrink: 0; }
+  .fv-btn {
+    width: 100%;
+    padding: 13px;
+    border: 0;
+    border-radius: 10px;
+    background: var(--primary, #1287d9);
+    color: #fff;
+    font-weight: 800;
+    font-size: 14px;
+    cursor: pointer;
+  }
+  .fv-btn[disabled] { opacity: .5; cursor: not-allowed; }
+  .fv-help {
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid #edf2f5;
+    text-align: center;
+    font-size: 12px;
+    color: #94a3af;
+    line-height: 1.6;
+  }
+  .fv-help a { color: var(--primary, #1287d9); font-weight: 600; text-decoration: none; }
+  .fv-help a:hover { text-decoration: underline; }
+  .fv-section-label { font-size: 12px; font-weight: 800; color: #586b7a; text-transform: uppercase; letter-spacing: .04em; margin: 0 0 8px; }
+  .fv-id { border: 1px solid #e3ecf2; border-radius: 12px; padding: 14px; margin-bottom: 18px; background: #fbfdfe; }
+  .fv-id select { width: 100%; padding: 10px 12px; border: 1px solid #c9d7e0; border-radius: 8px; font-size: 14px; margin-bottom: 10px; background: #fff; }
+  .fv-id-drop {
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+    border: 1.5px dashed #c9d7e0; border-radius: 10px; padding: 16px; text-align: center;
+    font-size: 13px; color: #586b7a; cursor: pointer; background: #fff;
+  }
+  .fv-id-drop i { font-size: 26px; color: #8a98a5; }
+  .fv-id-drop input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+  .fv-id-drop:focus-within { outline: 2px solid var(--primary, #1287d9); outline-offset: 2px; }
+  .fv-id-preview { display: block; width: 100%; max-height: 180px; object-fit: contain; border-radius: 8px; background: #0b1f33; margin-top: 10px; }
+  .fv-id-tip { font-size: 12px; color: #6c7d8b; margin: 8px 0 0; line-height: 1.5; }
+  .fv-alert { border-radius: 10px; padding: 12px 14px; font-size: 13px; line-height: 1.5; margin-bottom: 16px; }
+  .fv-alert-warn { background: #fff7e0; border: 1px solid #f5dc8a; color: #6b4e00; }
+  .fv-alert-info { background: rgba(18,135,217,.08); border: 1px solid rgba(18,135,217,.2); color: #0b4a7a; }
+  .fv-btn-outline { display: block; text-align: center; text-decoration: none; background: #fff; color: var(--primary, #1287d9); border: 1.5px solid var(--primary, #1287d9); margin-top: 10px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="fv-page">
+  <div class="fv-card">
+  {% if pending_review %}
+    <div class="fv-icon"><i class="bi bi-hourglass-split" aria-hidden="true"></i></div>
+    <h1 class="fv-title">ID under review</h1>
+    <p class="fv-subtitle">We couldn't match your selfie to your ID automatically, so a CLEFRESH admin is checking it. You'll get a notification once it's done, and then you can book pickups.</p>
+    <a href="?retry=1" class="fv-btn fv-btn-outline"><i class="bi bi-arrow-repeat" aria-hidden="true"></i> Submit a clearer ID photo</a>
+    <div class="fv-help"><a href="/">Back to home</a></div>
+  {% else %}
+    <div class="fv-icon"><i class="bi bi-person-bounding-box" aria-hidden="true"></i></div>
+    <h1 class="fv-title">Verify your identity</h1>
+    <p class="fv-subtitle">To keep CLEFRESH safe for shops and riders, we check your valid ID against a quick live selfie. It takes about a minute.</p>
+
+    {% if user.id_status == 'rejected' %}
+      <div class="fv-alert fv-alert-warn" role="alert">
+        <strong>Your last ID wasn't approved.</strong>{% if user.id_rejection_reason %} {{ user.id_rejection_reason }}{% endif %} Please try again with a clear photo of a valid ID.
+      </div>
+    {% endif %}
+
+    <div class="fv-id" id="fvIdSection">
+      <p class="fv-section-label">Step 1 · Your valid ID</p>
+      <label for="fvIdType" class="sr-only">ID type</label>
+      <select id="fvIdType" required>
+        <option value="">Choose ID type…</option>
+        {% for value, label in id_types %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+      </select>
+      <label class="fv-id-drop" for="fvIdFile">
+        <i class="bi bi-person-vcard" aria-hidden="true"></i>
+        <span id="fvIdDropText"><strong>Take or upload a photo of the front of your ID</strong></span>
+        <input type="file" id="fvIdFile" accept="image/jpeg,image/png,image/webp" capture="environment">
+      </label>
+      <img id="fvIdPreview" class="fv-id-preview" alt="Preview of your ID photo" hidden>
+      <p class="fv-id-tip">Lay the ID flat in good light. The whole card and your photo on it must be clear, with no glare or fingers covering it.</p>
+    </div>
+
+    <p class="fv-section-label">Step 2 · Live face check</p>
+    <div class="fv-stage">
+      <video id="fvVideo" playsinline muted hidden></video>
+      <div class="fv-oval" id="fvOval" hidden></div>
+      <div class="fv-placeholder" id="fvPlaceholder">
+        <i class="bi bi-camera-video" aria-hidden="true"></i>
+        Your camera turns on when you start.
+      </div>
+    </div>
+
+    <div class="fv-steps" id="fvSteps" aria-hidden="true"></div>
+    <p class="fv-status" id="fvStatus" role="status" aria-live="polite"></p>
+
+    <label class="fv-consent" id="fvConsentRow">
+      <input type="checkbox" id="fvConsent">
+      <span>I agree that CLEFRESH may store a photo of my ID and a selfie, and compare them automatically to verify my identity. They are only visible to me and CLEFRESH administrators and are used for account security only.</span>
+    </label>
+    <button type="button" class="fv-btn" id="fvStart" disabled>
+      <i class="bi bi-camera" aria-hidden="true"></i> Start face check
+    </button>
+
+    <div class="fv-help">
+      Use a device with a front camera, in good lighting. Remove sunglasses or masks.<br>
+      <a href="/">Not now — keep browsing</a>
+    </div>
+  {% endif %}
+  </div>
+</div>
+{% if not pending_review %}{{ challenge.steps|json_script:"fvChallengeSteps" }}{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+{% if not pending_review %}
+<script type="module">
+  const STEP_LABELS = {
+    center: 'Look straight at the camera',
+    blink: 'Blink your eyes',
+    turn_left: 'Slowly turn your head to your left',
+    turn_right: 'Slowly turn your head to your right',
+    smile: 'Smile',
+  };
+  const STEP_CHIPS = { center: 'Face', blink: 'Blink', turn_left: 'Left', turn_right: 'Right', smile: 'Smile' };
+  const TIME_LIMIT_MS = 150000;   // the server rejects anything older than 180 s
+
+  const nonce = '{{ challenge.nonce|escapejs }}';
+  const nextUrl = '{{ next|escapejs }}';
+  const csrfToken = '{{ csrf_token }}';
+  const steps = ['center', ...JSON.parse(document.getElementById('fvChallengeSteps').textContent)];
+
+  const video = document.getElementById('fvVideo');
+  const oval = document.getElementById('fvOval');
+  const placeholder = document.getElementById('fvPlaceholder');
+  const statusEl = document.getElementById('fvStatus');
+  const stepsEl = document.getElementById('fvSteps');
+  const consent = document.getElementById('fvConsent');
+  const consentRow = document.getElementById('fvConsentRow');
+  const startBtn = document.getElementById('fvStart');
+
+  const idSection = document.getElementById('fvIdSection');
+  const idType = document.getElementById('fvIdType');
+  const idFile = document.getElementById('fvIdFile');
+  const idPreview = document.getElementById('fvIdPreview');
+  const idDropText = document.getElementById('fvIdDropText');
+  const ID_MAX_PX = 1600;   // plenty for face matching + admin reading; keeps uploads well under 10 MB
+  let idBlob = null;
+
+  stepsEl.innerHTML = steps.map((s, i) => `<span class="fv-step" data-i="${i}">${STEP_CHIPS[s]}</span>`).join('');
+  function refreshStart() { startBtn.disabled = !(consent.checked && idType.value && idBlob); }
+  consent.addEventListener('change', refreshStart);
+  idType.addEventListener('change', refreshStart);
+
+  idFile.addEventListener('change', async () => {
+    idBlob = null;
+    refreshStart();
+    const file = idFile.files[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) { setStatus('Please choose a photo (JPG, PNG or WebP) of your ID.', true); return; }
+    try {
+      const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
+      const scale = Math.min(1, ID_MAX_PX / Math.max(bitmap.width, bitmap.height));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(bitmap.width * scale);
+      canvas.height = Math.round(bitmap.height * scale);
+      canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+      idBlob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.92));
+    } catch (err) {
+      setStatus("We couldn't read that photo. Try taking it again.", true);
+      return;
+    }
+    if (idPreview.src) URL.revokeObjectURL(idPreview.src);
+    idPreview.src = URL.createObjectURL(idBlob);
+    idPreview.hidden = false;
+    idDropText.innerHTML = '<strong>ID photo added</strong> · tap to retake';
+    setStatus('');
+    refreshStart();
+  });
+
+  function setStatus(text, isError = false) {
+    statusEl.textContent = text;
+    statusEl.classList.toggle('error', isError);
+  }
+  function showRetry(text) {
+    setStatus(text, true);
+    startBtn.hidden = false;
+    startBtn.disabled = false;
+    startBtn.innerHTML = '<i class="bi bi-arrow-clockwise" aria-hidden="true"></i> Try again';
+    startBtn.onclick = () => window.location.reload();   // reload = new server challenge
+  }
+  function markSteps(current) {
+    stepsEl.querySelectorAll('.fv-step').forEach((el) => {
+      const i = Number(el.dataset.i);
+      el.classList.toggle('done', i < current);
+      el.classList.toggle('active', i === current);
+    });
+  }
+  function grabFrame() {
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext('2d').drawImage(video, 0, 0);
+    return new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.9));
+  }
+  function score(blendshapes, name) {
+    const c = blendshapes.find((b) => b.categoryName === name);
+    return c ? c.score : 0;
+  }
+
+  startBtn.addEventListener('click', async function start() {
+    if (startBtn.onclick) return;
+    startBtn.removeEventListener('click', start);
+    startBtn.hidden = true;
+    consentRow.hidden = true;
+    idSection.hidden = true;
+
+    let stream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }, audio: false,
+      });
+    } catch (err) {
+      showRetry('We need camera access for the face check. Allow the camera in your browser settings, then try again.');
+      return;
+    }
+    video.srcObject = stream;
+    video.hidden = false;
+    oval.hidden = false;
+    placeholder.hidden = true;
+    await video.play();
+
+    setStatus('Loading face check…');
+    let landmarker;
+    try {
+      const { FaceLandmarker, FilesetResolver } = await import(
+        'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs');
+      const fileset = await FilesetResolver.forVisionTasks(
+        'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm');
+      landmarker = await FaceLandmarker.createFromOptions(fileset, {
+        baseOptions: {
+          modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task',
+          delegate: 'GPU',
+        },
+        runningMode: 'VIDEO',
+        numFaces: 2,
+        outputFaceBlendshapes: true,
+      });
+    } catch (err) {
+      stream.getTracks().forEach((t) => t.stop());
+      showRetry('The face check could not load. Check your connection and try again.');
+      return;
+    }
+
+    const startedAt = performance.now();
+    let stepIndex = 0;
+    let hold = 0;
+    let eyesClosedSeen = false;
+    let selfie = null;
+    let actionFrame = null;
+    let finished = false;
+    markSteps(0);
+
+    async function finish() {
+      finished = true;
+      stream.getTracks().forEach((t) => t.stop());
+      markSteps(steps.length);
+      setStatus('Checking your face against your ID…');
+      const body = new FormData();
+      body.append('nonce', nonce);
+      body.append('consent', 'on');
+      body.append('next', nextUrl);
+      body.append('selfie', selfie, 'selfie.jpg');
+      body.append('action_frame', actionFrame, 'action.jpg');
+      body.append('id_type', idType.value);
+      body.append('id_document', idBlob, 'id.jpg');
+      try {
+        const resp = await fetch(window.location.pathname, {
+          method: 'POST', body, credentials: 'same-origin', headers: { 'X-CSRFToken': csrfToken },
+        });
+        const data = await resp.json();
+        if (data.ok) {
+          setStatus('Done!');
+          window.location.href = data.redirect || '/';
+        } else {
+          showRetry(data.error || 'Face check failed. Please try again.');
+        }
+      } catch (err) {
+        showRetry('Could not reach the server. Please try again.');
+      }
+    }
+
+    async function advance(frame) {
+      if (stepIndex === 0) selfie = frame;
+      if (stepIndex === steps.length - 1) actionFrame = frame;
+      stepIndex += 1;
+      hold = 0;
+      eyesClosedSeen = false;
+      if (stepIndex >= steps.length) { await finish(); return; }
+      markSteps(stepIndex);
+    }
+
+    async function tick() {
+      if (finished) return;
+      if (performance.now() - startedAt > TIME_LIMIT_MS) {
+        finished = true;
+        stream.getTracks().forEach((t) => t.stop());
+        showRetry('Time ran out. Please try again.');
+        return;
+      }
+      const result = landmarker.detectForVideo(video, performance.now());
+      const faces = result.faceLandmarks || [];
+      const step = steps[stepIndex];
+
+      if (faces.length !== 1) {
+        hold = 0;
+        oval.classList.remove('ok');
+        setStatus(faces.length ? 'Only one face should be in view.' : 'Position your face inside the oval.');
+        requestAnimationFrame(tick);
+        return;
+      }
+
+      const lm = faces[0];
+      const bs = (result.faceBlendshapes[0] || { categories: [] }).categories;
+      const left = Math.min(lm[234].x, lm[454].x);
+      const right = Math.max(lm[234].x, lm[454].x);
+      const turn = (lm[1].x - left) / Math.max(right - left, 1e-6);   // 0.5 = facing the camera
+      const blink = Math.min(score(bs, 'eyeBlinkLeft'), score(bs, 'eyeBlinkRight'));
+      const smile = (score(bs, 'mouthSmileLeft') + score(bs, 'mouthSmileRight')) / 2;
+      const faceWidth = right - left;
+      oval.classList.add('ok');
+      setStatus(STEP_LABELS[step]);
+
+      let met = false;
+      if (step === 'center') {
+        if (faceWidth < 0.22) setStatus('Move a little closer.');
+        met = faceWidth >= 0.22 && turn > 0.4 && turn < 0.6 && blink < 0.35 && smile < 0.5;
+      } else if (step === 'blink') {
+        if (blink > 0.55) eyesClosedSeen = true;
+        met = eyesClosedSeen && blink < 0.3;
+      } else if (step === 'turn_left') {
+        met = turn > 0.7;     // raw (unmirrored) frame: the person's left is the image's right
+      } else if (step === 'turn_right') {
+        met = turn < 0.3;
+      } else if (step === 'smile') {
+        met = smile > 0.6;
+      }
+
+      hold = met ? hold + 1 : 0;
+      const needed = step === 'center' ? 15 : (step === 'blink' ? 1 : 5);
+      if (hold >= needed) {
+        await advance(await grabFrame());
+      }
+      requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+  });
+</script>
+{% endif %}
+{% endblock %}

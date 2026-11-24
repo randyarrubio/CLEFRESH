@@ -28,8 +28,9 @@ def _collect_user_files(user):
     photos on someone else's order — those survive the cascade).
     """
     files = []
-    if user.profile_picture:
-        files.append(user.profile_picture)
+    for f in (user.profile_picture, user.face_selfie, user.id_document):
+        if f:
+            files.append(f)
     rider = getattr(user, 'rider_profile', None)
     if rider is not None:
         for fname in ('government_id_front', 'government_id_back',
@@ -276,6 +277,63 @@ def admin_rider_action_view(request, profile_id):
     if return_status not in _RIDER_APPROVAL_FILTERS:
         return_status = 'pending'
     return redirect(f"{reverse('admin_riders')}?status={return_status}")
+
+
+_ID_REVIEW_FILTERS = {'pending_review', 'verified', 'rejected'}
+
+
+@role_required('admin')
+def admin_id_reviews_view(request):
+    status_filter = request.GET.get('status', 'pending_review')
+    if status_filter not in _ID_REVIEW_FILTERS:
+        status_filter = 'pending_review'
+    customers = (
+        User.objects.filter(role='customer', id_status=status_filter)
+        .exclude(id_document='')
+        .order_by('id_submitted_at')
+    )
+    page_obj, page_qs = paginate(request, customers)
+    counts = {
+        row['id_status']: row['n']
+        for row in User.objects.filter(role='customer').values('id_status').annotate(n=Count('id'))
+    }
+    return render(request, 'admin_panel/id_reviews.html', {
+        'customers': page_obj, 'page_obj': page_obj, 'page_qs': page_qs,
+        'status_filter': status_filter, 'counts': counts,
+    })
+
+
+@role_required('admin')
+def admin_id_review_action_view(request, user_id):
+    if request.method != 'POST':
+        return redirect('admin_id_reviews')
+    customer = get_object_or_404(User, id=user_id, role='customer')
+    if not customer.id_document:
+        messages.error(request, 'This customer has not submitted an ID.')
+        return redirect('admin_id_reviews')
+    action = request.POST.get('action')
+    if action == 'approve':
+        customer.id_status = 'verified'
+        customer.id_rejection_reason = ''
+        message = 'Your ID has been verified. You can now book laundry pickups.'
+        messages.success(request, f'ID for {customer.email} approved.')
+    elif action == 'reject':
+        reason = request.POST.get('reason', '').strip()[:500]
+        customer.id_status = 'rejected'
+        customer.id_rejection_reason = reason
+        message = 'Your ID could not be verified.' + (f' Reason: {reason}' if reason else '') + ' Please submit it again.'
+        messages.warning(request, f'ID for {customer.email} rejected.')
+    else:
+        messages.error(request, 'Invalid action.')
+        return redirect('admin_id_reviews')
+    customer.id_reviewed_at = timezone.now()
+    with transaction.atomic():
+        customer.save(update_fields=['id_status', 'id_rejection_reason', 'id_reviewed_at'])
+        Notification.objects.create(user=customer, message=message, link=reverse('face_verify'))
+    return_status = request.POST.get('return_status', 'pending_review')
+    if return_status not in _ID_REVIEW_FILTERS:
+        return_status = 'pending_review'
+    return redirect(f"{reverse('admin_id_reviews')}?status={return_status}")
 
 
 @role_required('admin')

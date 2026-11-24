@@ -16,4 +16,7 @@ urlpatterns = [
     path('forgot-password/done/', views.password_reset_done_view, name='password_reset_done'),
     path('reset-password/<uidb64>/<token>/', views.reset_password_confirm_view, name='password_reset_confirm'),
     path('media/rider-docs/<str:filename>', views.serve_rider_doc_view, name='serve_rider_doc'),
+    path('face-check/', views.face_verify_view, name='face_verify'),
+    path('media/face-selfies/<str:filename>', views.serve_face_selfie_view, name='serve_face_selfie'),
+    path('media/id-documents/<str:filename>', views.serve_id_document_view, name='serve_id_document'),
 ]

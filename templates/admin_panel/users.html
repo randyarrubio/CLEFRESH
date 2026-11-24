@@ -9,6 +9,7 @@
       <p>View and manage platform users</p>
     </div>
     <div style="display:flex; gap:8px; flex-wrap:wrap;">
+      <a href="{% url 'admin_id_reviews' %}" class="btn btn-primary"><i class="bi bi-person-bounding-box glyph-icon"></i>ID Reviews</a>
       <a href="{% url 'admin_riders' %}" class="btn btn-primary"><i class="bi bi-person-vcard glyph-icon"></i>Rider Applications</a>
       <a href="{% url 'admin_dashboard' %}" class="btn btn-outline">← Dashboard</a>
     </div>
@@ -44,6 +45,22 @@
                 <span class="badge badge-success">Active</span>
               {% else %}
                 <span class="badge badge-danger">Inactive</span>
+              {% endif %}
+              {% if u.role == 'customer' %}
+                {% if u.face_selfie %}
+                  <a href="{% url 'serve_face_selfie' u.face_selfie.name|slice:'13:' %}" target="_blank" rel="noopener" class="badge badge-success" title="Face checked {{ u.face_verified_at|date:'M d, Y' }}"><i class="bi bi-person-check" aria-hidden="true"></i> Face</a>
+                {% else %}
+                  <span class="badge badge-warning" title="Face check not done yet"><i class="bi bi-person-dash" aria-hidden="true"></i> No face</span>
+                {% endif %}
+                {% if u.id_status == 'verified' %}
+                  <span class="badge badge-success" title="ID verified{% if u.id_match_score is not None %} · match {{ u.id_match_score|floatformat:2 }}{% endif %}"><i class="bi bi-person-vcard" aria-hidden="true"></i> ID</span>
+                {% elif u.id_status == 'pending_review' %}
+                  <a href="{% url 'admin_id_reviews' %}" class="badge badge-warning" title="ID waiting for admin review"><i class="bi bi-hourglass-split" aria-hidden="true"></i> ID review</a>
+                {% elif u.id_status == 'rejected' %}
+                  <span class="badge badge-danger" title="{{ u.id_rejection_reason|default:'ID rejected' }}"><i class="bi bi-x-circle" aria-hidden="true"></i> ID rejected</span>
+                {% else %}
+                  <span class="badge badge-warning" title="No valid ID submitted yet"><i class="bi bi-person-vcard" aria-hidden="true"></i> No ID</span>
+                {% endif %}
               {% endif %}
             </td>
             <td>{{ u.date_joined|date:"M d, Y" }}</td>

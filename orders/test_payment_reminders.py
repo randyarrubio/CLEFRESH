@@ -34,6 +34,9 @@ class PaymentDeadlineTests(TestCase):
         mk = lambda email, role: User.objects.create_user(
             username=email, email=email, password='Pass1234!', role=role, email_verified=True)
         self.customer = mk('c@e.com', 'customer')
+        self.customer.face_verified_at = timezone.now()  # booking requires the face + ID check
+        self.customer.id_status = 'verified'
+        self.customer.save(update_fields=['face_verified_at', 'id_status'])
         self.owner = mk('o@e.com', 'shop_owner')
         self.shop = Shop.objects.create(owner=self.owner, name='Suds', address='Tandag', status='approved')
         self.wash = Service.objects.create(shop=self.shop, name='wash', price_per_kg='50.00')

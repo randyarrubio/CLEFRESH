@@ -8,3 +8,5 @@ gunicorn==23.0.0
 redis==5.2.1
 whitenoise==6.9.0
 django-anymail==15.2
+opencv-python-headless==4.13.0.92
+numpy==2.4.0

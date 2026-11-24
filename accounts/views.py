@@ -25,6 +25,7 @@ from django.utils.http import url_has_allowed_host_and_scheme, urlsafe_base64_en
 from allauth.socialaccount.adapter import get_adapter as get_socialaccount_adapter
 from allauth.socialaccount.models import SocialLogin
 from .forms import RegisterForm, LoginForm, ProfileForm, validate_password_strength
+from .decorators import role_required
 from .models import User, RiderProfile
 from .sso_verification import (
     PENDING_SSO_CODE_TTL,
@@ -38,6 +39,8 @@ from .sso_verification import (
     pending_sso_resend_cooldown_remaining,
     send_pending_sso_verification_code,
 )
+from notifications.models import Notification
+from utils import face_match
 from utils.email_notifications import send_email_notification
 from utils.validators import validate_document_upload, validate_image_upload
 
@@ -152,6 +155,8 @@ def register_view(request):
             messages.success(request, 'Account created successfully!')
             if user.role == 'rider':
                 return redirect('rider_onboarding')
+            if user.needs_face_verification:
+                return redirect('face_verify')
             return redirect('/')
     else:
         form = RegisterForm()
@@ -511,6 +516,8 @@ def sso_complete_view(request):
             return redirect('register_shop')
         if request.user.role == 'rider':
             return redirect('rider_onboarding')
+        if request.user.needs_face_verification:
+            return redirect('face_verify')
         return redirect('/')
     return render(request, 'accounts/sso_complete.html')
 
@@ -675,6 +682,151 @@ def profile_view(request):
     else:
         form = ProfileForm(instance=request.user)
     return render(request, 'accounts/profile.html', {'form': form})
+
+
+_FACE_CHALLENGE_SESSION_KEY = 'face_challenge'
+_FACE_CHALLENGE_TTL = 180          # seconds to finish the liveness steps
+_FACE_ACTIONS = ('blink', 'turn_left', 'turn_right', 'smile')
+_FACE_MAX_ATTEMPTS = 10            # submissions per user per hour
+
+
+def _safe_next(request, fallback='/'):
+    next_url = request.POST.get('next') or request.GET.get('next') or ''
+    if next_url and url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()},
+                                                    require_https=request.is_secure()):
+        return next_url
+    return fallback
+
+
+@role_required('customer')
+def face_verify_view(request):
+    user = request.user
+    if not user.needs_face_verification:
+        return redirect(_safe_next(request))
+
+    if request.method != 'POST':
+        if user.id_status == 'pending_review' and not request.GET.get('retry'):
+            return render(request, 'accounts/face_verify.html', {'pending_review': True})
+        # A fresh, server-chosen challenge each visit: two distinct actions in random order.
+        steps = list(_FACE_ACTIONS)
+        secrets.SystemRandom().shuffle(steps)
+        challenge = {'nonce': secrets.token_urlsafe(16), 'steps': steps[:2], 'issued': time.time()}
+        request.session[_FACE_CHALLENGE_SESSION_KEY] = challenge
+        return render(request, 'accounts/face_verify.html', {
+            'challenge': challenge,
+            'next': _safe_next(request, ''),
+            'id_types': User.ID_TYPE_CHOICES,
+        })
+
+    attempts_key = f'face_verify_attempts_{user.id}'
+    attempts = cache.get(attempts_key, 0)
+    if attempts >= _FACE_MAX_ATTEMPTS:
+        return JsonResponse({'ok': False, 'error': 'Too many attempts. Please try again in an hour.'}, status=429)
+    cache.set(attempts_key, attempts + 1, 3600)
+
+    # Single-use challenge: popped before any check so a replayed submission always fails.
+    challenge = request.session.pop(_FACE_CHALLENGE_SESSION_KEY, None)
+    if (
+        not challenge
+        or not secrets.compare_digest(request.POST.get('nonce', ''), challenge.get('nonce', ''))
+        or time.time() - challenge.get('issued', 0) > _FACE_CHALLENGE_TTL
+    ):
+        return JsonResponse({'ok': False, 'error': 'The face check expired. Please start again.'}, status=400)
+    if request.POST.get('consent') != 'on':
+        return JsonResponse({'ok': False, 'error': 'Please agree to the face check consent to continue.'}, status=400)
+
+    id_type = request.POST.get('id_type', '')
+    if id_type not in dict(User.ID_TYPE_CHOICES):
+        return JsonResponse({'ok': False, 'error': 'Please choose the type of ID you are using.'}, status=400)
+    selfie = request.FILES.get('selfie')
+    action_frame = request.FILES.get('action_frame')
+    id_document = request.FILES.get('id_document')
+    if not id_document:
+        return JsonResponse({'ok': False, 'error': 'Please add a photo of your valid ID.'}, status=400)
+    if not selfie or not action_frame:
+        return JsonResponse({'ok': False, 'error': 'Camera capture missing. Please start again.'}, status=400)
+    try:
+        validate_image_upload(selfie)
+        validate_image_upload(action_frame)
+        validate_image_upload(id_document)
+    except ValidationError as exc:
+        return JsonResponse({'ok': False, 'error': exc.messages[0]}, status=400)
+
+    def _digest(f):
+        f.seek(0)
+        digest = hashlib.sha256(f.read()).hexdigest()
+        f.seek(0)
+        return digest
+
+    # Both frames come from one live session; identical bytes means a static image was replayed.
+    if _digest(selfie) == _digest(action_frame):
+        return JsonResponse({'ok': False, 'error': 'We could not confirm a live face. Please start again.'}, status=400)
+
+    # The match runs here on the uploaded bytes, never in the browser.
+    match = face_match.compare(selfie, id_document)
+    if match.status == 'no_face_selfie':
+        return JsonResponse({'ok': False, 'error': "We couldn't see your face clearly. Try again in better lighting."}, status=400)
+    if match.status == 'no_face_id':
+        return JsonResponse({'ok': False, 'error': "We couldn't find the photo on your ID. Retake it flat, in good light, "
+                                                   "with the whole card in the frame and no glare."}, status=400)
+
+    now = timezone.now()
+    for old in (user.face_selfie, user.id_document):
+        if old:
+            old.delete(save=False)
+    user.face_selfie = selfie
+    user.face_verified_at = now
+    user.id_type = id_type
+    user.id_document = id_document
+    user.id_match_score = match.score
+    user.id_submitted_at = now
+    user.id_rejection_reason = ''
+    if match.matched:
+        user.id_status, user.id_reviewed_at = 'verified', now
+    else:
+        # Low similarity or matcher offline: a person decides, the customer isn't auto-rejected.
+        user.id_status, user.id_reviewed_at = 'pending_review', None
+    user.save(update_fields=['face_selfie', 'face_verified_at', 'id_type', 'id_document', 'id_match_score',
+                             'id_submitted_at', 'id_rejection_reason', 'id_status', 'id_reviewed_at'])
+    cache.delete(attempts_key)
+
+    if match.matched:
+        messages.success(request, 'Identity verified. You can now book laundry pickups.')
+        return JsonResponse({'ok': True, 'redirect': _safe_next(request)})
+    Notification.objects.bulk_create([
+        Notification(user=admin, message=f'ID check needs review: {user.email}', link=reverse('admin_id_reviews'))
+        for admin in User.objects.filter(role='admin', is_active=True)
+    ])
+    messages.info(request, "Thanks! We couldn't confirm your ID automatically, so our team will review it shortly.")
+    return JsonResponse({'ok': True, 'redirect': reverse('face_verify')})
+
+
+def _serve_identity_file(request, filename, folder, field):
+    """Serve a private identity upload to its owner or an admin only."""
+    if os.sep in filename or '/' in filename or '..' in filename:
+        raise Http404
+    if not (request.user.is_superuser or request.user.role == 'admin'):
+        own = getattr(request.user, field)
+        if not own or os.path.basename(own.name) != filename:
+            raise Http404
+
+    file_path = os.path.join(settings.MEDIA_ROOT, folder, filename)
+    if not os.path.isfile(file_path):
+        raise Http404
+    content_type, _ = mimetypes.guess_type(file_path)
+    response = FileResponse(open(file_path, 'rb'), content_type=content_type or 'application/octet-stream')
+    response['Cache-Control'] = 'private, no-store'
+    return response
+
+
+@login_required
+def serve_face_selfie_view(request, filename):
+    return _serve_identity_file(request, filename, 'face_selfies', 'face_selfie')
+
+
+@login_required
+def serve_id_document_view(request, filename):
+    return _serve_identity_file(request, filename, 'id_documents', 'id_document')
 
 
 _RIDER_DOC_FIELDS = RiderProfile.DOCUMENT_FIELDS

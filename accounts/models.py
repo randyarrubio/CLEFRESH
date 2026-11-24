@@ -14,6 +14,14 @@ def _rider_doc_upload(instance, filename):
     return f'rider_docs/{uuid.uuid4().hex}{Path(filename).suffix.lower()}'
 
 
+def _face_selfie_upload(instance, filename):
+    return f'face_selfies/{uuid.uuid4().hex}{Path(filename).suffix.lower()}'
+
+
+def _id_document_upload(instance, filename):
+    return f'id_documents/{uuid.uuid4().hex}{Path(filename).suffix.lower()}'
+
+
 class User(AbstractUser):
     ROLE_CHOICES = [
         ('customer', 'Customer'),
@@ -34,6 +42,42 @@ class User(AbstractUser):
     sso_provider = models.CharField(max_length=20, choices=SSO_CHOICES, default='none')
     email_notifications_enabled = models.BooleanField(default=True)
     email_verified = models.BooleanField(default=False)
+    # Customer face check: live selfie that passed the in-browser liveness challenge.
+    face_selfie = models.ImageField(upload_to=_face_selfie_upload, blank=True, null=True, validators=[validate_image_upload])
+    face_verified_at = models.DateTimeField(null=True, blank=True)
+
+    # Customer valid-ID check: the selfie above is matched server-side against this ID photo.
+    ID_TYPE_CHOICES = [
+        ('philsys', 'PhilSys National ID'),
+        ('drivers_license', "Driver's License"),
+        ('passport', 'Passport'),
+        ('umid', 'UMID'),
+        ('postal', 'Postal ID'),
+        ('voters', "Voter's ID"),
+        ('prc', 'PRC ID'),
+        ('student', 'School / Student ID'),
+        ('other', 'Other government ID'),
+    ]
+    ID_STATUS_CHOICES = [
+        ('none', 'Not submitted'),
+        ('pending_review', 'Pending review'),
+        ('verified', 'Verified'),
+        ('rejected', 'Rejected'),
+    ]
+    id_type = models.CharField(max_length=20, choices=ID_TYPE_CHOICES, blank=True)
+    id_document = models.ImageField(upload_to=_id_document_upload, blank=True, null=True, validators=[validate_image_upload])
+    id_status = models.CharField(max_length=20, choices=ID_STATUS_CHOICES, default='none')
+    id_match_score = models.FloatField(null=True, blank=True)   # SFace cosine similarity; None = not computed
+    id_submitted_at = models.DateTimeField(null=True, blank=True)
+    id_reviewed_at = models.DateTimeField(null=True, blank=True)
+    id_rejection_reason = models.CharField(max_length=500, blank=True)
+
+    @property
+    def needs_face_verification(self):
+        """Customers must pass the live face check AND have a verified ID before booking."""
+        if self.role != 'customer' or self.is_superuser:
+            return False
+        return not self.face_verified_at or self.id_status != 'verified'
 
     def __str__(self):
         return f'{self.get_full_name() or self.email} ({self.role})'
@@ -41,6 +85,7 @@ class User(AbstractUser):
     def save(self, *args, **kwargs):
         from utils.images import shrink_uploaded_image
         shrink_uploaded_image(self.profile_picture, max_px=600)   # shown as a small avatar
+        shrink_uploaded_image(self.id_document, max_px=1600)      # keep ID text legible for admin review
         super().save(*args, **kwargs)
 
 

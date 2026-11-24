@@ -1,3 +1,4 @@
+import re
 from datetime import timedelta
 
 from django.contrib.auth import get_user_model
@@ -13,6 +14,14 @@ from shops.models import DeliverySlot, Service, Shop
 User = get_user_model()
 
 
+def _navs(response):
+    """Return (topbar_nav, mobile_nav) HTML from a rendered page."""
+    content = response.content.decode()
+    topbar = re.search(r'<nav class="topbar-nav" id="topbarNav"[^>]*>(.*?)</nav>', content, re.S).group(1)
+    mobile = re.search(r'<nav class="mobile-menu" id="mobileMenu"[^>]*>(.*?)</nav>', content, re.S).group(1)
+    return topbar, mobile
+
+
 class SystemHardeningTests(TestCase):
     def setUp(self):
         self.customer = User.objects.create_user(
@@ -21,17 +30,22 @@ class SystemHardeningTests(TestCase):
             password='pass12345',
             role='customer',
         )
+        self.customer.face_verified_at = timezone.now()  # booking requires the face + ID check
+        self.customer.id_status = 'verified'
+        self.customer.save(update_fields=['face_verified_at', 'id_status'])
         self.owner = User.objects.create_user(
             username='owner@example.com',
             email='owner@example.com',
             password='pass12345',
             role='shop_owner',
+            email_verified=True,  # shop-owner areas require a verified email
         )
         self.other_owner = User.objects.create_user(
             username='other-owner@example.com',
             email='other-owner@example.com',
             password='pass12345',
             role='shop_owner',
+            email_verified=True,  # shop-owner areas require a verified email
         )
         self.rider = User.objects.create_user(
             username='rider@example.com',
@@ -68,6 +82,7 @@ class SystemHardeningTests(TestCase):
         self.assertEqual(response['Location'], '/')
 
     def test_slots_api_returns_available_slots(self):
+        self.client.force_login(self.customer)
         response = self.client.get(reverse('api_slots', args=[self.shop.id]))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()['slots'][0]['id'], self.slot.id)
@@ -101,11 +116,10 @@ class SystemHardeningTests(TestCase):
 
     def test_home_page_switches_to_shop_owner_workspace(self):
         self.client.force_login(self.owner)
-        response = self.client.get(reverse('home'))
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'Shop owner workspace')
+        # Shop owners skip the landing page and land on their dashboard.
+        response = self.client.get(reverse('home'), follow=True)
+        self.assertRedirects(response, reverse('shop_dashboard'))
         self.assertContains(response, self.shop.name)
-        self.assertContains(response, reverse('shop_dashboard'))
         self.assertContains(response, reverse('shop_dashboard_orders'))
         self.assertContains(response, reverse('shop_dashboard_slots'))
         self.assertContains(response, reverse('shop_dashboard_services'))
@@ -117,14 +131,14 @@ class SystemHardeningTests(TestCase):
     def test_public_home_keeps_marketplace_landing_content(self):
         response = self.client.get(reverse('home'))
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'site-water-bg')
-        self.assertContains(response, 'Featured Laundry Providers')
-        self.assertContains(response, '/static/img/machine%20wash.png')
-        self.assertContains(response, '/static/img/dry%20cleaning.png')
-        self.assertContains(response, '/static/img/hand%20wash.png')
-        self.assertContains(response, '/static/img/iron%20%26%20press.png')
-        self.assertContains(response, '/static/img/express%20service.png')
-        self.assertContains(response, '/static/img/shoe%20cleaning.png')
+        self.assertContains(response, 'Laundry Shops Near You')
+        self.assertContains(response, 'Our Laundry Services')
+        self.assertContains(response, '/static/img/machine%20wash.webp')
+        self.assertContains(response, '/static/img/dry%20cleaning.webp')
+        self.assertContains(response, '/static/img/hand%20wash.webp')
+        self.assertContains(response, '/static/img/iron%20%26%20press.webp')
+        self.assertContains(response, '/static/img/express%20service.webp')
+        self.assertContains(response, '/static/img/shoe%20cleaning.webp')
         self.assertNotContains(response, 'Shop owner workspace')
 
     def test_customer_home_switches_to_shop_discovery(self):
@@ -138,9 +152,7 @@ class SystemHardeningTests(TestCase):
         self.assertContains(response, 'Book')
         self.assertContains(response, self.shop.name)
         self.assertContains(response, reverse('order_list'))
-        content = response.content.decode()
-        topbar_nav = content.split('<nav class="topbar-nav" id="topbarNav">', 1)[1].split('</nav>', 1)[0]
-        mobile_nav = content.split('<div class="mobile-menu" id="mobileMenu">', 1)[1].split('</div>', 1)[0]
+        topbar_nav, mobile_nav = _navs(response)
         self.assertNotIn(reverse('home') + '#services', topbar_nav)
         self.assertNotIn(reverse('home') + '#how-it-works', topbar_nav)
         self.assertNotIn(reverse('home') + '#about-us', topbar_nav)
@@ -189,9 +201,7 @@ class SystemHardeningTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, reverse('place_order', args=[self.shop.id]))
 
-        content = response.content.decode()
-        topbar_nav = content.split('<nav class="topbar-nav" id="topbarNav">', 1)[1].split('</nav>', 1)[0]
-        mobile_nav = content.split('<div class="mobile-menu" id="mobileMenu">', 1)[1].split('</div>', 1)[0]
+        topbar_nav, mobile_nav = _navs(response)
         self.assertNotIn(reverse('home') + '#services', topbar_nav)
         self.assertNotIn(reverse('home') + '#how-it-works', topbar_nav)
         self.assertNotIn(reverse('home') + '#about-us', topbar_nav)
@@ -225,9 +235,7 @@ class SystemHardeningTests(TestCase):
         self.assertContains(response, 'Choose schedule')
         self.assertContains(response, 'Payment method')
 
-        content = response.content.decode()
-        topbar_nav = content.split('<nav class="topbar-nav" id="topbarNav">', 1)[1].split('</nav>', 1)[0]
-        mobile_nav = content.split('<div class="mobile-menu" id="mobileMenu">', 1)[1].split('</div>', 1)[0]
+        topbar_nav, mobile_nav = _navs(response)
         self.assertNotIn(reverse('home') + '#services', topbar_nav)
         self.assertNotIn(reverse('home') + '#how-it-works', topbar_nav)
         self.assertNotIn(reverse('home') + '#about-us', topbar_nav)
@@ -255,9 +263,7 @@ class SystemHardeningTests(TestCase):
         self.assertContains(dashboard, 'Rider workflow')
         self.assertContains(dashboard, 'Active job requests')
         self.assertContains(dashboard, reverse('rider_task_detail', args=[order.id]))
-        content = dashboard.content.decode()
-        topbar_nav = content.split('<nav class="topbar-nav" id="topbarNav">', 1)[1].split('</nav>', 1)[0]
-        mobile_nav = content.split('<div class="mobile-menu" id="mobileMenu">', 1)[1].split('</div>', 1)[0]
+        topbar_nav, mobile_nav = _navs(dashboard)
         self.assertNotIn(f'href="{reverse("home")}">Home', topbar_nav)
         self.assertNotIn(reverse('home') + '#services', topbar_nav)
         self.assertNotIn(reverse('home') + '#how-it-works', topbar_nav)
@@ -360,9 +366,12 @@ class SystemHardeningTests(TestCase):
         order.refresh_from_db()
         self.assertEqual(order.status, 'picked_up')
 
+        # The shop washes/folds the order; the rider can only take it out once it's ready.
+        order.status = 'ready'
+        order.save(update_fields=['status'])
         self.client.post(reverse('rider_update_status', args=[order.id]), {'status': 'out_for_delivery'})
         order.refresh_from_db()
-        self.assertEqual(order.status, 'picked_up')
+        self.assertEqual(order.status, 'ready')
 
         PhotoProof.objects.create(order=order, photo='proof_photos/dropoff.jpg', proof_type='dropoff', uploaded_by=self.rider)
         self.client.post(reverse('rider_update_status', args=[order.id]), {'status': 'out_for_delivery'})

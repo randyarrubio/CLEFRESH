@@ -47,6 +47,9 @@ class ReviewFixTests(TestCase):
             username=email, email=email, password='Pass1234!', role=role, email_verified=True, **kw
         )
         self.customer = mk('c@example.com', 'customer')
+        self.customer.face_verified_at = timezone.now()  # booking requires the face + ID check
+        self.customer.id_status = 'verified'
+        self.customer.save(update_fields=['face_verified_at', 'id_status'])
         self.owner = mk('o@example.com', 'shop_owner')
         self.rider = mk('r@example.com', 'rider')
         self.admin = mk('a@example.com', 'admin')
@@ -292,6 +295,9 @@ class WebhookFixTests(TestCase):
 
     def setUp(self):
         self.customer = User.objects.create_user(username='c@e.com', email='c@e.com', password='x', role='customer')
+        self.customer.face_verified_at = timezone.now()  # booking requires the face + ID check
+        self.customer.id_status = 'verified'
+        self.customer.save(update_fields=['face_verified_at', 'id_status'])
         owner = User.objects.create_user(username='o@e.com', email='o@e.com', password='x', role='shop_owner')
         shop = Shop.objects.create(owner=owner, name='S', address='A', status='approved')
         self.order = Order.objects.create(
@@ -357,6 +363,9 @@ class RiderApprovalTests(TestCase):
             username=email, email=email, password='Pass1234!', role=role, email_verified=True
         )
         self.customer = mk('c@example.com', 'customer')
+        self.customer.face_verified_at = timezone.now()  # booking requires the face + ID check
+        self.customer.id_status = 'verified'
+        self.customer.save(update_fields=['face_verified_at', 'id_status'])
         self.owner = mk('o@example.com', 'shop_owner')
         self.admin = mk('a@example.com', 'admin')
         self.approved = mk('ok@example.com', 'rider')
@@ -488,6 +497,9 @@ class UiUxFixTests(TestCase):
             username=email, email=email, password='Pass1234!', role=role, email_verified=True
         )
         self.customer = mk('c@example.com', 'customer')
+        self.customer.face_verified_at = timezone.now()  # booking requires the face + ID check
+        self.customer.id_status = 'verified'
+        self.customer.save(update_fields=['face_verified_at', 'id_status'])
         self.owner = mk('o@example.com', 'shop_owner')
         self.admin = mk('a@example.com', 'admin')
         self.rider = mk('r@example.com', 'rider')

@@ -1,10 +1,15 @@
 from django.contrib import admin
 from django.urls import path, re_path, include
+from django.http import Http404
 from django.views.generic import RedirectView
 from django.conf import settings
 from django.conf.urls.static import static
 from decouple import config
 from accounts.views import sso_complete_view
+
+def _private_media_404(request, *args):
+    raise Http404
+
 
 _ADMIN_URL = config('DJANGO_ADMIN_URL', default='django-admin/')
 
@@ -27,4 +32,6 @@ urlpatterns = [
     path('admin-panel/', include('analytics.urls')),
     path('api/', include('notifications.urls')),
     path('', include('shops.urls')),
+    # Private uploads are only reachable through the permission-checked views in accounts.
+    re_path(r'^media/(rider_docs|face_selfies|id_documents|shop_docs)/', _private_media_404),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
