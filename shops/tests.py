@@ -133,12 +133,13 @@ class SystemHardeningTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Laundry Shops Near You')
         self.assertContains(response, 'Our Laundry Services')
-        self.assertContains(response, '/static/img/machine%20wash.webp')
-        self.assertContains(response, '/static/img/dry%20cleaning.webp')
-        self.assertContains(response, '/static/img/hand%20wash.webp')
-        self.assertContains(response, '/static/img/iron%20%26%20press.webp')
-        self.assertContains(response, '/static/img/express%20service.webp')
-        self.assertContains(response, '/static/img/shoe%20cleaning.webp')
+        # Real photos only (panel: no AI images): team portraits in the hero, services on real photos.
+        for name in ('tejol', 'padilla', 'jamen', 'goso'):
+            self.assertContains(response, f'/static/img/team/dev-{name}.webp')
+        for img in ('wash-fold', 'bedding', 'comforter', 'dry', 'iron', 'dry-clean'):
+            self.assertContains(response, f'/static/img/team/svc-{img}.webp')
+        for title in ('Wash &amp; Fold', 'Bedsheets, Towels &amp; Curtains', 'Comforters', 'Dry Clean'):
+            self.assertContains(response, title)
         self.assertNotContains(response, 'Shop owner workspace')
 
     def test_customer_home_switches_to_shop_discovery(self):

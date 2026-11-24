@@ -153,6 +153,37 @@
     pointer-events: none;
   }
 
+  /* ── HERO: team photo + developer portrait carousel ─────── */
+  .hero-team-bg {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    object-fit: cover; object-position: center 35%;
+    filter: brightness(.5) saturate(.85) blur(1.5px);
+    transform: scale(1.04);            /* hide the blur's soft edge */
+  }
+  .hero-team {
+    position: relative; z-index: 3; flex-shrink: 0;
+    width: min(28vw, 330px); aspect-ratio: 330 / 470;
+    margin-left: 32px;
+  }
+  .hero-team .hero-carousel-slide {
+    position: absolute; inset: 0; margin: 0;
+    opacity: 0; transform: translateY(10px) scale(.98);
+    transition: opacity .8s ease, transform .8s ease;
+    display: flex; flex-direction: column;
+  }
+  .hero-team .hero-carousel-slide.active { opacity: 1; transform: none; }
+  .hero-team img {
+    width: 100%; aspect-ratio: 4 / 5; height: auto; object-fit: cover; display: block;
+    border-radius: 18px; border: 4px solid rgba(255,255,255,.9);
+    box-shadow: 0 24px 60px rgba(0,0,0,.35);
+  }
+  .hero-team figcaption {
+    margin-top: 12px; text-align: center; color: #fff; line-height: 1.35;
+    text-shadow: 0 1px 6px rgba(0,0,0,.45);
+  }
+  .hero-team figcaption strong { display: block; font-family: 'Open Sans', sans-serif; font-size: 17px; }
+  .hero-team figcaption span { font-size: 14px; opacity: .9; }
+
   /* ── HERO CAROUSEL ─────────────────────────────────────── */
   .hero-carousel {
     position: relative;
@@ -258,6 +289,7 @@
       object-position: center top;
     }
     .hero-carousel-label { display: none; }
+    .hero-team { display: none; }       /* phones: the team photo stays as the backdrop */
     .tlp-hero p { margin-left: auto; margin-right: auto; }
     .hero-actions { justify-content: center; }
     .hero-scroll { display: none; }
@@ -2747,22 +2779,27 @@
     </div>
 
     <div class="tlp-hero-visual" aria-hidden="true">
-      <div class="hero-carousel" id="heroCarousel">
-        <div class="hero-carousel-track">
-          <div class="hero-carousel-slide active">
-            <img src="{% static 'img/order.webp' %}" alt="Order" fetchpriority="high">
-          </div>
-          <div class="hero-carousel-slide">
-            <img src="{% static 'img/pick-up.webp' %}" alt="Pick-up">
-          </div>
-          <div class="hero-carousel-slide">
-            <img src="{% static 'img/drop-off.webp' %}" alt="Drop-off">
-          </div>
-          <div class="hero-carousel-slide">
-            <img src="{% static 'img/delivery.webp' %}" alt="Delivery">
-          </div>
-        </div>
-      </div>
+      <img src="{% static 'img/team/team-group.webp' %}" alt="" class="hero-team-bg" fetchpriority="high">
+    </div>
+
+    {# One CLEFRESH developer per carousel step, in the team photo's left-to-right order. #}
+    <div class="hero-team" id="heroCarousel" aria-hidden="true">
+      <figure class="hero-carousel-slide active">
+        <img src="{% static 'img/team/dev-tejol.webp' %}" alt="" width="330" height="412">
+        <figcaption><strong>Jessabel T. Tejol</strong><span>CLEFRESH developer</span></figcaption>
+      </figure>
+      <figure class="hero-carousel-slide">
+        <img src="{% static 'img/team/dev-padilla.webp' %}" alt="" width="330" height="412" loading="lazy">
+        <figcaption><strong>Rhealene Mae Padilla</strong><span>CLEFRESH developer</span></figcaption>
+      </figure>
+      <figure class="hero-carousel-slide">
+        <img src="{% static 'img/team/dev-jamen.webp' %}" alt="" width="330" height="412" loading="lazy">
+        <figcaption><strong>Grace Carole C. Jamen</strong><span>CLEFRESH developer</span></figcaption>
+      </figure>
+      <figure class="hero-carousel-slide">
+        <img src="{% static 'img/team/dev-goso.webp' %}" alt="" width="330" height="412" loading="lazy">
+        <figcaption><strong>Riza Mae C. Goso</strong><span>CLEFRESH developer</span></figcaption>
+      </figure>
     </div>
 
     <div class="hero-carousel-label" id="heroCarouselLabel" role="tablist">
@@ -2892,78 +2929,78 @@
       <div class="head-center tlp-reveal">
         <span class="section-label">What We Offer</span>
         <h2 class="section-title">Our Laundry Services</h2>
-        <p class="section-sub">From everyday machine washing to specialty dry cleaning — find the right service for every garment at shops near you.</p>
+        <p class="section-sub">The services Cantilan laundry shops offer on CLEFRESH — from everyday wash &amp; fold to comforters and dry cleaning.</p>
       </div>
 
       <div class="services-grid">
         <article class="svc-card tlp-reveal">
           <div class="svc-bg svc-machine">
-            <img src="{% static 'img/machine wash.webp' %}" alt="Machine wash service" class="svc-photo" loading="lazy" decoding="async">
+            <img src="{% static 'img/team/svc-wash-fold.webp' %}" alt="Machines at Lava'z Laundry Shop, Cantilan" class="svc-photo" style="object-position:center;" loading="lazy" decoding="async">
             <div class="svc-overlay"></div>
-            <span class="svc-badge">Popular</span>
+            <span class="svc-badge">Most booked</span>
             <div class="svc-info">
-              <h3>Machine Wash</h3>
-              <p>Full-cycle washing for everyday clothing and linens.</p>
-            </div>
-          </div>
-        </article>
-
-        <article class="svc-card tlp-reveal">
-          <div class="svc-bg svc-dry">
-            <img src="{% static 'img/dry cleaning.webp' %}" alt="Dry cleaning service" class="svc-photo" loading="lazy" decoding="async">
-            <div class="svc-overlay"></div>
-            <span class="svc-badge">Specialty</span>
-            <div class="svc-info">
-              <h3>Dry Cleaning</h3>
-              <p>Solvent-based cleaning for suits, gowns, and delicate fabrics.</p>
+              <h3>Wash &amp; Fold</h3>
+              <p>Everyday clothes washed, dried and folded in one step, priced per kilo.</p>
             </div>
           </div>
         </article>
 
         <article class="svc-card tlp-reveal">
           <div class="svc-bg svc-hand">
-            <img src="{% static 'img/hand wash.webp' %}" alt="Hand wash service" class="svc-photo" loading="lazy" decoding="async">
+            <img src="{% static 'img/team/svc-bedding.webp' %}" alt="The CLEFRESH team with the system on a laptop" class="svc-photo" style="object-position:center 30%;" loading="lazy" decoding="async">
             <div class="svc-overlay"></div>
-            <span class="svc-badge">Gentle</span>
+            <span class="svc-badge">Per kilo</span>
             <div class="svc-info">
-              <h3>Hand Wash</h3>
-              <p>Careful hand washing for silks, knits, and sensitive items.</p>
-            </div>
-          </div>
-        </article>
-
-        <article class="svc-card tlp-reveal">
-          <div class="svc-bg svc-iron">
-            <img src="{% static 'img/iron & press.webp' %}" alt="Iron and press service" class="svc-photo" loading="lazy" decoding="async">
-            <div class="svc-overlay"></div>
-            <span class="svc-badge">Add-on</span>
-            <div class="svc-info">
-              <h3>Iron &amp; Press</h3>
-              <p>Crisp, wrinkle-free results for formal wear and uniforms.</p>
+              <h3>Bedsheets, Towels &amp; Curtains</h3>
+              <p>Heavier household linens, cleaned and folded at their own per-kilo rate.</p>
             </div>
           </div>
         </article>
 
         <article class="svc-card tlp-reveal">
           <div class="svc-bg svc-express">
-            <img src="{% static 'img/express service.webp' %}" alt="Express laundry service" class="svc-photo" loading="lazy" decoding="async">
+            <img src="{% static 'img/team/svc-comforter.webp' %}" alt="The CLEFRESH team at their capstone defense" class="svc-photo" style="object-position:center 40%;" loading="lazy" decoding="async">
             <div class="svc-overlay"></div>
-            <span class="svc-badge">Rush</span>
+            <span class="svc-badge">Per kilo</span>
             <div class="svc-info">
-              <h3>Express Service</h3>
-              <p>Priority processing for same-day or next-morning turnaround.</p>
+              <h3>Comforters</h3>
+              <p>Bulky comforters and blankets washed and dried thoroughly.</p>
+            </div>
+          </div>
+        </article>
+
+        <article class="svc-card tlp-reveal">
+          <div class="svc-bg svc-dry">
+            <img src="{% static 'img/team/svc-dry.webp' %}" alt="The CLEFRESH developers presenting the system" class="svc-photo" style="object-position:center 55%;" loading="lazy" decoding="async">
+            <div class="svc-overlay"></div>
+            <span class="svc-badge">Per kilo</span>
+            <div class="svc-info">
+              <h3>Dry</h3>
+              <p>Drying only, for laundry you have already washed at home.</p>
+            </div>
+          </div>
+        </article>
+
+        <article class="svc-card tlp-reveal">
+          <div class="svc-bg svc-iron">
+            <img src="{% static 'img/team/svc-iron.webp' %}" alt="The CLEFRESH team beside the project slide" class="svc-photo" style="object-position:center 40%;" loading="lazy" decoding="async">
+            <div class="svc-overlay"></div>
+            <span class="svc-badge">Per piece</span>
+            <div class="svc-info">
+              <h3>Iron &amp; Press</h3>
+              <p>Crisp, wrinkle-free results for uniforms and formal wear.</p>
             </div>
           </div>
         </article>
 
         <article class="svc-card tlp-reveal">
           <div class="svc-bg svc-shoe">
-            <img src="{% static 'img/shoe cleaning.webp' %}" alt="Shoe cleaning service" class="svc-photo" loading="lazy" decoding="async">
+            <img src="{% static 'img/team/svc-dry-clean.webp' %}" alt="The CLEFRESH developers with their project" class="svc-photo" style="object-position:center 55%;" loading="lazy" decoding="async">
             <div class="svc-overlay"></div>
-            <span class="svc-badge">Specialty</span>
+            <span class="svc-badge">Per piece</span>
             <div class="svc-info">
-              <h3>Shoe Cleaning</h3>
-              <p>Deep clean and restore for sneakers, leather, and canvas footwear.</p>
+              <h3>Dry Clean</h3>
+              <p>Gentle cleaning for suits, gowns and delicate fabrics, where the shop offers it.</p>
             </div>
           </div>
         </article>
