@@ -1,11 +1,22 @@
 import uuid
 from pathlib import Path
 
+from decimal import Decimal
+
 from django.core.validators import MinValueValidator
 from django.db import models
 from django.conf import settings
 from django.utils import timezone
 from utils.validators import validate_document_upload, validate_image_upload
+
+
+def _as_time(value):
+    """TimeField values can still be 'HH:MM' strings on an unsaved/unrefreshed instance."""
+    if isinstance(value, str):
+        from datetime import time
+        h, m = value.split(':')[:2]
+        return time(int(h), int(m))
+    return value
 
 
 def _shop_logo_upload(instance, filename):
@@ -58,8 +69,19 @@ class Shop(models.Model):
 
     @property
     def is_open(self):
-        now = timezone.localtime().time()
-        return self.operating_hours_start <= now <= self.operating_hours_end
+        return self.within_hours(timezone.localtime().time())
+
+    def within_hours(self, start, end=None):
+        """True if a time (or a start-end window) falls inside the shop's operating hours."""
+        opens, closes = _as_time(self.operating_hours_start), _as_time(self.operating_hours_end)
+        if end is None:
+            return opens <= _as_time(start) <= closes
+        return opens <= _as_time(start) and _as_time(end) <= closes
+
+    @property
+    def hours_label(self):
+        fmt = lambda t: _as_time(t).strftime('%I:%M %p').lstrip('0')
+        return f'{fmt(self.operating_hours_start)} – {fmt(self.operating_hours_end)}'
 
     def average_rating(self):
         # Memoized per instance: shop pages show the rating several times (incl. a 5-star loop).
@@ -89,12 +111,18 @@ class Shop(models.Model):
 
 
 class Service(models.Model):
-    SERVICE_CHOICES = [
-        ('wash', 'Wash'),
+    # Wash & Fold is one service (panel feedback): shops price it per kg as a single step.
+    OFFERED_SERVICE_CHOICES = [
+        ('wash_fold', 'Wash & Fold'),
         ('dry', 'Dry'),
-        ('fold', 'Fold'),
         ('iron', 'Iron'),
         ('dry_clean', 'Dry Clean'),
+    ]
+    # Kept only so old services/orders still display; never offered for new services or bookings.
+    LEGACY_SERVICE_NAMES = ('wash', 'fold')
+    SERVICE_CHOICES = OFFERED_SERVICE_CHOICES + [
+        ('wash', 'Wash'),
+        ('fold', 'Fold'),
     ]
 
     shop = models.ForeignKey(Shop, on_delete=models.CASCADE, related_name='services')
@@ -250,3 +278,77 @@ class Promotion(models.Model):
         if today > self.end_date:
             return 'expired'
         return 'live'
+
+
+class ShopAttendant(models.Model):
+    """A counter attendant account that belongs to one shop (role 'attendant')."""
+    shop = models.ForeignKey(Shop, on_delete=models.CASCADE, related_name='attendants')
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='attendant_profile')
+    hourly_rate = models.DecimalField(max_digits=8, decimal_places=2, default=Decimal('0.00'),
+                                      validators=[MinValueValidator(0)])
+    # Assigned schedule: used to flag late time-ins and to show the expected shift.
+    shift_start = models.TimeField(null=True, blank=True)
+    shift_end = models.TimeField(null=True, blank=True)
+    work_days = models.JSONField(default=list, blank=True)    # e.g. ["mon", "tue", ...]
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    WEEKDAYS = [('mon', 'Mon'), ('tue', 'Tue'), ('wed', 'Wed'), ('thu', 'Thu'), ('fri', 'Fri'), ('sat', 'Sat'), ('sun', 'Sun')]
+    LATE_GRACE_MINUTES = 15
+
+    class Meta:
+        ordering = ['user__first_name', 'user__email']
+
+    def __str__(self):
+        return f'{self.user.get_full_name() or self.user.email} @ {self.shop.name}'
+
+    @property
+    def open_record(self):
+        return self.attendance.filter(time_out__isnull=True).order_by('-time_in').first()
+
+    def schedule_label(self):
+        days = ', '.join(label for key, label in self.WEEKDAYS if key in (self.work_days or [])) or 'No days set'
+        if self.shift_start and self.shift_end:
+            fmt = lambda t: t.strftime('%I:%M %p').lstrip('0')
+            return f'{days} · {fmt(self.shift_start)} – {fmt(self.shift_end)}'
+        return days
+
+
+class AttendanceRecord(models.Model):
+    """One shift: time in, time out, and the pay rate in force at the time."""
+    attendant = models.ForeignKey(ShopAttendant, on_delete=models.CASCADE, related_name='attendance')
+    time_in = models.DateTimeField()
+    time_out = models.DateTimeField(null=True, blank=True)
+    hourly_rate = models.DecimalField(max_digits=8, decimal_places=2, default=Decimal('0.00'))
+    note = models.CharField(max_length=200, blank=True)
+
+    class Meta:
+        ordering = ['-time_in']
+        constraints = [
+            # At most one open shift per attendant (no double clock-in).
+            models.UniqueConstraint(fields=['attendant'], condition=models.Q(time_out__isnull=True),
+                                    name='one_open_shift_per_attendant'),
+        ]
+
+    def __str__(self):
+        return f'{self.attendant} {self.time_in:%Y-%m-%d %H:%M}'
+
+    @property
+    def hours(self):
+        end = self.time_out or timezone.now()
+        return (Decimal((end - self.time_in).total_seconds()) / Decimal(3600)).quantize(Decimal('0.01'))
+
+    @property
+    def earnings(self):
+        return (self.hours * self.hourly_rate).quantize(Decimal('0.01'))
+
+    @property
+    def is_late(self):
+        """Clocked in more than the grace period after the scheduled shift start."""
+        start = self.attendant.shift_start
+        if not start:
+            return False
+        from datetime import datetime, timedelta
+        local_in = timezone.localtime(self.time_in)
+        scheduled = timezone.make_aware(datetime.combine(local_in.date(), start), local_in.tzinfo)
+        return local_in > scheduled + timedelta(minutes=self.attendant.LATE_GRACE_MINUTES)

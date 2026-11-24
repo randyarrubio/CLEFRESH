@@ -1,4 +1,5 @@
 import uuid
+from decimal import Decimal
 from pathlib import Path
 
 from django.db import models
@@ -32,7 +33,11 @@ class Order(models.Model):
         ('card', 'Credit/Debit Card'),
         ('online_banking', 'Online Banking'),
         ('cod', 'Cash on Delivery'),
+        ('cop', 'Cash on Pickup'),
+        ('counter', 'Cash at Counter'),     # walk-in orders taken at the shop's POS
     ]
+    # Paid in cash: COD when the laundry comes back, COP when the rider collects it, or at the counter.
+    CASH_METHODS = ('cod', 'cop', 'counter')
     PAYMENT_STATUS_CHOICES = [
         ('unpaid', 'Unpaid'),
         ('paid', 'Paid'),
@@ -40,7 +45,9 @@ class Order(models.Model):
         ('refunded', 'Refunded'),
     ]
 
-    customer = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='orders')
+    # Empty only for walk-in orders taken at the counter without a CLEFRESH account.
+    customer = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='orders',
+                                 null=True, blank=True)
     shop = models.ForeignKey(Shop, on_delete=models.CASCADE, related_name='orders')
     rider = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='rider_orders')
     services = models.ManyToManyField(Service, through='OrderService')
@@ -72,6 +79,14 @@ class Order(models.Model):
     # (see orders/management/commands/process_payment_reminders.py).
     payment_due_at = models.DateTimeField(null=True, blank=True)
     payment_reminders_sent = models.PositiveSmallIntegerField(default=0)
+    # Kiosk/POS: dropped off at the counter (no pickup/delivery); the customer claims it when ready.
+    is_walk_in = models.BooleanField(default=False)
+    walk_in_name = models.CharField(max_length=120, blank=True)
+    walk_in_phone = models.CharField(max_length=30, blank=True)
+    # Loyalty points spent on this order (1 point = ₱1), already taken off total_amount.
+    points_redeemed = models.PositiveIntegerField(default=0)
+    # Platform commission (percent) snapshotted when the order is placed; None = pre-commission order (0%).
+    commission_rate = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
     notes = models.TextField(blank=True)
     decline_reason = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -94,7 +109,13 @@ class Order(models.Model):
         ]
 
     def __str__(self):
-        return f'Order #{self.id} - {self.customer.email}'
+        return f'Order #{self.id} - {self.customer_label}'
+
+    @property
+    def customer_label(self):
+        if self.customer_id:
+            return self.customer.get_full_name() or self.customer.email
+        return self.walk_in_name or 'Walk-in customer'
 
     @property
     def price_pending(self):
@@ -103,7 +124,27 @@ class Order(models.Model):
 
     @property
     def awaiting_online_payment(self):
-        return self.payment_method != 'cod' and self.payment_status != 'paid'
+        return self.payment_method not in self.CASH_METHODS and self.payment_status != 'paid'
+
+    @property
+    def commission_amount(self):
+        rate = Decimal(str(self.commission_rate or 0))
+        return (Decimal(str(self.total_amount)) * rate / Decimal('100')).quantize(Decimal('0.01'))
+
+    @property
+    def shop_earnings(self):
+        return Decimal(str(self.total_amount)) - self.commission_amount
+
+    @property
+    def is_cash(self):
+        return self.payment_method in self.CASH_METHODS
+
+    def cash_due_on(self, new_status):
+        """True if the rider must collect cash to make this status change (COP at pickup, COD at delivery)."""
+        if self.payment_status == 'paid':
+            return False
+        return ((new_status == 'picked_up' and self.payment_method == 'cop')
+                or (new_status == 'delivered' and self.payment_method == 'cod'))
 
     @property
     def can_pay_online(self):
@@ -128,7 +169,7 @@ class Order(models.Model):
         """(Re)start the online-payment deadline. Call when the price becomes final; caller saves."""
         from datetime import timedelta
         from django.utils import timezone
-        if self.payment_method == 'cod' or self.payment_status == 'paid':
+        if self.payment_method in self.CASH_METHODS or self.payment_status == 'paid':
             self.payment_due_at = None
         else:
             self.payment_due_at = (now or timezone.now()) + timedelta(hours=settings.PAYMENT_DUE_HOURS)
@@ -140,9 +181,38 @@ class Order(models.Model):
             return "The shop hasn't confirmed the weight and final price yet."
         if self.payment_status != 'paid' and self.online_payment_in_progress():
             return 'The customer is completing an online payment right now. Try again in a few minutes.'
+        if self.payment_method == 'cop' and self.payment_status != 'paid':
+            return "The cash-on-pickup payment hasn't been recorded yet. Confirm the cash received first."
         if self.awaiting_online_payment:
             return "The customer hasn't paid online yet. Delivery starts after payment (or after they switch to cash on delivery)."
         return None
+
+
+class LoyaltyEntry(models.Model):
+    """Points ledger. A customer's balance is the sum of their entries."""
+    KIND_CHOICES = [
+        ('earn', 'Earned'),
+        ('redeem', 'Redeemed'),
+        ('restore', 'Restored (order cancelled)'),
+        ('revoke', 'Revoked (order refunded)'),
+    ]
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='loyalty_entries')
+    order = models.ForeignKey(Order, on_delete=models.SET_NULL, null=True, blank=True, related_name='loyalty_entries')
+    kind = models.CharField(max_length=10, choices=KIND_CHOICES)
+    points = models.IntegerField()      # positive = added, negative = spent/removed
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        constraints = [
+            # Each kind happens at most once per order, so retries and double submits can't repeat it.
+            models.UniqueConstraint(fields=['order', 'kind'], condition=models.Q(order__isnull=False),
+                                    name='loyalty_once_per_order_kind'),
+        ]
+        indexes = [models.Index(fields=['user', '-created_at'], name='loyalty_user_created_idx')]
+
+    def __str__(self):
+        return f'{self.user} {self.points:+d} ({self.kind})'
 
 
 class OrderService(models.Model):

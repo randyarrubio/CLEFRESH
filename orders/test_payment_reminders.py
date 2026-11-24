@@ -17,7 +17,7 @@ from shops.models import Service, Shop
 User = get_user_model()
 
 
-@override_settings(PAYMENT_REMINDER_HOURS=[24, 48], PAYMENT_DUE_HOURS=72)
+@override_settings(PAYMENT_REMINDER_HOURS=[24, 48], PAYMENT_DUE_HOURS=72, COD_TRUSTED_MIN_ORDERS=0)
 class PaymentDeadlineTests(TestCase):
     @classmethod
     def setUpClass(cls):
@@ -39,7 +39,7 @@ class PaymentDeadlineTests(TestCase):
         self.customer.save(update_fields=['face_verified_at', 'id_status'])
         self.owner = mk('o@e.com', 'shop_owner')
         self.shop = Shop.objects.create(owner=self.owner, name='Suds', address='Tandag', status='approved')
-        self.wash = Service.objects.create(shop=self.shop, name='wash', price_per_kg='50.00')
+        self.wash = Service.objects.create(shop=self.shop, name='wash_fold', price_per_kg='50.00')
 
     def _order(self, hours_since_clock_start, **kw):
         """An unpaid online order whose 72 h deadline clock started N hours ago."""
@@ -63,7 +63,7 @@ class PaymentDeadlineTests(TestCase):
         iron = Service.objects.create(shop=self.shop, name='iron', price_per_piece='15.00')
         self.client.force_login(self.customer)
         base = {'pickup_address': 'P', 'delivery_address': 'D',
-                'pickup_datetime': (timezone.localtime() + timedelta(days=1)).strftime('%Y-%m-%dT%H:%M')}
+                'pickup_datetime': (timezone.localdate() + timedelta(days=1)).strftime('%Y-%m-%dT10:00')}
         # piece-only online order: priced at booking, deadline starts now
         self.client.post(reverse('place_order', args=[self.shop.id]),
                          {**base, 'payment_method': 'gcash', 'svc_selected': [iron.id], f'qty_{iron.id}': '3'})

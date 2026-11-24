@@ -14,6 +14,7 @@ urlpatterns = [
     path('id-reviews/<int:user_id>/action/', views.admin_id_review_action_view, name='admin_id_review_action'),
     path('orders/', views.admin_orders_view, name='admin_orders'),
     path('transactions/', views.admin_transactions_view, name='admin_transactions'),
+    path('finance/', views.admin_finance_view, name='admin_finance'),
     path('analytics/', views.admin_analytics_view, name='admin_analytics'),
     path('broadcast/', views.admin_broadcast_view, name='admin_broadcast'),
 ]

@@ -51,7 +51,7 @@
                 #{{ order.id }}
               </div>
               <div class="order-details">
-                <h5>{{ order.customer.get_full_name|default:order.customer.email }}</h5>
+                <h5>{{ order.customer_label }}{% if order.is_walk_in %} <span class="badge badge-role-default">Walk-in</span>{% endif %}</h5>
                 <p>{{ order.created_at|date:"M d, Y g:i A" }} &bull; {{ order.get_payment_method_display }}</p>
               </div>
             </div>

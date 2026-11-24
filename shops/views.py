@@ -15,6 +15,7 @@ from django.db.models import F, Q, Sum
 from .models import Shop, Service, DeliverySlot
 from accounts.decorators import role_required
 from accounts.forms import RegisterForm
+from .access import shop_staff_required
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +33,18 @@ VALID_TRANSITIONS = {
     'ready': {'out_for_delivery'},
     'out_for_delivery': {'delivered'},
 }
+# Walk-in (POS) orders are received at the counter and claimed there: no rider legs.
+WALK_IN_TRANSITIONS = {
+    'picked_up': {'washing', 'drying', 'folding', 'ready'},
+    'washing': {'drying', 'folding', 'ready'},
+    'drying': {'folding', 'ready'},
+    'folding': {'ready'},
+    'ready': set(),          # claiming is done from the counter (it records the cash)
+}
+
+
+def transitions_for(order):
+    return WALK_IN_TRANSITIONS if order.is_walk_in else VALID_TRANSITIONS
 
 
 SHOP_META_PREFIXES = {
@@ -79,9 +92,8 @@ def _shop_edit_context(shop):
         'shop_meta': meta,
         'selected_services': set(services.keys()),
         'service_prices': {
-            'wash': services.get('wash').price_per_kg if services.get('wash') else '',
+            'wash_fold': services.get('wash_fold').price_per_kg if services.get('wash_fold') else '',
             'dry': services.get('dry').price_per_kg if services.get('dry') else '',
-            'fold': services.get('fold').price_per_kg if services.get('fold') else '',
             'iron': services.get('iron').price_per_piece if services.get('iron') else '',
             'dry_clean': services.get('dry_clean').price_per_piece if services.get('dry_clean') else '',
         },
@@ -124,6 +136,13 @@ def _save_shop_from_owner_form(request, shop, set_pending=False):
     shop.longitude = lng
     shop.operating_hours_start = request.POST.get('hours_start') or '08:00'
     shop.operating_hours_end = request.POST.get('hours_end') or '18:00'
+    try:
+        from .models import _as_time
+        opens, closes = _as_time(shop.operating_hours_start), _as_time(shop.operating_hours_end)
+    except (ValueError, TypeError):
+        raise ValidationError('Enter valid opening and closing times.')
+    if closes <= opens:
+        raise ValidationError('Closing time must be later than opening time.')
     shop.minimum_load_kg = minimum_load
     shop.turnaround = request.POST.get('turnaround', '').strip()
     shop.payments = payments
@@ -143,17 +162,19 @@ def _save_shop_from_owner_form(request, shop, set_pending=False):
     shop.save()
 
     service_prices = {
-        'wash': {'price_per_kg': request.POST.get('price_wash_kg') or None, 'price_per_piece': None},
+        'wash_fold': {'price_per_kg': request.POST.get('price_wash_fold_kg') or None, 'price_per_piece': None},
         'dry': {'price_per_kg': request.POST.get('price_dry_kg') or None, 'price_per_piece': None},
-        'fold': {'price_per_kg': request.POST.get('price_fold_kg') or None, 'price_per_piece': None},
         'iron': {'price_per_kg': None, 'price_per_piece': request.POST.get('price_iron_piece') or None},
         'dry_clean': {'price_per_kg': None, 'price_per_piece': request.POST.get('price_dry_clean_piece') or None},
     }
     selected_services = set(request.POST.getlist('services'))
-    try:
-        shop.services.exclude(name__in=selected_services).delete()
-    except RestrictedError:
-        raise ValidationError('A service you unchecked has existing orders and cannot be removed.')
+    for old_service in shop.services.exclude(name__in=selected_services):
+        try:
+            old_service.delete()
+        except RestrictedError:
+            if old_service.name in Service.LEGACY_SERVICE_NAMES:
+                continue        # legacy Wash/Fold with order history: kept for records, hidden from booking
+            raise ValidationError('A service you unchecked has existing orders and cannot be removed.')
     for service_name in selected_services:
         if service_name not in service_prices:
             continue
@@ -192,7 +213,7 @@ def home_view(request):
         from orders.views import BOOKABLE_PAYMENT_METHODS
         context['landing_stats'] = {
             'shops': shops.count(),
-            'service_types': len(Service.SERVICE_CHOICES),
+            'service_types': len(Service.OFFERED_SERVICE_CHOICES),
             'payment_methods': len(BOOKABLE_PAYMENT_METHODS),
             'deliveries': Order.objects.filter(status='delivered').count(),
         }
@@ -203,7 +224,7 @@ def home_view(request):
     if request.user.is_authenticated and request.user.role == 'rider':
         return redirect('rider_dashboard')
 
-    if request.user.is_authenticated and request.user.role == 'shop_owner':
+    if request.user.is_authenticated and request.user.role in ('shop_owner', 'attendant'):
         return redirect('shop_dashboard')
 
     if request.user.is_authenticated and (request.user.role == 'admin' or request.user.is_superuser):
@@ -528,7 +549,7 @@ def shop_list_view(request):
 
     q = request.GET.get('q', '').strip()[:100]
     service_filter = request.GET.get('service', '')
-    if service_filter not in dict(Service.SERVICE_CHOICES):
+    if service_filter not in dict(Service.OFFERED_SERVICE_CHOICES):
         service_filter = ''
     sort = request.GET.get('sort', 'newest')
     if sort not in SHOP_LIST_SORTS:
@@ -579,7 +600,7 @@ def shop_list_view(request):
         'has_filters': bool(q or service_filter or open_now),
         'sort_choices': [(key, label) for key, (label, _order) in SHOP_LIST_SORTS.items()],
         'service_chips': [('', 'All services', qs(service=''))] + [
-            (value, label, qs(service=value)) for value, label in Service.SERVICE_CHOICES
+            (value, label, qs(service=value)) for value, label in Service.OFFERED_SERVICE_CHOICES
         ],
         'page_qs': qs(),                 # filters to carry into pagination links
         'shop_markers': shop_markers,
@@ -629,8 +650,11 @@ def shop_detail_view(request, shop_id):
 
 # ─── Shop Dashboard Views ───────────────────────────────────────────────────
 
-@role_required('shop_owner')
+@role_required('shop_owner', 'attendant')
 def dashboard_view(request):
+    if request.user.role == 'attendant':
+        from .staff_views import attendant_dashboard_view
+        return attendant_dashboard_view(request)
     shops = request.user.shops.filter(status='approved')
     if not shops.exists():
         pending = request.user.shops.filter(status='pending')
@@ -655,12 +679,9 @@ def dashboard_view(request):
     })
 
 
-@role_required('shop_owner')
+@shop_staff_required
 def dashboard_orders_view(request):
-    shops = request.user.shops.filter(status='approved')
-    if not shops.exists():
-        return redirect('shop_dashboard')
-    shop = shops.first()
+    shop = request.staff_shop
     from orders.models import Order
     status_filter = request.GET.get('status', '')
     orders = Order.objects.filter(shop=shop).select_related('customer', 'rider', 'delivery_slot')
@@ -676,18 +697,15 @@ def dashboard_orders_view(request):
     })
 
 
-@role_required('shop_owner')
+@shop_staff_required
 def dashboard_order_detail_view(request, order_id):
-    shops = request.user.shops.filter(status='approved')
-    if not shops.exists():
-        return redirect('shop_dashboard')
-    shop = shops.first()
+    shop = request.staff_shop
     from orders.models import Order, OrderStatusLog
     order = get_object_or_404(Order, id=order_id, shop=shop)
     logs = order.status_logs.all()
     from accounts.models import approved_riders
     riders = approved_riders().order_by('first_name', 'email')
-    allowed = VALID_TRANSITIONS.get(order.status, set())
+    allowed = transitions_for(order).get(order.status, set())
     next_statuses = [(value, label) for value, label in Order.STATUS_CHOICES if value in allowed]
     return render(request, 'shop_dashboard/order_detail.html', {
         'shop': shop,
@@ -702,17 +720,15 @@ def dashboard_order_detail_view(request, order_id):
     })
 
 
-@role_required('shop_owner')
+@shop_staff_required
 def update_order_status_view(request, order_id):
     if request.method != 'POST':
         return redirect('shop_dashboard_orders')
-    if not request.user.shops.filter(status='approved').exists():
-        return redirect('shop_dashboard')
     from orders.models import Order, OrderStatusLog
     from notifications.models import Notification
     from utils.email_notifications import send_email_notification
 
-    order = get_object_or_404(Order, id=order_id, shop__owner=request.user, shop__status='approved')
+    order = get_object_or_404(Order, id=order_id, shop=request.staff_shop)
     new_status = request.POST.get('status')
     note = request.POST.get('note', '')
     decline_reason = request.POST.get('decline_reason', '')
@@ -727,8 +743,7 @@ def update_order_status_view(request, order_id):
         messages.error(request, f'Cannot change a {order.get_status_display()} order.')
         return redirect('shop_dashboard_order_detail', order_id=order_id)
 
-    valid_transitions = VALID_TRANSITIONS
-    allowed_next = valid_transitions.get(order.status, set())
+    allowed_next = transitions_for(order).get(order.status, set())
     if new_status not in allowed_next:
         from_label = order.get_status_display()
         to_label = dict(Order.STATUS_CHOICES).get(new_status, new_status)
@@ -752,7 +767,14 @@ def update_order_status_view(request, order_id):
         if not Order.objects.filter(pk=order.pk, status=old_status).update(**fields):
             messages.error(request, 'This order was just updated. Please review it and try again.')
             return redirect('shop_dashboard_order_detail', order_id=order_id)
+        if request.user.role == 'attendant':
+            note = f'[{request.user.get_full_name() or request.user.email}] {note}'.strip()
         OrderStatusLog.objects.create(order=order, status=new_status, note=note[:500])
+        from orders import loyalty
+        if new_status == 'declined':
+            loyalty.restore(order)
+        elif new_status == 'delivered':
+            loyalty.award(order.id)
         # Declined orders free their delivery-slot seat (mirrors cancel_order_view).
         if new_status == 'declined' and order.delivery_slot_id:
             DeliverySlot.objects.filter(id=order.delivery_slot_id, current_bookings__gt=0).update(
@@ -769,11 +791,12 @@ def update_order_status_view(request, order_id):
         'out_for_delivery': f'Your order #{order.id} is out for delivery — your rider is on the way!',
         'delivered': f'Your laundry has been delivered! Order #{order.id} is complete.',
     }
-    Notification.objects.create(
-        user=order.customer,
-        message=_customer_messages.get(new_status, f'Your order #{order.id} status: {order.get_status_display()}.'),
-        link=f'/orders/{order.id}/'
-    )
+    if order.customer_id:
+        Notification.objects.create(
+            user=order.customer,
+            message=_customer_messages.get(new_status, f'Your order #{order.id} status: {order.get_status_display()}.'),
+            link=f'/orders/{order.id}/'
+        )
 
     status_email_map = {
         'accepted': ('order_accepted', order.customer),
@@ -781,7 +804,7 @@ def update_order_status_view(request, order_id):
         'picked_up': ('order_picked_up', order.customer),
         'delivered': ('order_delivered', order.customer),
     }
-    if new_status in status_email_map:
+    if new_status in status_email_map and order.customer_id:
         event, recipient = status_email_map[new_status]
         extra = {'reason': decline_reason} if new_status == 'declined' else {}
         send_email_notification(event, recipient, order=order, extra=extra)
@@ -800,7 +823,7 @@ WEIGH_ALLOWED_STATUSES = ('picked_up', 'washing', 'drying', 'folding', 'ready') 
 MAX_LINE_WEIGHT_KG = Decimal('200')
 
 
-@role_required('shop_owner')
+@shop_staff_required
 def confirm_order_weight_view(request, order_id):
     """Shop enters the real weight (and piece counts) for a weigh-at-shop order.
 
@@ -816,7 +839,7 @@ def confirm_order_weight_view(request, order_id):
     from utils.validators import validate_image_upload
     from .models import Promotion
 
-    shop = _owner_approved_shop(request)
+    shop = request.staff_shop
     order = get_object_or_404(Order, id=order_id, shop=shop)
     back = redirect('shop_dashboard_order_detail', order_id=order.id)
     if not order.weigh_at_shop:
@@ -914,20 +937,20 @@ def confirm_order_weight_view(request, order_id):
     return back
 
 
-@role_required('shop_owner')
+@shop_staff_required
 def assign_rider_view(request, order_id):
     if request.method != 'POST':
         return redirect('shop_dashboard_orders')
-    shops = request.user.shops.filter(status='approved')
-    shop = shops.first() if shops.exists() else None
-    if not shop:
-        return redirect('shop_dashboard')
+    shop = request.staff_shop
     from orders.models import Order
     from notifications.models import Notification
     from utils.email_notifications import send_email_notification
     from accounts.models import approved_riders
 
     order = get_object_or_404(Order, id=order_id, shop=shop)
+    if order.is_walk_in:
+        messages.error(request, 'Walk-in orders are claimed at the counter and do not need a rider.')
+        return redirect('shop_dashboard_order_detail', order_id=order_id)
     if order.status in ('delivered', 'cancelled', 'declined'):
         messages.error(request, f'Cannot assign a rider to a {order.get_status_display()} order.')
         return redirect('shop_dashboard_order_detail', order_id=order_id)
@@ -986,6 +1009,13 @@ def create_slot_view(request):
         max_capacity=request.POST.get('max_capacity', 5),
     )
     try:
+        if not shop.within_hours(slot.time_start, slot.time_end):
+            messages.error(request, f'Delivery slots must be within your operating hours ({shop.hours_label}).')
+            return redirect('shop_dashboard_slots')
+    except (ValueError, TypeError, AttributeError):
+        messages.error(request, 'Enter a valid start and end time.')
+        return redirect('shop_dashboard_slots')
+    try:
         slot.full_clean()
         slot.save()
     except (ValidationError, IntegrityError) as exc:
@@ -1029,6 +1059,9 @@ def create_service_view(request):
     shop = shops.first() if shops.exists() else None
     if not shop:
         return redirect('shop_dashboard')
+    if request.POST.get('name') not in dict(Service.OFFERED_SERVICE_CHOICES):
+        messages.error(request, 'Choose a valid service type.')
+        return redirect('shop_dashboard_services')
     service = Service(
         shop=shop,
         name=request.POST.get('name'),
@@ -1205,11 +1238,21 @@ def dashboard_payments_view(request):
         return redirect('shop_dashboard')
     shop = shops.first()
     from orders.models import Order
-    orders = Order.objects.filter(shop=shop).select_related('customer', 'rider').order_by('-created_at')
+    from payments.models import Refund
+    from utils import finance
     from utils.pagination import paginate
+    days, start = finance.period_from_request(request)
+    period_orders = Order.objects.filter(shop=shop, created_at__gte=start)
+    orders = Order.objects.filter(shop=shop).select_related('customer', 'rider').order_by('-created_at')
     page_obj, page_qs = paginate(request, orders)
-    return render(request, 'shop_dashboard/payments.html', {'shop': shop, 'orders': page_obj,
-                                                            'page_obj': page_obj, 'page_qs': page_qs})
+    return render(request, 'shop_dashboard/payments.html', {
+        'shop': shop, 'orders': page_obj, 'page_obj': page_obj, 'page_qs': page_qs,
+        'days': days, 'periods': finance.PERIODS,
+        'summary': finance.summarize(period_orders),
+        'series': finance.daily_series(period_orders, days),
+        'commission_rate': finance.current_commission_rate(),
+        'refunds': Refund.objects.filter(order__shop=shop).select_related('order').order_by('-created_at')[:10],
+    })
 
 
 @login_required
@@ -1240,7 +1283,9 @@ def serve_shop_doc_view(request, shop_id, field):
 def api_slots_view(request, shop_id):
     shop = get_object_or_404(Shop, id=shop_id, status='approved')
     today = timezone.localdate()
-    slots = shop.delivery_slots.filter(date__gte=today, current_bookings__lt=F('max_capacity'))
+    slots = shop.delivery_slots.filter(date__gte=today, current_bookings__lt=F('max_capacity'),
+                                       time_start__gte=shop.operating_hours_start,
+                                       time_end__lte=shop.operating_hours_end)
     data = [
         {
             'id': s.id,

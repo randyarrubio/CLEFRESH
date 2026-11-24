@@ -1,0 +1,135 @@
+{% extends 'base.html' %}
+{% block title %}Staff — {{ shop.name }}{% endblock %}
+{% block extra_head %}
+<style>
+  .st-grid { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 24px; align-items: start; }
+  .st-days { display: flex; flex-wrap: wrap; gap: 6px; }
+  .st-days label { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; border: 1px solid #d7e8f3; border-radius: 999px; padding: 4px 10px; cursor: pointer; }
+  .st-days input { width: auto; margin: 0; }
+  .st-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .st-pill { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; }
+  .st-pill-on { background: rgba(16,185,129,.14); color: #047857; }
+  .st-pill-late { background: #fff1e0; color: #a34d00; }
+  .st-edit summary { list-style: none; cursor: pointer; }
+  .st-edit form { margin-top: 10px; display: grid; gap: 8px; min-width: 260px; }
+  @media (max-width: 1024px) { .st-grid { grid-template-columns: 1fr; } }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-shell">
+  <div class="page-header">
+    <div>
+      <nav class="page-crumbs" aria-label="Breadcrumb"><a href="{% url 'shop_dashboard' %}">Shop dashboard</a><span class="page-crumbs-sep" aria-hidden="true">/</span><span aria-current="page">Staff</span></nav>
+      <h2>Attendants</h2>
+      <p>Counter staff accounts, attendance, and earnings for {{ shop.name }}</p>
+    </div>
+  </div>
+
+  <div class="sub-nav" style="margin-bottom:20px;">
+    {% for d in periods %}<a href="?days={{ d }}" class="sub-tab {% if d == days %}active{% endif %}">Last {{ d }} days</a>{% endfor %}
+  </div>
+
+  <div class="stats-bar stats-bar-3" style="margin-bottom:24px;">
+    <div class="stat-card"><div class="stat-icon"><i class="bi bi-people" aria-hidden="true"></i></div><div class="stat-info"><h4>{{ rows|length }}</h4><p>Attendants</p></div></div>
+    <div class="stat-card"><div class="stat-icon"><i class="bi bi-clock-history" aria-hidden="true"></i></div><div class="stat-info"><h4>{{ totals.hours }} h</h4><p>Hours worked · {{ totals.shifts }} shift{{ totals.shifts|pluralize }}</p></div></div>
+    <div class="stat-card"><div class="stat-icon"><i class="bi bi-wallet2" aria-hidden="true"></i></div><div class="stat-info"><h4>₱{{ totals.earnings|floatformat:"2g" }}</h4><p>Wages earned</p></div></div>
+  </div>
+
+  <div class="st-grid">
+    <div>
+      <div class="table-wrapper" style="margin-bottom:24px;">
+        <table class="table">
+          <thead><tr><th>Attendant</th><th>Schedule</th><th>Rate</th><th>Hours</th><th>Earnings</th><th></th></tr></thead>
+          <tbody>
+            {% for row in rows %}
+              {% with a=row.attendant %}
+              <tr>
+                <td>
+                  <strong>{{ a.user.get_full_name|default:a.user.email }}</strong><br>
+                  <span style="font-size:12px; color:var(--text-secondary);">{{ a.user.email }}</span><br>
+                  {% if not a.is_active %}<span class="badge badge-danger">Inactive</span>
+                  {% elif row.on_shift %}<span class="st-pill st-pill-on">On shift since {{ row.on_shift.time_in|time:"g:i A" }}</span>{% endif %}
+                </td>
+                <td style="font-size:12px;">{{ a.schedule_label }}</td>
+                <td>₱{{ a.hourly_rate|floatformat:"2g" }}/h</td>
+                <td>{{ row.totals.hours }} h{% if row.totals.late %}<br><span class="st-pill st-pill-late">{{ row.totals.late }} late</span>{% endif %}</td>
+                <td><strong>₱{{ row.totals.earnings|floatformat:"2g" }}</strong></td>
+                <td>
+                  <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:flex-start;">
+                    <details class="st-edit">
+                      <summary class="btn btn-xs btn-outline">Edit</summary>
+                      <form method="post" action="{% url 'update_attendant' a.id %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="update">
+                        <label style="font-size:12px;">Hourly rate (₱)<input type="number" name="hourly_rate" min="0" step="0.01" value="{{ a.hourly_rate }}"></label>
+                        <div class="st-row-2">
+                          <label style="font-size:12px;">Shift start<input type="time" name="shift_start" value="{{ a.shift_start|time:'H:i' }}"></label>
+                          <label style="font-size:12px;">Shift end<input type="time" name="shift_end" value="{{ a.shift_end|time:'H:i' }}"></label>
+                        </div>
+                        <div class="st-days">{% for key, label in weekdays %}<label><input type="checkbox" name="work_days" value="{{ key }}"{% if key in a.work_days %} checked{% endif %}>{{ label }}</label>{% endfor %}</div>
+                        <button type="submit" class="btn btn-xs btn-primary">Save</button>
+                      </form>
+                    </details>
+                    <form method="post" action="{% url 'update_attendant' a.id %}"{% if a.is_active %} data-confirm="{{ a.user.email }} won't be able to log in until you reactivate them. An open shift is closed now." data-confirm-title="Deactivate this attendant?" data-confirm-action="Deactivate"{% endif %}>
+                      {% csrf_token %}
+                      <input type="hidden" name="action" value="toggle">
+                      <button type="submit" class="btn btn-xs {% if a.is_active %}btn-warning{% else %}btn-success{% endif %}">{% if a.is_active %}Deactivate{% else %}Reactivate{% endif %}</button>
+                    </form>
+                  </div>
+                </td>
+              </tr>
+              {% endwith %}
+            {% empty %}
+              <tr><td colspan="6" class="table-empty-cell"><i class="bi bi-people" aria-hidden="true"></i> No attendants yet. Add one with the form.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <h3 style="margin-bottom:10px;"><i class="bi bi-clock-history glyph-icon" aria-hidden="true"></i>Attendance log</h3>
+      <div class="table-wrapper">
+        <table class="table">
+          <thead><tr><th>Attendant</th><th>Time in</th><th>Time out</th><th>Hours</th><th>Earnings</th></tr></thead>
+          <tbody>
+            {% for r in records %}
+              <tr>
+                <td>{{ r.attendant.user.get_full_name|default:r.attendant.user.email }}</td>
+                <td>{{ r.time_in|date:"M d, g:i A" }}{% if r.is_late %} <span class="st-pill st-pill-late">Late</span>{% endif %}</td>
+                <td>{% if r.time_out %}{{ r.time_out|date:"M d, g:i A" }}{% else %}<span class="st-pill st-pill-on">On shift</span>{% endif %}{% if r.note %}<br><span style="font-size:11px; color:var(--text-light);">{{ r.note }}</span>{% endif %}</td>
+                <td>{{ r.hours }} h</td>
+                <td>₱{{ r.earnings|floatformat:"2g" }}</td>
+              </tr>
+            {% empty %}
+              <tr><td colspan="5" class="table-empty-cell"><i class="bi bi-clock" aria-hidden="true"></i> No shifts in this period.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3><i class="bi bi-person-plus glyph-icon" aria-hidden="true"></i>Add an attendant</h3>
+      <p class="form-hint" style="margin-bottom:12px;">Attendants can verify and update orders, notify customers, weigh laundry, run the walk-in counter, and time in/out. They can't change services, prices, promos, or payments.</p>
+      <form method="post" action="{% url 'create_attendant' %}">
+        {% csrf_token %}
+        <div class="st-row-2">
+          <div class="form-group"><label for="at-first">First name</label><input id="at-first" name="first_name" required maxlength="150"></div>
+          <div class="form-group"><label for="at-last">Last name</label><input id="at-last" name="last_name" maxlength="150"></div>
+        </div>
+        <div class="form-group"><label for="at-email">Email (used to log in)</label><input id="at-email" type="email" name="email" required></div>
+        <div class="form-group"><label for="at-pass">Temporary password</label><input id="at-pass" type="password" name="password" required minlength="8" autocomplete="new-password"></div>
+        <div class="form-group"><label for="at-rate">Hourly rate (₱)</label><input id="at-rate" type="number" name="hourly_rate" min="0" step="0.01" placeholder="e.g. 65"></div>
+        <div class="st-row-2">
+          <div class="form-group"><label for="at-start">Shift start</label><input id="at-start" type="time" name="shift_start"></div>
+          <div class="form-group"><label for="at-end">Shift end</label><input id="at-end" type="time" name="shift_end"></div>
+        </div>
+        <div class="form-group"><span class="info-label">Work days</span>
+          <div class="st-days">{% for key, label in weekdays %}<label><input type="checkbox" name="work_days" value="{{ key }}">{{ label }}</label>{% endfor %}</div>
+        </div>
+        <button type="submit" class="btn btn-primary" style="width:100%;">Create attendant account</button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

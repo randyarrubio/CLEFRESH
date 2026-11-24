@@ -54,7 +54,7 @@ class ReviewFixTests(TestCase):
         self.rider = mk('r@example.com', 'rider')
         self.admin = mk('a@example.com', 'admin')
         self.shop = Shop.objects.create(owner=self.owner, name='Shop', address='Addr', status='approved')
-        self.service = Service.objects.create(shop=self.shop, name='wash', price_per_kg='50.00')
+        self.service = Service.objects.create(shop=self.shop, name='wash_fold', price_per_kg='50.00')
         self.iron = Service.objects.create(shop=self.shop, name='iron', price_per_piece='15.00')
         self.slot = DeliverySlot.objects.create(
             shop=self.shop, date=timezone.localdate() + timedelta(days=1),
@@ -166,7 +166,7 @@ class ReviewFixTests(TestCase):
         self.service.delete()
         self.client.force_login(self.owner)
         self.client.post(reverse('create_service'), {'name': 'wash', 'price_per_kg': '-5'})
-        self.assertFalse(self.shop.services.filter(name='wash').exists())
+        self.assertFalse(self.shop.services.filter(name='wash_fold').exists())
 
     def test_customer_price_sort_has_no_duplicate_shops(self):
         self.client.force_login(self.customer)
@@ -178,7 +178,7 @@ class ReviewFixTests(TestCase):
     def _place(self, **data):
         base = {
             'pickup_address': 'P', 'delivery_address': 'D',
-            'pickup_datetime': (timezone.localtime() + timedelta(days=1)).strftime('%Y-%m-%dT%H:%M'),
+            'pickup_datetime': (timezone.localdate() + timedelta(days=1)).strftime('%Y-%m-%dT10:00'),
             'payment_method': 'cod',
         }
         base.update(data)
@@ -479,7 +479,7 @@ class RiderApprovalTests(TestCase):
         self.assertEqual(self.approved.rider_profile.__class__.objects.get(user=self.approved).approval_status, 'pending')
 
 
-@override_settings(MEDIA_ROOT=tempfile.mkdtemp(prefix='clefresh-test-media-'))
+@override_settings(MEDIA_ROOT=tempfile.mkdtemp(prefix='clefresh-test-media-'), COD_TRUSTED_MIN_ORDERS=0)
 class UiUxFixTests(TestCase):
     @classmethod
     def setUpClass(cls):
@@ -505,11 +505,11 @@ class UiUxFixTests(TestCase):
         self.rider = mk('r@example.com', 'rider')
         self.profile = RiderProfile.objects.create(user=self.rider)
         self.shop = Shop.objects.create(owner=self.owner, name='Suds <b>& Co</b>', address='Tandag', status='approved')
-        self.service = Service.objects.create(shop=self.shop, name='wash', price_per_kg='40.00')
+        self.service = Service.objects.create(shop=self.shop, name='wash_fold', price_per_kg='40.00')
 
     def _place(self, **data):
         base = {'pickup_address': 'P', 'delivery_address': 'D', 'payment_method': 'cod',
-                'pickup_datetime': (timezone.localtime() + timedelta(days=1)).strftime('%Y-%m-%dT%H:%M'),
+                'pickup_datetime': (timezone.localdate() + timedelta(days=1)).strftime('%Y-%m-%dT10:00'),
                 f'weight_{self.service.id}': '2'}
         base.update(data)
         self.client.force_login(self.customer)

@@ -1,0 +1,82 @@
+{% extends 'base.html' %}
+{% load shop_extras %}
+{% block title %}Finance — Admin{% endblock %}
+{% block extra_head %}
+{% include 'includes/finance_assets.html' with part='css' %}
+<style>
+  .fa-rate { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
+  .fa-rate .form-group { margin: 0; }
+  .fa-rate input { width: 120px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-shell">
+  <div class="page-header">
+    <div>
+      <nav class="page-crumbs" aria-label="Breadcrumb"><a href="{% url 'admin_dashboard' %}">Admin panel</a><span class="page-crumbs-sep" aria-hidden="true">/</span><span aria-current="page">Finance</span></nav>
+      <h2>Finance</h2>
+      <p>Platform earnings, commission, and money in and out across all shops</p>
+    </div>
+    <a href="{% url 'admin_transactions' %}" class="btn btn-outline"><i class="bi bi-credit-card glyph-icon" aria-hidden="true"></i>Transactions</a>
+  </div>
+
+  <div class="card" style="margin-bottom:24px;">
+    <h3><i class="bi bi-percent glyph-icon" aria-hidden="true"></i>Commission rate</h3>
+    <form method="post" class="fa-rate">
+      {% csrf_token %}
+      <div class="form-group">
+        <label for="commission-percent">Platform commission (%)</label>
+        <input id="commission-percent" type="number" name="commission_percent" min="0" max="50" step="0.01" value="{{ platform.commission_percent }}" required>
+      </div>
+      <button type="submit" class="btn btn-primary">Save rate</button>
+    </form>
+    <p class="form-hint" style="margin-top:8px;">Applies to orders placed after you save. Existing orders keep the rate they were placed with.{% if platform.updated_by %} Last changed by {{ platform.updated_by.email }} on {{ platform.updated_at|date:"M d, Y" }}.{% endif %}</p>
+  </div>
+
+  {% include 'includes/finance_summary.html' with gross_label='Gross order value' commission_label='Commission earned' net_label='Owed to shops' %}
+
+  <h3 style="margin-bottom:10px;"><i class="bi bi-shop glyph-icon" aria-hidden="true"></i>By shop · last {{ days }} days</h3>
+  <div class="table-wrapper" style="margin-bottom:24px;">
+    <table class="table">
+      <thead><tr><th>Shop</th><th>Paid orders</th><th>Gross</th><th>Commission</th><th>Shop earnings</th></tr></thead>
+      <tbody>
+        {% for row in shops %}
+          <tr>
+            <td><strong>{{ row.name }}</strong></td>
+            <td>{{ row.count }}</td>
+            <td>₱{{ row.gross|floatformat:"2g" }}</td>
+            <td>₱{{ row.commission|floatformat:"2g" }}</td>
+            <td>₱{{ row.net|floatformat:"2g" }}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="5" class="table-empty-cell"><i class="bi bi-cash-stack" aria-hidden="true"></i> No paid orders in this period.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if recent_refunds %}
+    <h3 style="margin-bottom:10px;"><i class="bi bi-arrow-counterclockwise glyph-icon" aria-hidden="true"></i>Recent refunds</h3>
+    <div class="table-wrapper">
+      <table class="table">
+        <thead><tr><th>Order</th><th>Shop</th><th>Amount</th><th>Reason</th><th>Status</th><th>Date</th></tr></thead>
+        <tbody>
+          {% for r in recent_refunds %}
+            <tr>
+              <td>#{{ r.order_id }}</td>
+              <td>{{ r.order.shop.name }}</td>
+              <td>₱{{ r.amount|centavos_to_php|floatformat:"2g" }}</td>
+              <td>{{ r.reason }}</td>
+              <td>{{ r.get_status_display }}</td>
+              <td>{{ r.created_at|date:"M d, Y" }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}{% include 'includes/finance_assets.html' with part='js' %}{% endblock %}

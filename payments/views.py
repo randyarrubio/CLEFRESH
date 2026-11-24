@@ -138,10 +138,14 @@ def _mark_order_paid(order, pi_id, payment_id=""):
     PayMongoTransaction.objects.filter(order=order, payment_intent_id=pi_id).update(**tx_update)
     # A cash-on-delivery order paid online: record the e-wallet actually used.
     if tx and tx.payment_method_type:
-        if Order.objects.filter(pk=order.pk, payment_method="cod").update(payment_method=tx.payment_method_type):
+        if Order.objects.filter(pk=order.pk, payment_method__in=Order.CASH_METHODS).update(
+                payment_method=tx.payment_method_type):
             order.payment_method = tx.payment_method_type
     if updated:
         status = Order.objects.values_list("status", flat=True).get(pk=order.pk)
+        if status == "delivered":
+            from orders import loyalty
+            loyalty.award(order.pk)          # paid online after delivery: the order is now complete
         if status in ("cancelled", "declined"):
             # Payment landed after the order was closed: send the money back.
             order.status = status
@@ -286,7 +290,7 @@ def process_payment_view(request, order_id):
         PayMongoTransaction.objects.filter(order=order).update(payment_intent_id=pi_id)
         order.paymongo_payment_intent_id = pi_id
         update_fields = ["paymongo_payment_intent_id", "updated_at"]
-        if order.payment_method != "cod":
+        if order.payment_method not in Order.CASH_METHODS:
             # Online order switching e-wallets. A cash-on-delivery order keeps "cod" until the
             # payment succeeds (see _mark_order_paid), so an abandoned attempt never blocks delivery.
             order.payment_method = payment_method_type
@@ -556,6 +560,8 @@ def paymongo_webhook_view(request):
                     if refund:
                         refund.status = "succeeded"
                         refund.save(update_fields=["status"])
+                        from orders import loyalty
+                        loyalty.revoke(refund.order)
                         refund.order.payment_status = "refunded"
                         refund.order.save(update_fields=["payment_status", "updated_at"])
                         PayMongoTransaction.objects.filter(order=refund.order).update(status="refunded")

@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+{% block title %}Claim ticket #{{ order.id }} — {{ shop.name }}{% endblock %}
+{% block extra_head %}
+<style>
+  .rc-wrap { max-width: 380px; margin: 0 auto; }
+  .rc-ticket { background: #fff; border: 1px dashed #b9c9d6; border-radius: 12px; padding: 22px; font-size: 14px; }
+  .rc-ticket h2 { text-align: center; margin: 0; font-size: 20px; }
+  .rc-ticket .rc-sub { text-align: center; color: #586b7a; font-size: 12px; margin: 2px 0 14px; }
+  .rc-no { text-align: center; font-family: 'Outfit', sans-serif; font-size: 40px; font-weight: 800; letter-spacing: .04em; margin: 6px 0; }
+  .rc-row { display: flex; justify-content: space-between; gap: 10px; padding: 4px 0; }
+  .rc-hr { border: 0; border-top: 1px dashed #b9c9d6; margin: 12px 0; }
+  .rc-total { font-weight: 800; font-size: 18px; }
+  .rc-paid { text-align: center; font-weight: 800; margin-top: 10px; padding: 6px; border-radius: 8px; }
+  .rc-paid.is-paid { background: rgba(16,185,129,.14); color: #047857; }
+  .rc-paid.is-due { background: #fff7e0; color: #6b4e00; }
+  .rc-actions { display: flex; gap: 10px; margin-top: 16px; }
+  .rc-actions .btn { flex: 1; text-align: center; }
+  @media print {
+    .topbar, .site-footer, footer, .rc-actions, .messages, .message-shell, nav, .mobile-menu { display: none !important; }
+    body { background: #fff !important; }
+    .rc-ticket { border: 0; padding: 0; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-shell">
+  <div class="rc-wrap">
+    <div class="rc-ticket">
+      <h2>{{ shop.name }}</h2>
+      <p class="rc-sub">{{ shop.address }}{% if shop.contact %} · {{ shop.contact }}{% endif %}</p>
+      <p style="text-align:center; margin:0; font-size:12px; color:#586b7a;">Claim ticket</p>
+      <p class="rc-no">#{{ order.id }}</p>
+      <div class="rc-row"><span>Customer</span><strong>{{ order.customer_label }}</strong></div>
+      {% if order.walk_in_phone %}<div class="rc-row"><span>Phone</span><span>{{ order.walk_in_phone }}</span></div>{% endif %}
+      <div class="rc-row"><span>Received</span><span>{{ order.created_at|date:"M d, Y g:i A" }}</span></div>
+      {% if shop.turnaround %}<div class="rc-row"><span>Turnaround</span><span>{{ shop.turnaround }}</span></div>{% endif %}
+      <hr class="rc-hr">
+      {% for line in lines %}
+        <div class="rc-row">
+          <span>{{ line.service.get_name_display }}{% if line.weight_kg %} · {{ line.weight_kg|floatformat:"-2" }} kg{% endif %}{% if line.quantity %} · {{ line.quantity }} pc{{ line.quantity|pluralize }}{% endif %}</span>
+          <span>₱{{ line.subtotal|floatformat:"2g" }}</span>
+        </div>
+      {% endfor %}
+      {% if order.discount_amount %}<div class="rc-row"><span>{{ order.promotion_title|default:"Promo" }}</span><span>−₱{{ order.discount_amount|floatformat:"2g" }}</span></div>{% endif %}
+      <hr class="rc-hr">
+      <div class="rc-row rc-total"><span>Total</span><span>₱{{ order.total_amount|floatformat:"2g" }}</span></div>
+      {% if order.payment_status == 'paid' %}
+        <p class="rc-paid is-paid">PAID · {{ order.get_payment_method_display }}</p>
+      {% else %}
+        <p class="rc-paid is-due">Pay ₱{{ order.total_amount|floatformat:"2g" }} when claiming</p>
+      {% endif %}
+      <p style="text-align:center; font-size:12px; color:#586b7a; margin-top:12px;">Please present this ticket to claim your laundry.{% if shop.unclaimed_policy %} {{ shop.unclaimed_policy }}{% endif %}</p>
+    </div>
+    <div class="rc-actions">
+      <button type="button" class="btn btn-primary" onclick="window.print()"><i class="bi bi-printer glyph-icon" aria-hidden="true"></i>Print</button>
+      <a href="{% url 'shop_pos' %}" class="btn btn-outline">New walk-in</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

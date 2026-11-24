@@ -61,7 +61,7 @@
           <div class="rider-job-head">
             <div>
               <span class="rider-badge pickup"><i class="bi bi-box-arrow-in-down"></i>New pickup request</span>
-              {% if order.payment_method == 'cod' %}<span class="rider-badge" style="margin-left:6px;">COD</span>{% endif %}
+              {% if order.payment_method == 'cod' %}<span class="rider-badge" style="margin-left:6px;">COD</span>{% elif order.payment_method == 'cop' and order.payment_status != 'paid' %}<span class="rider-badge" style="margin-left:6px;">Collect cash at pickup</span>{% endif %}
             </div>
             <span class="rider-time">{{ order.pickup_datetime|date:"M d, g:i A" }}</span>
           </div>
@@ -96,7 +96,7 @@
                 {% elif order.status == 'ready' %}<i class="bi bi-truck"></i>Ready to deliver
                 {% else %}<i class="bi bi-house-check"></i>Delivering{% endif %}
               </span>
-              {% if order.payment_method == 'cod' %}<span class="rider-badge" style="margin-left:6px;">COD</span>{% endif %}
+              {% if order.payment_method == 'cod' %}<span class="rider-badge" style="margin-left:6px;">COD</span>{% elif order.payment_method == 'cop' and order.payment_status != 'paid' %}<span class="rider-badge" style="margin-left:6px;">Collect cash at pickup</span>{% endif %}
             </div>
             <span class="rider-time">{{ order.pickup_datetime|date:"M d, g:i A" }}</span>
           </div>

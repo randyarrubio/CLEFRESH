@@ -27,6 +27,7 @@ class User(AbstractUser):
         ('customer', 'Customer'),
         ('shop_owner', 'Shop Owner'),
         ('rider', 'Rider'),
+        ('attendant', 'Shop Attendant'),     # created by a shop owner; works one shop's counter
         ('admin', 'Administrator'),
     ]
     SSO_CHOICES = [
@@ -78,6 +79,24 @@ class User(AbstractUser):
         if self.role != 'customer' or self.is_superuser:
             return False
         return not self.face_verified_at or self.id_status != 'verified'
+
+    @property
+    def loyalty_points(self):
+        if not hasattr(self, '_loyalty_points'):
+            from django.db.models import Sum
+            self._loyalty_points = max(self.loyalty_entries.aggregate(s=Sum('points'))['s'] or 0, 0)
+        return self._loyalty_points
+
+    @property
+    def cod_eligible(self):
+        """Trusted customers (enough delivered + paid orders) may use cash on delivery."""
+        if not hasattr(self, '_cod_eligible'):
+            from django.conf import settings
+            needed = settings.COD_TRUSTED_MIN_ORDERS
+            self._cod_eligible = needed <= 0 or (
+                self.orders.filter(status='delivered', payment_status='paid').count() >= needed
+            )
+        return self._cod_eligible
 
     def __str__(self):
         return f'{self.get_full_name() or self.email} ({self.role})'

@@ -52,7 +52,7 @@ class PerformanceTests(TestCase):
     def test_landing_page_loads_six_shops_once(self):
         for i in range(10):
             s = Shop.objects.create(owner=self.owner, name=f'S{i}', address='', status='approved')
-            Service.objects.create(shop=s, name='wash', price_per_kg='50.00')
+            Service.objects.create(shop=s, name='wash_fold', price_per_kg='50.00')
         self.client.get('/')
         with CaptureQueriesContext(connection) as ctx:
             resp = self.client.get('/')

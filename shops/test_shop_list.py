@@ -38,7 +38,7 @@ class ShopListPageTests(TestCase):
 
     def _shop(self, name, price):
         shop = Shop.objects.create(owner=self.owner, name=name, address='Tandag', status='approved')
-        Service.objects.create(shop=shop, name='wash', price_per_kg=price)
+        Service.objects.create(shop=shop, name='wash_fold', price_per_kg=price)
         return shop
 
     def _names(self, **params):

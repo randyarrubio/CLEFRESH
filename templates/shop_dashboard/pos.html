@@ -1,0 +1,137 @@
+{% extends 'base.html' %}
+{% block title %}Walk-in Counter — {{ shop.name }}{% endblock %}
+{% block extra_head %}
+<style>
+  .pos-grid { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 24px; align-items: start; }
+  .pos-svc { display: grid; grid-template-columns: minmax(0, 1fr) 120px 120px; gap: 10px; align-items: center; padding: 12px 0; border-bottom: 1px solid #edf2f5; }
+  .pos-svc:last-child { border-bottom: 0; }
+  .pos-svc strong { display: block; font-size: 16px; }
+  .pos-svc small { color: var(--text-secondary); font-size: 13px; }
+  .pos-svc input { font-size: 18px; padding: 10px; text-align: right; }
+  .pos-svc .pos-na { text-align: center; color: var(--text-light); font-size: 12px; }
+  .pos-total { display: flex; justify-content: space-between; align-items: baseline; font-family: 'Outfit', sans-serif; font-size: 28px; font-weight: 700; margin: 16px 0; color: var(--primary); }
+  .pos-total small { font-size: 13px; font-family: 'DM Sans', sans-serif; color: var(--text-secondary); font-weight: 400; }
+  .pos-pay { display: grid; gap: 8px; margin-bottom: 14px; }
+  .pos-pay label { display: flex; gap: 10px; align-items: center; border: 1px solid #d7e8f3; border-radius: 10px; padding: 12px; cursor: pointer; font-size: 15px; }
+  .pos-pay label:has(input:checked) { border-color: var(--primary); background: #e6f4fb; }
+  .pos-pay input { width: auto; }
+  .pos-submit { width: 100%; padding: 16px; font-size: 17px; }
+  .pos-queue li { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid #edf2f5; }
+  .pos-queue li:last-child { border-bottom: 0; }
+  .pos-queue ul { list-style: none; margin: 0; padding: 0; }
+  .pos-queue form { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+  .pos-queue .checkbox-label { font-size: 12px; }
+  @media (max-width: 1024px) { .pos-grid { grid-template-columns: 1fr; } }
+  @media (max-width: 520px) { .pos-svc { grid-template-columns: 1fr 1fr; } .pos-svc > div:first-child { grid-column: 1 / -1; } }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-shell">
+  <div class="page-header">
+    <div>
+      <nav class="page-crumbs" aria-label="Breadcrumb"><a href="{% url 'shop_dashboard' %}">Shop dashboard</a><span class="page-crumbs-sep" aria-hidden="true">/</span><span aria-current="page">Walk-in counter</span></nav>
+      <h2>Walk-in Counter</h2>
+      <p>Weigh the laundry, take payment, and print a claim ticket · {{ today_count }} walk-in{{ today_count|pluralize }} today</p>
+    </div>
+  </div>
+
+  <div class="pos-grid">
+    <form method="post" class="card" id="posForm">
+      {% csrf_token %}
+      <h3><i class="bi bi-basket glyph-icon" aria-hidden="true"></i>Services</h3>
+      {% for svc in services %}
+        <div class="pos-svc">
+          <div>
+            <strong>{{ svc.get_name_display }}</strong>
+            <small>{% if svc.price_per_kg %}₱{{ svc.price_per_kg }}/kg{% endif %}{% if svc.price_per_kg and svc.price_per_piece %} · {% endif %}{% if svc.price_per_piece %}₱{{ svc.price_per_piece }}/pc{% endif %}</small>
+          </div>
+          {% if svc.price_per_kg %}
+            <label><span class="sr-only">{{ svc.get_name_display }} weight in kg</span>
+              <input type="number" name="weight_{{ svc.id }}" min="0" max="200" step="0.01" placeholder="kg" inputmode="decimal" data-price="{{ svc.price_per_kg }}">
+            </label>
+          {% else %}<span class="pos-na">—</span>{% endif %}
+          {% if svc.price_per_piece %}
+            <label><span class="sr-only">{{ svc.get_name_display }} pieces</span>
+              <input type="number" name="qty_{{ svc.id }}" min="0" max="1000" step="1" placeholder="pcs" inputmode="numeric" data-price="{{ svc.price_per_piece }}">
+            </label>
+          {% else %}<span class="pos-na">—</span>{% endif %}
+        </div>
+      {% empty %}
+        <p>Add services first from <a href="{% url 'shop_dashboard_services' %}">Services</a>.</p>
+      {% endfor %}
+
+      <div class="pos-total"><span>Total <small>(before any promo)</small></span><span id="posTotal">₱0.00</span></div>
+
+      <h3><i class="bi bi-person glyph-icon" aria-hidden="true"></i>Customer</h3>
+      <div class="book-grid-2">
+        <div class="form-group"><label for="pos-name">Name on the ticket</label><input id="pos-name" name="walk_in_name" required maxlength="120" value="{{ form.walk_in_name|default:'' }}"></div>
+        <div class="form-group"><label for="pos-phone">Phone (optional)</label><input id="pos-phone" name="walk_in_phone" maxlength="30" inputmode="tel" value="{{ form.walk_in_phone|default:'' }}"></div>
+      </div>
+      <div class="form-group"><label for="pos-email">CLEFRESH account email (optional — earns loyalty points)</label><input id="pos-email" type="email" name="customer_email" value="{{ form.customer_email|default:'' }}"></div>
+      <div class="form-group"><label for="pos-notes">Notes (optional)</label><input id="pos-notes" name="notes" maxlength="500" value="{{ form.notes|default:'' }}"></div>
+
+      <h3><i class="bi bi-cash-coin glyph-icon" aria-hidden="true"></i>Payment</h3>
+      <div class="pos-pay">
+        {% for value, label in pos_payments %}
+          <label><input type="radio" name="payment" value="{{ value }}" required{% if form.payment == value or not form.payment and forloop.first %} checked{% endif %}> {{ label }}</label>
+        {% endfor %}
+      </div>
+      <button type="submit" class="btn btn-primary pos-submit"><i class="bi bi-printer glyph-icon" aria-hidden="true"></i>Create order &amp; print ticket</button>
+    </form>
+
+    <div>
+      <div class="card pos-queue" style="margin-bottom:20px;">
+        <h3><i class="bi bi-bag-check glyph-icon" aria-hidden="true"></i>Ready to claim ({{ ready_orders|length }})</h3>
+        <ul>
+          {% for o in ready_orders %}
+            <li>
+              <div><strong>#{{ o.id }} {{ o.customer_label }}</strong><br><span style="font-size:12px; color:var(--text-secondary);">₱{{ o.total_amount|floatformat:"2g" }} · {{ o.get_payment_status_display }}</span></div>
+              <form method="post" action="{% url 'pos_claim' o.id %}">
+                {% csrf_token %}
+                {% if o.payment_status != 'paid' %}<label class="checkbox-label"><input type="checkbox" name="cash_collected" required style="width:auto;"> Collected ₱{{ o.total_amount|floatformat:"2g" }}</label>{% endif %}
+                <button type="submit" class="btn btn-xs btn-success">Claimed</button>
+              </form>
+            </li>
+          {% empty %}
+            <li style="color:var(--text-secondary);">Nothing waiting to be claimed.</li>
+          {% endfor %}
+        </ul>
+      </div>
+      <div class="card pos-queue">
+        <h3><i class="bi bi-arrow-repeat glyph-icon" aria-hidden="true"></i>In progress ({{ in_progress|length }})</h3>
+        <ul>
+          {% for o in in_progress %}
+            <li>
+              <div><strong>#{{ o.id }} {{ o.customer_label }}</strong><br><span style="font-size:12px; color:var(--text-secondary);">{{ o.get_status_display }} · since {{ o.created_at|time:"g:i A" }}</span></div>
+              <a href="{% url 'shop_dashboard_order_detail' o.id %}" class="btn btn-xs btn-outline">Update</a>
+            </li>
+          {% empty %}
+            <li style="color:var(--text-secondary);">No walk-ins being processed.</li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  const form = document.getElementById('posForm');
+  const out = document.getElementById('posTotal');
+  if (!form || !out) return;
+  function refresh() {
+    let total = 0;
+    form.querySelectorAll('input[data-price]').forEach((el) => {
+      const n = parseFloat(el.value);
+      if (n > 0) total += n * parseFloat(el.dataset.price);
+    });
+    out.textContent = '₱' + total.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+  form.addEventListener('input', refresh);
+  refresh();
+})();
+</script>
+{% endblock %}

@@ -38,7 +38,7 @@ class Command(BaseCommand):
 
         orders = (
             Order.objects.filter(payment_due_at__isnull=False, payment_status__in=['unpaid', 'failed'])
-            .exclude(payment_method='cod')
+            .exclude(payment_method__in=Order.CASH_METHODS)
             .exclude(status__in=['out_for_delivery', 'delivered', 'cancelled', 'declined'])
             .select_related('customer', 'shop__owner')
             .order_by('payment_due_at')     # walks the small partial index (order_due_idx), soonest first
@@ -49,9 +49,11 @@ class Command(BaseCommand):
 
             if now >= order.payment_due_at:
                 switched += 1
+                target = self._fallback_method(order)
                 if not dry_run:
-                    self._switch_to_cod(order)
-                self.stdout.write(f'Order #{order.id}: deadline passed -> switched to cash on delivery')
+                    self._switch_to_cash(order, target)
+                label = 'cash on delivery' if target == 'cod' else 'cash on pickup'
+                self.stdout.write(f'Order #{order.id}: deadline passed -> switched to {label}')
                 continue
 
             clock_started = order.payment_due_at - due_window
@@ -63,7 +65,7 @@ class Command(BaseCommand):
                 self.stdout.write(f'Order #{order.id}: reminder {due_reminders} of {len(reminder_hours)}')
 
         prefix = '[dry run] ' if dry_run else ''
-        self.stdout.write(self.style.SUCCESS(f'{prefix}{reminded} reminder(s) sent, {switched} order(s) switched to COD.'))
+        self.stdout.write(self.style.SUCCESS(f'{prefix}{reminded} reminder(s) sent, {switched} order(s) switched to cash.'))
 
     def _remind(self, order, reminder_number):
         due = timezone.localtime(order.payment_due_at)
@@ -77,30 +79,41 @@ class Command(BaseCommand):
             Notification.objects.create(
                 user=order.customer,
                 message=(f'Reminder: please pay ₱{order.total_amount:,.2f} for order #{order.id} by '
-                         f'{due:%b %d, %I:%M %p}. After that it switches to cash on delivery.'),
+                         f'{due:%b %d, %I:%M %p}. After that it switches to a cash payment to the rider.'),
                 link=f'/orders/{order.id}/',
             )
         send_email_notification('payment_reminder', order.customer, order=order,
                                 extra={'due': f'{due:%b %d, %I:%M %p}'})
 
-    def _switch_to_cod(self, order):
+    @staticmethod
+    def _fallback_method(order):
+        """New customers get cash on pickup while the rider can still collect first; otherwise COD.
+
+        Once the laundry is already at the shop, COD is the only way to hand it back."""
+        if not order.customer.cod_eligible and order.status in ('pending', 'accepted'):
+            return 'cop'
+        return 'cod'
+
+    def _switch_to_cash(self, order, target='cod'):
         with transaction.atomic():
             locked = Order.objects.select_for_update().get(pk=order.pk)
-            if locked.payment_status == 'paid' or locked.payment_method == 'cod':
+            if locked.payment_status == 'paid' or locked.payment_method in Order.CASH_METHODS:
                 return
-            locked.payment_method = 'cod'
+            locked.payment_method = target
             locked.payment_status = 'unpaid'
             locked.payment_due_at = None
             locked.save(update_fields=['payment_method', 'payment_status', 'payment_due_at', 'updated_at'])
+            when = 'when your laundry arrives' if target == 'cod' else 'when they collect your laundry'
+            label = 'cash on delivery' if target == 'cod' else 'cash on pickup'
             Notification.objects.create(
                 user=order.customer,
-                message=(f'Order #{order.id} was not paid online in time, so it is now cash on delivery. '
-                         f'Please pay the rider ₱{order.total_amount:,.2f} when your laundry arrives.'),
+                message=(f'Order #{order.id} was not paid online in time, so it is now {label}. '
+                         f'Please pay the rider ₱{order.total_amount:,.2f} {when}.'),
                 link=f'/orders/{order.id}/',
             )
             Notification.objects.create(
                 user=order.shop.owner,
-                message=f'Order #{order.id} was not paid online by the deadline and is now cash on delivery.',
+                message=f'Order #{order.id} was not paid online by the deadline and is now {label}.',
                 link=f'/shop-dashboard/orders/{order.id}/',
             )
         send_email_notification('payment_switched_cod', order.customer, order=order)

@@ -24,11 +24,12 @@
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
             <div class="form-group">
               <label for="slot-start">Start Time</label>
-              <input id="slot-start" type="time" name="time_start" required>
+              <input id="slot-start" type="time" name="time_start" required min="{{ shop.operating_hours_start|time:'H:i' }}" max="{{ shop.operating_hours_end|time:'H:i' }}">
             </div>
             <div class="form-group">
               <label for="slot-end">End Time</label>
-              <input id="slot-end" type="time" name="time_end" required>
+              <input id="slot-end" type="time" name="time_end" required min="{{ shop.operating_hours_start|time:'H:i' }}" max="{{ shop.operating_hours_end|time:'H:i' }}">
+              <p class="form-hint">Within your shop hours: {{ shop.hours_label }}</p>
             </div>
           </div>
           <div class="form-group">

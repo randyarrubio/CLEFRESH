@@ -1,6 +1,7 @@
 from decimal import Decimal, InvalidOperation
 
 from django.shortcuts import render, get_object_or_404, redirect
+from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.http import Http404, JsonResponse
@@ -13,14 +14,34 @@ from shops.models import DeliverySlot, Promotion, Service, Shop
 from notifications.models import Notification
 from utils.geocode import geocode_address
 from utils.email_notifications import send_email_notification
+from utils.finance import current_commission_rate
+from . import loyalty
 
 
 # Methods payments.process_payment_view can actually charge, plus COD.
 # 'card' / 'online_banking' stay in the model choices for existing rows only.
 BOOKABLE_PAYMENT_METHODS = [
     (value, label) for value, label in Order.PAYMENT_METHOD_CHOICES
-    if value in ('cod', 'gcash', 'grab_pay', 'maya')
+    if value in ('cod', 'cop', 'gcash', 'grab_pay', 'maya')
 ]
+
+
+def booking_payment_options(user):
+    """Payment choices for the booking page: (value, label, reason it's unavailable or '')."""
+    from django.conf import settings
+    options = []
+    for value, label in BOOKABLE_PAYMENT_METHODS:
+        reason = ''
+        if value == 'cod' and not user.cod_eligible:
+            n = settings.COD_TRUSTED_MIN_ORDERS
+            reason = (f'Available after {n} completed order{"s" if n != 1 else ""}. '
+                      'New customers can pay online or use cash on pickup.')
+        options.append((value, label, reason))
+    return options
+
+
+def default_booking_method(user):
+    return 'cod' if user.cod_eligible else 'cop'
 
 
 # Add-on toggles on the booking page -> text appended to Order.notes.
@@ -30,7 +51,8 @@ BOOKING_ADDONS = {
 }
 
 
-def _place_order_context(shop, services, slots, request=None, error_step=None):
+def _place_order_context(shop, services, slots, request=None, error_step=None, user=None):
+    user = user or (request.user if request is not None else None)
     form_data = None
     if request is not None and request.method == 'POST':
         # Echo the submission back so the booking form can be restored after an error.
@@ -55,7 +77,10 @@ def _place_order_context(shop, services, slots, request=None, error_step=None):
              'min': float(p.min_order_amount) if p.min_order_amount is not None else None}
             for p in live_promos if p.discount_type in ('percent', 'fixed') and p.discount_value
         ],
-        'order_payment_choices': BOOKABLE_PAYMENT_METHODS,
+        'order_payment_choices': booking_payment_options(user) if user else [
+            (v, l, '') for v, l in BOOKABLE_PAYMENT_METHODS],
+        'default_payment_method': default_booking_method(user) if user else 'cod',
+        'loyalty_balance': loyalty.balance(user) if user and user.is_authenticated else 0,
         'is_customer_home': True,
     }
 
@@ -137,11 +162,19 @@ def order_detail_view(request, order_id):
     # Same privacy rule as the status API: coordinates only while out for delivery.
     if order.rider_id and order.status == 'out_for_delivery':
         rider_location = getattr(order.rider, 'rider_location', None)
+    # Which cash option the customer may switch an unpaid online order to (None = none left).
+    cash_fallback = None
+    if request.user == order.customer:
+        if request.user.cod_eligible:
+            cash_fallback = 'cod'
+        elif order.status in ('pending', 'accepted') and not order.price_pending:
+            cash_fallback = 'cop'
     return render(request, 'orders/detail.html', {
         'order': order,
         'logs': logs,
         'proofs': proofs,
         'rider_location': rider_location,
+        'cash_fallback': cash_fallback,
     })
 
 
@@ -158,9 +191,12 @@ def place_order_view(request, shop_id):
             messages.info(request, 'Please verify your identity (valid ID + quick face check) before booking.')
         return redirect(f"{reverse('face_verify')}?next={request.path}")
 
-    services = shop.services.all()
+    services = shop.services.exclude(name__in=Service.LEGACY_SERVICE_NAMES)
     today = timezone.localdate()
-    slots = shop.delivery_slots.filter(date__gte=today, current_bookings__lt=F('max_capacity'))
+    # Only slots inside the shop's operating hours are bookable (older slots may predate a change of hours).
+    slots = shop.delivery_slots.filter(date__gte=today, current_bookings__lt=F('max_capacity'),
+                                       time_start__gte=shop.operating_hours_start,
+                                       time_end__lte=shop.operating_hours_end)
 
     if request.method == 'POST':
         pickup_address = request.POST.get('pickup_address', '')
@@ -185,6 +221,10 @@ def place_order_view(request, shop_id):
         if payment_method not in valid_payment_methods:
             messages.error(request, 'Invalid payment method.')
             return render(request, 'orders/place_order.html', _place_order_context(shop, services, slots, request, error_step=4))
+        if payment_method == 'cod' and not request.user.cod_eligible:
+            messages.error(request, 'Cash on delivery is available once you have completed an order with us. '
+                                    'Please pay online or choose cash on pickup.')
+            return render(request, 'orders/place_order.html', _place_order_context(shop, services, slots, request, error_step=4))
 
         # Geocode addresses
         pickup_lat, pickup_lng = geocode_address(pickup_address)
@@ -201,6 +241,9 @@ def place_order_view(request, shop_id):
         if pickup_dt <= timezone.now():
             messages.error(request, 'Pickup datetime must be in the future.')
             return render(request, 'orders/place_order.html', _place_order_context(shop, services, slots, request, error_step=3))
+        if not shop.within_hours(timezone.localtime(pickup_dt).time()):
+            messages.error(request, f'Pick-up must be during {shop.name} operating hours ({shop.hours_label}).')
+            return render(request, 'orders/place_order.html', _place_order_context(shop, services, slots, request, error_step=3))
 
         slot = None
         if slot_id:
@@ -208,6 +251,12 @@ def place_order_view(request, shop_id):
                 messages.error(request, 'Invalid delivery slot.')
                 return render(request, 'orders/place_order.html', _place_order_context(shop, services, slots, request, error_step=3))
             slot = get_object_or_404(DeliverySlot, id=slot_id, shop=shop)
+            if not shop.within_hours(slot.time_start, slot.time_end):
+                messages.error(request, 'That delivery slot is outside the shop\'s operating hours.')
+                return render(request, 'orders/place_order.html', _place_order_context(shop, services, slots, request, error_step=3))
+            if slot.date < timezone.localtime(pickup_dt).date():
+                messages.error(request, 'Choose a delivery slot on or after your pick-up date.')
+                return render(request, 'orders/place_order.html', _place_order_context(shop, services, slots, request, error_step=3))
 
         # Weighing is always done by the shop: per-kg services are booked without a weight, the
         # shop weighs the laundry at drop-off, and only then is the price final (and payable online).
@@ -245,6 +294,12 @@ def place_order_view(request, shop_id):
             return render(request, 'orders/place_order.html', _place_order_context(shop, services, slots, request, error_step=1))
 
         weigh_at_shop = has_unweighed_line            # only piece items picked: nothing to weigh, price is final
+        if weigh_at_shop and payment_method == 'cop':
+            # The rider collects cash at pickup, so the price must be known by then.
+            messages.error(request, 'Cash on pickup needs a final price, but per-kg laundry is weighed at the shop. '
+                                    "Choose an online payment (you'll pay after weighing)"
+                                    + (' or cash on delivery.' if request.user.cod_eligible else '.'))
+            return render(request, 'orders/place_order.html', _place_order_context(shop, services, slots, request, error_step=4))
         if not service_data or (total <= 0 and not weigh_at_shop):
             # total can be 0 when e.g. a weight is entered for a per-piece-only service.
             messages.error(request, 'Please select at least one service with a valid quantity or weight.')
@@ -260,8 +315,15 @@ def place_order_view(request, shop_id):
         else:
             promotion, discount = Promotion.best_for(shop, total)
         charged_total = total - discount
+        use_points = request.POST.get('use_points') == '1' and not weigh_at_shop
+        points_used = 0
 
         with transaction.atomic():
+            if use_points:
+                # Lock the customer row so two bookings at once can't spend the same points.
+                get_user_model().objects.select_for_update().filter(pk=request.user.pk).first()
+                points_used = loyalty.max_redeemable(loyalty.balance(request.user), charged_total)
+                charged_total -= points_used
             if slot:
                 slot = DeliverySlot.objects.select_for_update().get(id=slot.id, shop=shop)
                 if slot.date < today or slot.current_bookings >= slot.max_capacity:
@@ -282,12 +344,14 @@ def place_order_view(request, shop_id):
                 subtotal_amount=total,
                 discount_amount=discount,
                 total_amount=charged_total,
+                points_redeemed=points_used,
                 promotion=promotion,
                 promotion_title=promotion.title if promotion else '',
                 weigh_at_shop=weigh_at_shop,
+                commission_rate=current_commission_rate(),
                 notes=notes,
             )
-            if not weigh_at_shop and payment_method != 'cod':
+            if not weigh_at_shop and payment_method not in Order.CASH_METHODS:
                 # Known price: the online-payment deadline starts now (weigh orders start it at weighing).
                 order.start_payment_clock()
                 order.save(update_fields=['payment_due_at', 'payment_reminders_sent'])
@@ -299,11 +363,14 @@ def place_order_view(request, shop_id):
                     weight_kg=sd['weight'] if sd['weight'] > 0 else None,
                     subtotal=sd['subtotal'],
                 )
+            loyalty.redeem(request.user, order, points_used)
             placed_note = 'Order placed by customer.'
             if weigh_at_shop:
                 placed_note += ' Shop will weigh the laundry at drop-off to confirm the price.'
             if promotion:
                 placed_note += f' Promo "{promotion.title}" applied: -₱{discount:,.2f}.'
+            if points_used:
+                placed_note += f' {points_used} loyalty points used: -₱{points_used:,.2f}.'
             OrderStatusLog.objects.create(order=order, status='pending', note=placed_note)
             if slot:
                 DeliverySlot.objects.filter(id=slot.id).update(current_bookings=F('current_bookings') + 1)
@@ -326,6 +393,8 @@ def place_order_view(request, shop_id):
 
         if promotion:
             messages.info(request, f'Promo "{promotion.title}" applied — you save ₱{discount:,.2f}.')
+        if points_used:
+            messages.info(request, f'{points_used} loyalty points used — you save ₱{points_used:,.2f}.')
         if weigh_at_shop:
             # No checkout yet: the price is confirmed after weighing, then the customer is notified to pay.
             if payment_method == 'cod':
@@ -338,11 +407,15 @@ def place_order_view(request, shop_id):
         if payment_method == 'cod':
             messages.success(request, f'Order #{order.id} placed successfully! Pay on delivery.')
             return redirect('order_detail', order_id=order.id)
+        if payment_method == 'cop':
+            messages.success(request, f'Order #{order.id} placed! Please have ₱{order.total_amount:,.2f} in cash ready '
+                                      'for the rider at pickup.')
+            return redirect('order_detail', order_id=order.id)
         else:
             return redirect('payment_checkout', order_id=order.id)
 
     return render(request, 'orders/place_order.html', {
-        **_place_order_context(shop, services, slots),
+        **_place_order_context(shop, services, slots, user=request.user),
     })
 
 
@@ -364,6 +437,7 @@ def cancel_order_view(request, order_id):
             return redirect('order_detail', order_id=order_id)
         order.refresh_from_db()
         OrderStatusLog.objects.create(order=order, status='cancelled', note='Cancelled by customer.')
+        loyalty.restore(order)
         if order.delivery_slot_id:
             DeliverySlot.objects.filter(id=order.delivery_slot_id, current_bookings__gt=0).update(current_bookings=F('current_bookings') - 1)
     if order.payment_status == 'paid':
@@ -382,8 +456,13 @@ def switch_to_cod_view(request, order_id):
         return redirect('order_detail', order_id=order_id)
     from payments.models import PayMongoTransaction
     order = get_object_or_404(Order, id=order_id, customer=request.user)
-    if order.payment_method == 'cod':
-        messages.info(request, 'This order is already set to cash on delivery.')
+    # Trusted customers switch to cash on delivery; new customers only to cash on pickup,
+    # and only while the rider hasn't collected the laundry yet (and the price is known).
+    target = 'cod' if request.user.cod_eligible else 'cop'
+    if order.payment_method in Order.CASH_METHODS:
+        messages.info(request, f'This order is already set to {order.get_payment_method_display().lower()}.')
+    elif target == 'cop' and (order.status not in ('pending', 'accepted') or order.price_pending):
+        messages.error(request, 'Cash on delivery is only available to returning customers. Please pay online.')
     elif order.payment_status == 'paid':
         messages.info(request, 'This order is already paid.')
     elif order.status in ('out_for_delivery', 'delivered', 'cancelled', 'declined'):
@@ -391,16 +470,20 @@ def switch_to_cod_view(request, order_id):
     elif PayMongoTransaction.in_progress(order).exists():
         messages.error(request, 'An online payment is in progress for this order. Please wait for it to finish.')
     else:
-        order.payment_method = 'cod'
+        order.payment_method = target
         order.payment_status = 'unpaid'
-        order.payment_due_at = None            # no online deadline for cash on delivery
+        order.payment_due_at = None            # no online deadline for cash payments
         order.save(update_fields=['payment_method', 'payment_status', 'payment_due_at', 'updated_at'])
+        when = 'on delivery' if target == 'cod' else 'at pickup'
         Notification.objects.create(
             user=order.shop.owner,
-            message=f'Order #{order.id} will be paid in cash on delivery.',
+            message=f'Order #{order.id} will be paid in cash {when}.',
             link=f'/shop-dashboard/orders/{order.id}/',
         )
-        messages.success(request, 'Switched to cash on delivery. Please pay the rider when your laundry arrives.')
+        if target == 'cod':
+            messages.success(request, 'Switched to cash on delivery. Please pay the rider when your laundry arrives.')
+        else:
+            messages.success(request, 'Switched to cash on pickup. Please pay the rider when they collect your laundry.')
     return redirect('order_detail', order_id=order_id)
 
 
@@ -411,19 +494,25 @@ def confirm_cash_received_view(request, order_id):
         return redirect('order_detail', order_id=order_id)
     order = get_object_or_404(Order.objects.select_related('shop__owner', 'customer'), id=order_id)
     is_rider = order.rider_id == request.user.id
-    is_owner = order.shop.owner_id == request.user.id
+    from shops.access import staff_shop
+    is_owner = order.shop.owner_id == request.user.id or (
+        request.user.role == 'attendant' and staff_shop(request.user) == order.shop)
     back = redirect('rider_task_detail' if is_rider else 'shop_dashboard_order_detail', order_id=order_id)
     if not (is_rider or is_owner):
         raise Http404
-    if order.payment_method != 'cod' or order.status != 'delivered':
-        messages.error(request, 'Cash can only be confirmed for delivered cash-on-delivery orders.')
+    cod_ok = order.payment_method == 'cod' and order.status == 'delivered'
+    cop_ok = order.payment_method == 'cop' and order.status not in ('pending', 'accepted', 'cancelled', 'declined')
+    if not (cod_ok or cop_ok):
+        messages.error(request, 'Cash can only be confirmed for delivered cash-on-delivery orders '
+                                'or picked-up cash-on-pickup orders.')
         return back
     if not Order.objects.filter(pk=order.pk, payment_status__in=['unpaid', 'failed']).update(
             payment_status='paid', updated_at=timezone.now()):
         messages.info(request, 'This order is already marked as paid.')
         return back
+    loyalty.award(order.id)
     who = 'rider' if is_rider else 'shop'
-    OrderStatusLog.objects.create(order=order, status='delivered',
+    OrderStatusLog.objects.create(order=order, status=order.status,
                                   note=f'Cash payment of ₱{order.total_amount:,.2f} confirmed by the {who}.')
     notify = order.shop.owner if is_rider else order.rider
     if notify:

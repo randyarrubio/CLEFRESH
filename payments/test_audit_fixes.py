@@ -47,7 +47,7 @@ class AuditFixTests(TestCase):
         for r in (self.rider, self.rider2):
             RiderProfile.objects.create(user=r, is_submitted=True, approval_status='approved')
         self.shop = Shop.objects.create(owner=self.owner, name='Suds', address='Tandag', status='approved')
-        self.wash = Service.objects.create(shop=self.shop, name='wash', price_per_kg='50.00')
+        self.wash = Service.objects.create(shop=self.shop, name='wash_fold', price_per_kg='50.00')
 
     def _order(self, **kw):
         fields = dict(customer=self.customer, shop=self.shop, pickup_address='P', delivery_address='D',

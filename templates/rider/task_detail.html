@@ -67,7 +67,7 @@
                   <h3>Current task</h3>
                 {% endif %}
               </div>
-              {% if order.payment_method == 'cod' %}<span class="badge badge-cod">COD</span>{% endif %}
+              {% if order.payment_method == 'cod' %}<span class="badge badge-cod">COD</span>{% elif order.payment_method == 'cop' %}<span class="badge badge-cod">Cash on pickup</span>{% endif %}
             </div>
             <div class="rw-info">
               <div class="rw-row"><i class="bi bi-person"></i><span><strong>Customer:</strong> {{ order.customer.get_full_name|default:order.customer.email }}</span></div>
@@ -97,6 +97,9 @@
                   <input type="hidden" name="status" value="picked_up">
                   {% if not has_pickup_proof %}
                     <div class="rw-proof-guard"><i class="bi bi-camera"></i> Upload a pickup proof photo before confirming pickup.</div>
+                  {% endif %}
+                  {% if order.payment_method == 'cop' and order.payment_status != 'paid' %}
+                    <label class="checkbox-label"><input type="checkbox" name="cod_collected" required style="width:auto;"> I collected <strong>₱{{ order.total_amount|floatformat:"2g" }}</strong> in cash from the customer</label>
                   {% endif %}
                   {% if has_pickup_proof %}
                     <button type="submit" class="btn btn-primary btn-full"><i class="bi bi-check2-circle"></i>Confirm pickup</button>
@@ -145,7 +148,7 @@
                 <i class="bi bi-check-circle" style="font-size:42px;color:#2ecc71;"></i>
                 <h3 style="margin-top:8px;">Delivery complete</h3>
                 <p style="color:var(--text-secondary);">This job is done.</p>
-                {% if order.payment_method == 'cod' and order.payment_status != 'paid' %}
+                {% if order.is_cash and order.payment_status != 'paid' %}
                   <form method="post" action="{% url 'confirm_cash_received' order.id %}" style="margin-top:12px;"
                         data-confirm="Only confirm if you collected the full amount from the customer."
                         data-confirm-title="Cash received for order #{{ order.id }}?" data-confirm-action="Yes, cash received" data-confirm-cancel="Not yet">
@@ -168,6 +171,10 @@
                   <label style="font-weight:800;color:#172033;">Upload pickup proof</label>
                   <input type="file" name="photo" accept="image/*" required style="margin-top:10px;">
                 </div>
+                {% if order.payment_method == 'cop' and order.payment_status != 'paid' %}
+                  {# Uploading pickup proof confirms the pickup only when the cash is confirmed too. #}
+                  <label class="checkbox-label"><input type="checkbox" name="cod_collected" style="width:auto;"> I collected <strong>₱{{ order.total_amount|floatformat:"2g" }}</strong> in cash from the customer</label>
+                {% endif %}
                 <button type="submit" class="btn btn-outline btn-full">Upload Photo</button>
               </form>
             {% elif current_proof_type == 'dropoff' and not has_dropoff_proof %}

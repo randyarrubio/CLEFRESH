@@ -47,7 +47,7 @@ class CodPayOnlineTests(TestCase):
         self.customer = mk('c@e.com', 'customer')
         self.owner = mk('o@e.com', 'shop_owner')
         self.shop = Shop.objects.create(owner=self.owner, name='Suds', address='Tandag', status='approved')
-        self.wash = Service.objects.create(shop=self.shop, name='wash', price_per_kg='50.00')
+        self.wash = Service.objects.create(shop=self.shop, name='wash_fold', price_per_kg='50.00')
         self.order = Order.objects.create(
             customer=self.customer, shop=self.shop, pickup_address='P', delivery_address='D',
             pickup_datetime=timezone.now() + timedelta(days=1), payment_method='cod',

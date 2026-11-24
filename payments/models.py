@@ -1,6 +1,31 @@
-from django.db import models
+from decimal import Decimal
+
 from django.conf import settings
+from django.core.validators import MaxValueValidator, MinValueValidator
+from django.db import models
 from orders.models import Order
+
+
+class PlatformSettings(models.Model):
+    """Single-row platform settings managed by admins (Finance page)."""
+    commission_percent = models.DecimalField(
+        max_digits=5, decimal_places=2, default=Decimal('10.00'),
+        validators=[MinValueValidator(Decimal('0')), MaxValueValidator(Decimal('50'))],
+        help_text="CLEFRESH's cut of each order, in percent. New orders snapshot the rate when they're placed.",
+    )
+    updated_at = models.DateTimeField(auto_now=True)
+    updated_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
+
+    class Meta:
+        verbose_name_plural = 'platform settings'
+
+    @classmethod
+    def current(cls):
+        obj, _ = cls.objects.get_or_create(pk=1)
+        return obj
+
+    def __str__(self):
+        return f'Commission {self.commission_percent}%'
 
 
 class PayMongoTransaction(models.Model):

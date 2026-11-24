@@ -25,6 +25,7 @@ def _png():
     return SimpleUploadedFile('scale.png', buf.getvalue(), content_type='image/png')
 
 
+@override_settings(COD_TRUSTED_MIN_ORDERS=0)  # these customers may use cash on delivery
 class WeighAtShopTests(TestCase):
     @classmethod
     def setUpClass(cls):
@@ -48,13 +49,13 @@ class WeighAtShopTests(TestCase):
         self.rider = mk('r@e.com', 'rider')
         RiderProfile.objects.create(user=self.rider, is_submitted=True, approval_status='approved')
         self.shop = Shop.objects.create(owner=self.owner, name='Suds', address='Tandag', status='approved')
-        self.wash = Service.objects.create(shop=self.shop, name='wash', price_per_kg='50.00')
+        self.wash = Service.objects.create(shop=self.shop, name='wash_fold', price_per_kg='50.00')
         self.iron = Service.objects.create(shop=self.shop, name='iron', price_per_piece='15.00')
 
     # ── helpers ──
     def _book(self, payment='gcash', weigh=True, selected=None, **extra):
         data = {'pickup_address': 'P', 'delivery_address': 'D', 'payment_method': payment,
-                'pickup_datetime': (timezone.localtime() + timedelta(days=1)).strftime('%Y-%m-%dT%H:%M'),
+                'pickup_datetime': (timezone.localdate() + timedelta(days=1)).strftime('%Y-%m-%dT10:00'),
                 'weigh_at_shop': '1' if weigh else '0',
                 'svc_selected': selected if selected is not None else [self.wash.id]}
         data.update(extra)

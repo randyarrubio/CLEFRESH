@@ -210,6 +210,15 @@ else:
 # reminders N hours after the price is final, then auto-switch to cash on delivery at the deadline.
 PAYMENT_REMINDER_HOURS = [int(h) for h in config('PAYMENT_REMINDER_HOURS', default='24,48', cast=Csv())]
 PAYMENT_DUE_HOURS = config('PAYMENT_DUE_HOURS', default=72, cast=int)
+# Cash on delivery is only offered to trusted customers: at least this many delivered, paid orders.
+# New customers pay online in advance or use cash on pickup (the rider collects before the laundry leaves).
+COD_TRUSTED_MIN_ORDERS = config('COD_TRUSTED_MIN_ORDERS', default=1, cast=int)
+
+# Loyalty rewards: customers earn 1 point per LOYALTY_PESOS_PER_POINT paid on delivered orders,
+# and each point is worth ₱1 off a later booking (up to LOYALTY_MAX_REDEEM_PERCENT of that order).
+LOYALTY_PESOS_PER_POINT = config('LOYALTY_PESOS_PER_POINT', default=20, cast=int)
+LOYALTY_MAX_REDEEM_PERCENT = config('LOYALTY_MAX_REDEEM_PERCENT', default=50, cast=int)
+LOYALTY_MIN_CHARGE = 20      # PayMongo e-wallets need at least ₱20, so points never push an order below it
 
 # Live notifications over SSE hold one worker per open tab. Turn off on hosts with a few
 # sync workers (PythonAnywhere/uWSGI) — the bell then polls /api/notifications/ every 30 s.

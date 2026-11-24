@@ -2609,8 +2609,8 @@
 
         <div class="cd-filter-row">
           <a href="{% url 'home' %}{% if customer_query %}?q={{ customer_query|urlencode }}{% endif %}" class="cd-chip {% if not customer_service_filter %}active{% endif %}"><i class="bi bi-grid"></i>All</a>
-          <a href="{% url 'home' %}?service=wash{% if customer_query %}&q={{ customer_query|urlencode }}{% endif %}" class="cd-chip {% if customer_service_filter == 'wash' %}active{% endif %}"><i class="bi bi-droplet"></i>Wash &amp; dry</a>
-          <a href="{% url 'home' %}?service=fold{% if customer_query %}&q={{ customer_query|urlencode }}{% endif %}" class="cd-chip {% if customer_service_filter == 'fold' %}active{% endif %}"><i class="bi bi-layers"></i>Fold</a>
+          <a href="{% url 'home' %}?service=wash_fold{% if customer_query %}&q={{ customer_query|urlencode }}{% endif %}" class="cd-chip {% if customer_service_filter == 'wash_fold' %}active{% endif %}"><i class="bi bi-droplet"></i>Wash &amp; Fold</a>
+          <a href="{% url 'home' %}?service=dry{% if customer_query %}&q={{ customer_query|urlencode }}{% endif %}" class="cd-chip {% if customer_service_filter == 'dry' %}active{% endif %}"><i class="bi bi-wind"></i>Dry</a>
           <a href="{% url 'home' %}?service=iron{% if customer_query %}&q={{ customer_query|urlencode }}{% endif %}" class="cd-chip {% if customer_service_filter == 'iron' %}active{% endif %}"><i class="bi bi-badge-ad"></i>Iron</a>
           <a href="{% url 'home' %}?service=dry_clean{% if customer_query %}&q={{ customer_query|urlencode }}{% endif %}" class="cd-chip {% if customer_service_filter == 'dry_clean' %}active{% endif %}"><i class="bi bi-stars"></i>Dry cleaning</a>
         </div>

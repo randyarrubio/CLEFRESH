@@ -75,7 +75,7 @@ def admin_dashboard_view(request):
 
 
 _VALID_SHOP_STATUSES = {'pending', 'approved', 'rejected', 'suspended'}
-_VALID_USER_ROLES = {'customer', 'shop_owner', 'rider', 'admin'}
+_VALID_USER_ROLES = {'customer', 'shop_owner', 'rider', 'attendant', 'admin'}
 
 
 @role_required('admin')
@@ -359,6 +359,39 @@ def admin_transactions_view(request):
     page_obj, page_qs = paginate(request, transactions)
     return render(request, 'admin_panel/transactions.html', {'transactions': page_obj, 'page_obj': page_obj,
                                                              'page_qs': page_qs})
+
+
+@role_required('admin')
+def admin_finance_view(request):
+    from decimal import Decimal, InvalidOperation
+    from payments.models import PlatformSettings
+    from utils import finance
+
+    platform = PlatformSettings.current()
+    if request.method == 'POST':
+        try:
+            rate = Decimal(request.POST.get('commission_percent', '').strip())
+            if not rate.is_finite() or not (Decimal('0') <= rate <= Decimal('50')):
+                raise InvalidOperation
+        except (InvalidOperation, ValueError):
+            messages.error(request, 'Commission must be a number from 0 to 50.')
+            return redirect('admin_finance')
+        platform.commission_percent = rate.quantize(Decimal('0.01'))
+        platform.updated_by = request.user
+        platform.save()
+        messages.success(request, f'Commission set to {platform.commission_percent}%. It applies to orders placed from now on.')
+        return redirect('admin_finance')
+
+    days, start = finance.period_from_request(request)
+    period_orders = Order.objects.filter(created_at__gte=start)
+    return render(request, 'admin_panel/finance.html', {
+        'platform': platform,
+        'days': days, 'periods': finance.PERIODS,
+        'summary': finance.summarize(period_orders),
+        'series': finance.daily_series(period_orders, days),
+        'shops': finance.per_shop(period_orders),
+        'recent_refunds': Refund.objects.select_related('order__shop').order_by('-created_at')[:10],
+    })
 
 
 @role_required('admin')

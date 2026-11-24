@@ -6,6 +6,7 @@ from django.conf import settings
 from django.conf.urls.static import static
 from decouple import config
 from accounts.views import sso_complete_view
+from . import pwa
 
 def _private_media_404(request, *args):
     raise Http404
@@ -31,6 +32,9 @@ urlpatterns = [
     path('shop-dashboard/', include('shops.dashboard_urls')),
     path('admin-panel/', include('analytics.urls')),
     path('api/', include('notifications.urls')),
+    path('manifest.webmanifest', pwa.manifest_view, name='pwa_manifest'),
+    path('sw.js', pwa.service_worker_view, name='pwa_service_worker'),
+    path('offline/', pwa.offline_view, name='pwa_offline'),
     path('', include('shops.urls')),
     # Private uploads are only reachable through the permission-checked views in accounts.
     re_path(r'^media/(rider_docs|face_selfies|id_documents|shop_docs)/', _private_media_404),

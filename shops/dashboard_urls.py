@@ -1,5 +1,5 @@
 from django.urls import path
-from . import views
+from . import pos_views, staff_views, views
 
 urlpatterns = [
     path('', views.dashboard_view, name='shop_dashboard'),
@@ -21,4 +21,11 @@ urlpatterns = [
     path('promos/<int:promo_id>/delete/', views.delete_promo_view, name='delete_promo'),
     path('analytics/', views.dashboard_analytics_view, name='shop_dashboard_analytics'),
     path('payments/', views.dashboard_payments_view, name='shop_dashboard_payments'),
+    path('staff/', staff_views.staff_view, name='shop_staff'),
+    path('staff/create/', staff_views.create_attendant_view, name='create_attendant'),
+    path('staff/<int:attendant_id>/', staff_views.update_attendant_view, name='update_attendant'),
+    path('clock/', staff_views.clock_view, name='attendant_clock'),
+    path('pos/', pos_views.pos_view, name='shop_pos'),
+    path('pos/<int:order_id>/receipt/', pos_views.pos_receipt_view, name='pos_receipt'),
+    path('pos/<int:order_id>/claim/', pos_views.pos_claim_view, name='pos_claim'),
 ]

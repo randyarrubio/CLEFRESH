@@ -2,7 +2,7 @@ from datetime import timedelta
 from unittest import mock
 
 from django.contrib.auth import get_user_model
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
@@ -12,6 +12,7 @@ from shops.models import Promotion, Service, Shop
 User = get_user_model()
 
 
+@override_settings(COD_TRUSTED_MIN_ORDERS=0)  # these customers may book cash on delivery
 class PromotionTests(TestCase):
     @classmethod
     def setUpClass(cls):
@@ -37,7 +38,7 @@ class PromotionTests(TestCase):
         self.customer.save(update_fields=['face_verified_at', 'id_status'])
         self.shop = Shop.objects.create(owner=self.owner, name='Suds', address='Tandag', status='approved')
         self.other_shop = Shop.objects.create(owner=self.other_owner, name='Other', address='Tandag', status='approved')
-        Service.objects.create(shop=self.shop, name='wash', price_per_kg='40.00')
+        Service.objects.create(shop=self.shop, name='wash_fold', price_per_kg='40.00')
         self.today = timezone.localdate()
 
     def _promo(self, shop=None, **kw):
@@ -145,9 +146,9 @@ class PromotionTests(TestCase):
         Weighing is shop-only, so promos are applied when the shop confirms the weight.
         """
         from orders.models import Order
-        svc = self.shop.services.get(name='wash')
+        svc = self.shop.services.get(name='wash_fold')
         data = {'pickup_address': 'P', 'delivery_address': 'D', 'payment_method': 'cod',
-                'pickup_datetime': (timezone.localtime() + timedelta(days=1)).strftime('%Y-%m-%dT%H:%M'),
+                'pickup_datetime': (timezone.localdate() + timedelta(days=1)).strftime('%Y-%m-%dT10:00'),
                 'svc_selected': [svc.id]}
         data.update(extra)
         self.client.force_login(self.customer)

@@ -1,0 +1,92 @@
+{% extends 'base.html' %}
+{% block title %}Counter — {{ shop.name }}{% endblock %}
+{% block extra_head %}
+<style>
+  .ad-clock { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 24px; }
+  .ad-clock h3 { margin: 0 0 4px; }
+  .ad-clock p { margin: 0; color: var(--text-secondary); font-size: 14px; }
+  .ad-clock .btn { min-width: 160px; }
+  .ad-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-bottom: 24px; }
+  .ad-action { display: flex; gap: 14px; align-items: center; text-decoration: none; color: inherit; }
+  .ad-action h4 { margin: 0; font-family: 'Outfit', sans-serif; font-size: 22px; }
+  .ad-action p { margin: 0; font-size: 13px; color: var(--text-secondary); }
+  .ad-late { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: #fff1e0; color: #a34d00; }
+  @media (max-width: 768px) { .ad-actions { grid-template-columns: 1fr; } }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-shell">
+  <div class="page-header">
+    <div>
+      <h2>Hi, {{ user.first_name|default:user.email }}</h2>
+      <p>{{ shop.name }} counter · {{ profile.schedule_label }}</p>
+    </div>
+  </div>
+
+  <div class="card ad-clock">
+    <div>
+      {% if open_record %}
+        <h3><i class="bi bi-circle-fill" style="color:#18a463; font-size:12px;" aria-hidden="true"></i> On shift since {{ open_record.time_in|time:"g:i A" }}</h3>
+        <p>{{ open_record.hours }} h so far · ₱{{ open_record.earnings|floatformat:"2g" }} at ₱{{ open_record.hourly_rate|floatformat:"2g" }}/h{% if open_record.is_late %} · <span class="ad-late">Late time-in</span>{% endif %}</p>
+      {% else %}
+        <h3><i class="bi bi-circle" style="color:#9aaaba; font-size:12px;" aria-hidden="true"></i> Not timed in</h3>
+        <p>Time in when you start your shift so your hours and pay are recorded.</p>
+      {% endif %}
+    </div>
+    <form method="post" action="{% url 'attendant_clock' %}">
+      {% csrf_token %}
+      {% if open_record %}
+        <input type="hidden" name="action" value="out">
+        <button type="submit" class="btn btn-outline"><i class="bi bi-box-arrow-right glyph-icon" aria-hidden="true"></i>Time out</button>
+      {% else %}
+        <input type="hidden" name="action" value="in">
+        <button type="submit" class="btn btn-primary"><i class="bi bi-box-arrow-in-right glyph-icon" aria-hidden="true"></i>Time in</button>
+      {% endif %}
+    </form>
+  </div>
+
+  <div class="ad-actions">
+    <a class="card ad-action" href="{% url 'shop_dashboard_orders' %}?status=pending">
+      <div class="stat-icon"><i class="bi bi-inbox" aria-hidden="true"></i></div>
+      <div><h4>{{ pending_orders }}</h4><p>New orders to verify</p></div>
+    </a>
+    <a class="card ad-action" href="{% url 'shop_dashboard_orders' %}">
+      <div class="stat-icon"><i class="bi bi-arrow-repeat" aria-hidden="true"></i></div>
+      <div><h4>{{ active_orders }}</h4><p>Orders in progress</p></div>
+    </a>
+    <a class="card ad-action" href="{% url 'shop_pos' %}">
+      <div class="stat-icon"><i class="bi bi-shop-window" aria-hidden="true"></i></div>
+      <div><h4>{{ ready_walk_ins }}</h4><p>Walk-ins ready to claim · open counter</p></div>
+    </a>
+  </div>
+
+  <div class="sub-nav" style="margin-bottom:16px;">
+    {% for d in periods %}<a href="?days={{ d }}" class="sub-tab {% if d == days %}active{% endif %}">Last {{ d }} days</a>{% endfor %}
+  </div>
+  <div class="stats-bar stats-bar-3" style="margin-bottom:20px;">
+    <div class="stat-card"><div class="stat-icon"><i class="bi bi-clock-history" aria-hidden="true"></i></div><div class="stat-info"><h4>{{ totals.hours }} h</h4><p>Hours · {{ totals.shifts }} shift{{ totals.shifts|pluralize }}</p></div></div>
+    <div class="stat-card"><div class="stat-icon"><i class="bi bi-wallet2" aria-hidden="true"></i></div><div class="stat-info"><h4>₱{{ totals.earnings|floatformat:"2g" }}</h4><p>Earnings</p></div></div>
+    <div class="stat-card"><div class="stat-icon"><i class="bi bi-alarm" aria-hidden="true"></i></div><div class="stat-info"><h4>{{ totals.late }}</h4><p>Late time-ins</p></div></div>
+  </div>
+
+  <div class="table-wrapper">
+    <table class="table">
+      <thead><tr><th>Date</th><th>Time in</th><th>Time out</th><th>Hours</th><th>Earnings</th></tr></thead>
+      <tbody>
+        {% for r in records %}
+          <tr>
+            <td>{{ r.time_in|date:"D, M d" }}</td>
+            <td>{{ r.time_in|time:"g:i A" }}{% if r.is_late %} <span class="ad-late">Late</span>{% endif %}</td>
+            <td>{% if r.time_out %}{{ r.time_out|time:"g:i A" }}{% else %}On shift{% endif %}</td>
+            <td>{{ r.hours }} h</td>
+            <td>₱{{ r.earnings|floatformat:"2g" }}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="5" class="table-empty-cell"><i class="bi bi-clock" aria-hidden="true"></i> No shifts in this period yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

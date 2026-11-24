@@ -1,7 +1,7 @@
 # CLAUDE.md — CLEFRESH
 
 ## Project
-Laundry shop booking platform. Customers find nearby laundry shops, book pickup/delivery slots, pay online. Shop owners manage services and orders. Riders handle logistics.
+Laundry shop booking platform. Customers find nearby laundry shops, book pickup/delivery slots, pay online. Shop owners manage services and orders; their attendants work the counter (orders + walk-in POS). Riders handle logistics.
 
 ## Stack
 - Django 4.2.30, Python 3.13, SQLite (dev)
@@ -14,23 +14,32 @@ Laundry shop booking platform. Customers find nearby laundry shops, book pickup/
 | App | Purpose |
 |-----|---------|
 | `accounts` | Custom User model, SSO completion, decorators, forgot password, rider doc serving |
-| `shops` | Shop, Service, DeliverySlot |
-| `orders` | Order, OrderService, OrderStatusLog, PhotoProof, EmailLog |
-| `payments` | PayMongoTransaction, Refund, WebhookEvent |
+| `shops` | Shop, Service, DeliverySlot, ShopAttendant, AttendanceRecord; staff (`staff_views.py`), walk-in POS (`pos_views.py`), owner/attendant access (`access.py`) |
+| `orders` | Order, OrderService, OrderStatusLog, PhotoProof, EmailLog, LoyaltyEntry; loyalty logic in `orders/loyalty.py` |
+| `payments` | PayMongoTransaction, Refund, WebhookEvent, PlatformSettings (commission rate) |
 | `maps` | Rider dashboard + location tracking |
 | `reviews` | Shop reviews |
 | `notifications` | In-app notifications API |
 | `analytics` | Admin panel — dashboard, shops, users, orders, transactions, analytics, broadcast |
-| `utils` | email_notifications.py, geocode.py, validators.py |
+| `utils` | email_notifications.py, geocode.py, validators.py, face_match.py, finance.py (money summaries) |
+| `clefresh/pwa.py` | PWA manifest (`/manifest.webmanifest`), service worker (`/sw.js`), offline page (`/offline/`) |
 
 ## Models (quick ref)
-- **User** → roles: `customer | shop_owner | rider | admin`
+- **User** → roles: `customer | shop_owner | rider | attendant | admin`
+  - `attendant` accounts are created by a shop owner (Staff page) and linked via `ShopAttendant`; they can use order views, weigh, assign riders, confirm cash and the POS, but not services/slots/promos/analytics/payments/staff
+  - `User.cod_eligible` → ≥ `COD_TRUSTED_MIN_ORDERS` delivered + paid orders; `User.loyalty_points` → ledger balance
 - **Shop** → `status: pending|approved|rejected|suspended`, lat/lng auto-geocoded on save
   - `suspended` shops are invisible to customers; shop owner loses dashboard access; admin can reinstate
-- **Service** → types: `wash|dry|fold|iron|dry_clean`, price per kg or per piece
+- **Service** → offered types: `wash_fold|dry|iron|dry_clean` (`Service.OFFERED_SERVICE_CHOICES`); legacy `wash`/`fold` rows (with order history) stay for display but are hidden from booking/POS (`LEGACY_SERVICE_NAMES`)
+- **Shop hours** → `Shop.within_hours(start, end=None)` / `hours_label`; pick-ups and delivery slots must fall inside `operating_hours_start–end` (booking, slots API, slot creation)
 - **DeliverySlot** → date+time window, max_capacity, current_bookings
 - **Order** → status flow: `pending→accepted→picked_up→washing→drying→folding→ready→out_for_delivery→delivered`; terminal states: `declined`, `cancelled`
-- **Order.payment_method** → `gcash|grab_pay|maya|card|online_banking|cod`
+- **Order.payment_method** → `gcash|grab_pay|maya|card|online_banking|cod|cop|counter`; `Order.CASH_METHODS = cod, cop, counter`
+  - **COD** only for trusted customers (`User.cod_eligible`); new customers pay online or **COP** (cash on pickup — rider ticks "cash collected" to confirm pickup; not allowed for weigh-at-shop orders). `Order.cash_due_on(status)` decides when the rider must collect
+  - Overdue online payments fall back to COP before pickup for untrusted customers, else COD (`process_payment_reminders`)
+- **Order commission** → `commission_rate` (%) snapshotted at booking from `PlatformSettings.current()`; `commission_amount` / `shop_earnings` properties; walk-ins use 0%
+- **Order walk-ins** → `is_walk_in`, `walk_in_name/phone`, `customer` may be NULL (use `order.customer_label` for display, guard `order.customer_id` before notifying); start at `picked_up`, follow `WALK_IN_TRANSITIONS`, claimed via `pos_claim`
+- **Loyalty** → earn ⌊total ÷ `LOYALTY_PESOS_PER_POINT`⌋ when delivered + paid (`loyalty.award`, idempotent); redeem 1 pt = ₱1 at booking (≤ `LOYALTY_MAX_REDEEM_PERCENT`, ≥ ₱20 left, not weigh-at-shop) → `Order.points_redeemed`; cancel/decline → `loyalty.restore`, refund → `loyalty.revoke`
 - **Order.total_amount** → capped at ₱50,000 (enforced in `place_order_view`)
 - **OrderStatusLog.status** → `CharField(max_length=30)` with `choices=Order.STATUS_CHOICES` — use `|humanize_status` filter (from `shop_extras`) for display; `get_status_display()` now works but `|humanize_status` is preferred in templates
 - **PayMongoTransaction** → amounts in **centavos** (PHP × 100)
@@ -46,8 +55,9 @@ Laundry shop booking platform. Customers find nearby laundry shops, book pickup/
 | `/orders/` | orders + reviews |
 | `/payment/` | PayMongo checkout/webhook |
 | `/rider/` | rider dashboard |
-| `/shop-dashboard/` | shop owner dashboard |
-| `/admin-panel/` | admin dashboard, shops, users, orders, transactions, analytics, broadcast |
+| `/shop-dashboard/` | shop owner dashboard (attendants see their shift dashboard); `staff/`, `pos/`, `clock/` |
+| `/admin-panel/` | admin dashboard, shops, users, ID reviews, orders, transactions, finance (commission), analytics, broadcast |
+| `/manifest.webmanifest`, `/sw.js`, `/offline/` | PWA (`clefresh/pwa.py`) |
 | `/api/` | notifications |
 | `/info/<slug>/` | help, privacy, terms, refunds (under root shops.urls, not a separate app) |
 
@@ -65,6 +75,8 @@ Laundry shop booking platform. Customers find nearby laundry shops, book pickup/
 - `DJANGO_ADMIN_URL` env var controls the Django admin path (default: `django-admin/`) — change in production
 - **Google Maps API key** only injected into templates on `/`, `/orders/`, `/rider/`, `/shops/`, `/shop-dashboard/` — not global
 - **PayMongo public key** only injected on `/payment/` paths — not global
+- `COD_TRUSTED_MIN_ORDERS` (default 1), `LOYALTY_PESOS_PER_POINT` (default 20), `LOYALTY_MAX_REDEEM_PERCENT` (default 50) — `.env` overrides
+- **PWA service worker** never caches pages (personal data) — only static files; it bypasses `/payment/`, `/auth/`, `/api/`, admin, `/media/`. Bump `SW_VERSION` in `clefresh/pwa.py` when changing caching rules
 - `NOTIFICATIONS_SSE` (default True) — set False on PythonAnywhere; bell falls back to 30 s polling. Deploy guide: `deploy/PYTHONANYWHERE.md`
 - **SMTP is required for transactional email** — password resets and verification codes are never sent through Formspree. Formspree is used only for non-sensitive notification fallback; configure SMTP in production (`utils/email_notifications.py`).
 
@@ -146,9 +158,10 @@ The `{% block topbar_nav %}` in `base.html` resolves in this order (first match 
 | Condition | Links shown |
 |-----------|-------------|
 | `user.role == 'customer'` | Home, My Orders — shown on **every** page including shop pages |
-| `is_shop_owner_area or is_shop_owner_home` | Dashboard, Orders, Delivery Slots, Services, Analytics, Payments |
+| `is_shop_owner_area or is_shop_owner_home` | Dashboard, Orders, Delivery Slots, Services, Promos, Analytics, Payments, Counter, Staff |
 | `user.role == 'rider'` | *(empty)* |
-| `user.role == 'admin'` | Dashboard, Shops, Users, Orders, Transactions, Analytics, Broadcast |
+| `user.role == 'attendant'` | My Shift, Orders, Counter |
+| `user.role == 'admin'` | Dashboard, Shops, Users, Orders, Transactions, Finance, Analytics, Broadcast |
 | `user.is_superuser` | same as admin |
 | `is_shop_site and shop` | Shop name, Services, How It Works, About Us — anonymous visitors only |
 | else (anonymous) | Home, Services, How It Works, About Us |
@@ -166,6 +179,7 @@ Role-based rendering in `home_view`:
 
 ## Important Patterns
 - Role guard decorator: `@role_required('shop_owner')` from `accounts/decorators.py`
+- Shop counter views (owner **or** attendant): `@shop_staff_required` from `shops/access.py` → shop in `request.staff_shop`; owner-only pages keep `@role_required('shop_owner')`
 - Email sending: always use `utils/email_notifications.py` + log with `EmailLog` model. SMTP is preferred and required for password resets and verification codes; Formspree is not transactional email.
 - Geocoding: `utils/geocode.py` — called automatically in `Shop.save()`
 - Status display for `OrderStatusLog`: use `{% load shop_extras %}` then `{{ log.status|humanize_status }}` — preferred over `get_status_display()` in templates
@@ -173,7 +187,8 @@ Role-based rendering in `home_view`:
 - Seed data: `python manage.py seed_data`
 - PayMongo amounts: **always centavos** — never store raw PHP floats
 - Currency display: always `₱` symbol — never `PHP`
-- Order status transitions are enforced server-side; `shops/views.py` has a `valid_transitions` dict — don't bypass it
+- Order status transitions are enforced server-side; `shops/views.py` has `VALID_TRANSITIONS` / `WALK_IN_TRANSITIONS` (pick with `transitions_for(order)`) — don't bypass them
+- Money dashboards: use `utils/finance.py` (`summarize`, `daily_series`, `per_shop`) — gross = paid orders, commission via the `COMMISSION` expression, refunds from `Refund` (centavos → ₱)
 - Admin shop actions: approve / reject / **suspend** / **unsuspend** / **delete** (delete is permanent and cascades to orders)
 - Analytics revenue: `Sum('total_amount')` on `Order` where `payment_status='paid'` and `created_at__gte=period_start` — stored in ₱ (not centavos)
 - Analytics date range: `?days=7|30|90` GET param (default 30); computes current + previous period for trend deltas

@@ -64,7 +64,7 @@
             <div class="pay-card-body">
               <h3>Waiting for the shop to weigh your laundry</h3>
               <p>{{ order.shop.name }} will weigh it when it arrives at the shop and confirm the final price.
-                {% if order.payment_method == 'cod' %}We'll notify you with the final price — then you can pay online, or pay the rider in cash on delivery.{% else %}We'll notify you to pay online then — your laundry is delivered after payment.{% endif %}</p>
+                {% if order.payment_method == 'cod' %}We'll notify you with the final price — then you can pay online, or pay the rider in cash on delivery.{% elif order.payment_method == 'cop' %}Please have the cash ready for the rider at pickup.{% else %}We'll notify you to pay online then — your laundry is delivered after payment.{% endif %}</p>
             </div>
           </div>
         {% elif order.weigh_at_shop or order.awaiting_online_payment %}
@@ -75,16 +75,23 @@
                 <h3>{% if order.weigh_at_shop %}Final price confirmed: {{ order|order_total }}{% else %}Payment due: {{ order|order_total }}{% endif %}</h3>
                 <p>{% if order.weigh_at_shop %}Your laundry was weighed on {{ order.price_confirmed_at|date:"M d, g:i A" }}. {% endif %}Pay online so the shop can send it out for delivery.</p>
                 {% if order.payment_due_at %}
-                  <p class="pay-card-due"><i class="bi bi-clock" aria-hidden="true"></i> Please pay by <strong>{{ order.payment_due_at|date:"M d, g:i A" }}</strong>. After that, the order switches to cash on delivery.</p>
+                  <p class="pay-card-due"><i class="bi bi-clock" aria-hidden="true"></i> Please pay by <strong>{{ order.payment_due_at|date:"M d, g:i A" }}</strong>. After that, you'll pay the rider in cash instead.</p>
                 {% endif %}
                 <div class="pay-card-actions">
                   <a href="{% url 'payment_checkout' order.id %}" class="btn btn-primary"><i class="bi bi-credit-card" aria-hidden="true"></i> Pay {{ order|order_total }} now</a>
-                  {% if order.status != 'out_for_delivery' %}
+                  {% if order.status != 'out_for_delivery' and cash_fallback == 'cod' %}
                     <form method="post" action="{% url 'switch_to_cod' order.id %}"
                           data-confirm="You'll pay {{ order|order_total }} in cash to the rider when your laundry is delivered."
                           data-confirm-title="Pay on delivery instead?" data-confirm-action="Pay on delivery">
                       {% csrf_token %}
                       <button type="submit" class="btn btn-outline">Pay on delivery instead</button>
+                    </form>
+                  {% elif cash_fallback == 'cop' %}
+                    <form method="post" action="{% url 'switch_to_cod' order.id %}"
+                          data-confirm="You'll pay {{ order|order_total }} in cash to the rider when they collect your laundry."
+                          data-confirm-title="Pay at pickup instead?" data-confirm-action="Pay at pickup">
+                      {% csrf_token %}
+                      <button type="submit" class="btn btn-outline">Pay cash at pickup instead</button>
                     </form>
                   {% endif %}
                 </div>
@@ -106,6 +113,19 @@
               </div>
             </div>
           {% endif %}
+        {% elif order.payment_method == 'cop' and order.payment_status != 'paid' %}
+          <div class="card pay-card is-due">
+            <div class="pay-card-icon" aria-hidden="true"><i class="bi bi-cash-coin"></i></div>
+            <div class="pay-card-body">
+              <h3>Cash on pickup: {{ order|order_total }}</h3>
+              <p>Please have the exact amount ready. The rider collects it when they pick up your laundry.</p>
+              {% if order.can_pay_online %}
+                <div class="pay-card-actions">
+                  <a href="{% url 'payment_checkout' order.id %}" class="btn btn-outline"><i class="bi bi-credit-card" aria-hidden="true"></i> Pay online instead</a>
+                </div>
+              {% endif %}
+            </div>
+          </div>
         {% endif %}
       {% endif %}
 

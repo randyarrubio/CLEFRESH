@@ -159,9 +159,10 @@ def rider_update_status_view(request, order_id):
     if not order.photo_proofs.filter(proof_type=required_proof_type).exists():
         messages.error(request, f'Upload a {required_proof_label} before confirming this action.')
         return redirect('rider_task_detail', order_id=order_id)
-    cash_due = new_status == 'delivered' and order.payment_method == 'cod' and order.payment_status != 'paid'
+    cash_due = order.cash_due_on(new_status)
     if cash_due and request.POST.get('cod_collected') != 'on':
-        messages.error(request, f'Confirm you collected ₱{order.total_amount:,.2f} in cash before completing the delivery.')
+        step = 'confirming pickup' if new_status == 'picked_up' else 'completing the delivery'
+        messages.error(request, f'Confirm you collected ₱{order.total_amount:,.2f} in cash before {step}.')
         return redirect('rider_task_detail', order_id=order_id)
     order.status = new_status
     fields = {'status': new_status, 'updated_at': timezone.now()}
@@ -173,6 +174,9 @@ def rider_update_status_view(request, order_id):
         messages.error(request, 'This order was just updated. Please refresh and try again.')
         return redirect('rider_task_detail', order_id=order_id)
     OrderStatusLog.objects.create(order=order, status=new_status)
+    if new_status == 'delivered':
+        from orders import loyalty
+        loyalty.award(order.id)
     _rider_customer_messages = {
         'picked_up': f'Your laundry for order #{order.id} has been picked up by your rider.',
         'out_for_delivery': f'Your order #{order.id} is out for delivery — your rider is on the way!',
@@ -237,10 +241,10 @@ def upload_proof_view(request, order_id):
         }
         if proof_type in _auto_advance:
             required_prior, new_status = _auto_advance[proof_type]
-            cash_due = (new_status == 'delivered' and order_for_notify.payment_method == 'cod'
-                        and order_for_notify.payment_status != 'paid')
+            cash_due = order_for_notify.cash_due_on(new_status)
             if cash_due and request.POST.get('cod_collected') != 'on':
-                messages.info(request, 'Photo uploaded. Confirm the cash payment below to complete the delivery.')
+                step = 'confirm the pickup' if new_status == 'picked_up' else 'complete the delivery'
+                messages.info(request, f'Photo uploaded. Confirm the cash payment below to {step}.')
                 return redirect('rider_task_detail', order_id=order_id)
             if order_for_notify.status == required_prior:
                 order_for_notify.status = new_status
@@ -252,6 +256,9 @@ def upload_proof_view(request, order_id):
                     messages.success(request, 'Photo proof uploaded.')   # someone else advanced it already
                     return redirect('rider_task_detail', order_id=order_id)
                 OrderStatusLog.objects.create(order=order_for_notify, status=new_status)
+                if new_status == 'delivered':
+                    from orders import loyalty
+                    loyalty.award(order_for_notify.id)
                 _customer_msgs = {
                     'picked_up': f'Your laundry for order #{order_for_notify.id} has been picked up by your rider.',
                     'delivered': f'Your laundry has been delivered! Order #{order_for_notify.id} is complete.',

@@ -62,7 +62,7 @@ class SystemHardeningTests(TestCase):
         )
         self.service = Service.objects.create(
             shop=self.shop,
-            name='wash',
+            name='wash_fold',
             price_per_kg='50.00',
         )
         self.slot = DeliverySlot.objects.create(
@@ -211,7 +211,7 @@ class SystemHardeningTests(TestCase):
 
     def test_negative_order_values_are_rejected_without_creating_order(self):
         self.client.force_login(self.customer)
-        pickup_datetime = (timezone.now() + timedelta(days=1)).strftime('%Y-%m-%dT%H:%M')
+        pickup_datetime = (timezone.localdate() + timedelta(days=1)).strftime('%Y-%m-%dT10:00')
         response = self.client.post(
             reverse('place_order', args=[self.shop.id]),
             {

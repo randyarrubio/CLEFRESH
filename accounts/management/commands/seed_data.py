@@ -134,8 +134,8 @@ class Command(BaseCommand):
 
         # Services
         for shop, services in [
-            (shop1, [('wash', 60, None), ('dry', 50, None), ('fold', 30, None), ('iron', None, 15)]),
-            (shop2, [('wash', 70, None), ('dry', 60, None), ('fold', 35, None), ('dry_clean', None, 120)]),
+            (shop1, [('wash_fold', 60, None), ('dry', 50, None), ('iron', None, 15)]),
+            (shop2, [('wash_fold', 70, None), ('dry', 60, None), ('dry_clean', None, 120)]),
         ]:
             for name, ppkg, ppiece in services:
                 Service.objects.get_or_create(
@@ -157,7 +157,7 @@ class Command(BaseCommand):
         self.stdout.write('  Shops, services, and delivery slots created')
 
         # Sample orders
-        wash_svc = shop1.services.filter(name='wash').first()
+        wash_svc = shop1.services.filter(name='wash_fold').first()
         dry_svc = shop1.services.filter(name='dry').first()
 
         if wash_svc and not Order.objects.filter(customer=customer1, shop=shop1, status='delivered').exists():

@@ -14,6 +14,11 @@
   <link rel="stylesheet" href="{% static 'vendor/bootstrap-icons-1.11.3/bootstrap-icons.min.css' %}">
   <link rel="icon" type="image/png" sizes="32x32" href="{% static 'img/favicon-32.png' %}">
   <link rel="apple-touch-icon" href="{% static 'img/favicon-180.png' %}">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <meta name="theme-color" content="#1287d9">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="CLEFRESH">
   <link rel="stylesheet" href="{% static 'css/style.css' %}">
   <style>
     .global-login-modal {
@@ -170,6 +175,10 @@
       {% if user.is_authenticated and user.role == 'customer' %}
         <a href="{% url 'home' %}"{% if request.resolver_match.url_name == 'home' %} aria-current="page" class="active-nav"{% endif %}>Home</a>
         <a href="{% url 'order_list' %}"{% if request.resolver_match.url_name == 'order_list' %} aria-current="page" class="active-nav"{% endif %}>My Orders</a>
+      {% elif user.is_authenticated and user.role == 'attendant' %}
+        <a href="{% url 'shop_dashboard' %}"{% if request.resolver_match.url_name == 'shop_dashboard' %} aria-current="page" class="active-nav"{% endif %}><i class="bi bi-speedometer2 topbar-nav-icon" aria-hidden="true"></i>My Shift</a>
+        <a href="{% url 'shop_dashboard_orders' %}"{% if request.resolver_match.url_name == 'shop_dashboard_orders' %} aria-current="page" class="active-nav"{% endif %}><i class="bi bi-clipboard-check topbar-nav-icon" aria-hidden="true"></i>Orders</a>
+        <a href="{% url 'shop_pos' %}"{% if request.resolver_match.url_name == 'shop_pos' %} aria-current="page" class="active-nav"{% endif %}><i class="bi bi-shop-window topbar-nav-icon" aria-hidden="true"></i>Counter</a>
       {% elif is_shop_owner_area or is_shop_owner_home %}
         <a href="{% url 'shop_dashboard' %}"{% if request.resolver_match.url_name == 'shop_dashboard' %} aria-current="page" class="active-nav"{% endif %}><i class="bi bi-speedometer2 topbar-nav-icon" aria-hidden="true"></i>Dashboard</a>
         <a href="{% url 'shop_dashboard_orders' %}"{% if request.resolver_match.url_name == 'shop_dashboard_orders' %} aria-current="page" class="active-nav"{% endif %}><i class="bi bi-clipboard-check topbar-nav-icon" aria-hidden="true"></i>Orders</a>
@@ -178,6 +187,8 @@
         <a href="{% url 'shop_dashboard_promos' %}"{% if request.resolver_match.url_name == 'shop_dashboard_promos' %} aria-current="page" class="active-nav"{% endif %}><i class="bi bi-megaphone topbar-nav-icon" aria-hidden="true"></i>Promos</a>
         <a href="{% url 'shop_dashboard_analytics' %}"{% if request.resolver_match.url_name == 'shop_dashboard_analytics' %} aria-current="page" class="active-nav"{% endif %}><i class="bi bi-bar-chart topbar-nav-icon" aria-hidden="true"></i>Analytics</a>
         <a href="{% url 'shop_dashboard_payments' %}"{% if request.resolver_match.url_name == 'shop_dashboard_payments' %} aria-current="page" class="active-nav"{% endif %}><i class="bi bi-credit-card topbar-nav-icon" aria-hidden="true"></i>Payments</a>
+        <a href="{% url 'shop_pos' %}"{% if request.resolver_match.url_name == 'shop_pos' %} aria-current="page" class="active-nav"{% endif %}><i class="bi bi-shop-window topbar-nav-icon" aria-hidden="true"></i>Counter</a>
+        <a href="{% url 'shop_staff' %}"{% if request.resolver_match.url_name == 'shop_staff' %} aria-current="page" class="active-nav"{% endif %}><i class="bi bi-people topbar-nav-icon" aria-hidden="true"></i>Staff</a>
       {% elif user.is_authenticated and user.role == 'rider' %}
       {% elif user.is_authenticated and user.role == 'admin' %}
         <a href="{% url 'admin_dashboard' %}"{% if request.resolver_match.url_name == 'admin_dashboard' %} aria-current="page" class="active-nav"{% endif %}><i class="bi bi-speedometer2 topbar-nav-icon" aria-hidden="true"></i>Dashboard</a>
@@ -185,6 +196,7 @@
         <a href="{% url 'admin_users' %}"{% if request.resolver_match.url_name == 'admin_users' %} aria-current="page" class="active-nav"{% endif %}><i class="bi bi-people topbar-nav-icon" aria-hidden="true"></i>Users</a>
         <a href="{% url 'admin_orders' %}"{% if request.resolver_match.url_name == 'admin_orders' %} aria-current="page" class="active-nav"{% endif %}><i class="bi bi-clipboard-check topbar-nav-icon" aria-hidden="true"></i>Orders</a>
         <a href="{% url 'admin_transactions' %}"{% if request.resolver_match.url_name == 'admin_transactions' %} aria-current="page" class="active-nav"{% endif %}><i class="bi bi-credit-card topbar-nav-icon" aria-hidden="true"></i>Transactions</a>
+        <a href="{% url 'admin_finance' %}"{% if request.resolver_match.url_name == 'admin_finance' %} aria-current="page" class="active-nav"{% endif %}><i class="bi bi-cash-stack topbar-nav-icon" aria-hidden="true"></i>Finance</a>
         <a href="{% url 'admin_analytics' %}"{% if request.resolver_match.url_name == 'admin_analytics' %} aria-current="page" class="active-nav"{% endif %}><i class="bi bi-bar-chart topbar-nav-icon" aria-hidden="true"></i>Analytics</a>
         <a href="#" data-broadcast-modal><i class="bi bi-megaphone topbar-nav-icon" aria-hidden="true"></i>Broadcast</a>
       {% elif user.is_authenticated and user.is_superuser %}
@@ -193,6 +205,7 @@
         <a href="{% url 'admin_users' %}"{% if request.resolver_match.url_name == 'admin_users' %} aria-current="page" class="active-nav"{% endif %}><i class="bi bi-people topbar-nav-icon" aria-hidden="true"></i>Users</a>
         <a href="{% url 'admin_orders' %}"{% if request.resolver_match.url_name == 'admin_orders' %} aria-current="page" class="active-nav"{% endif %}><i class="bi bi-clipboard-check topbar-nav-icon" aria-hidden="true"></i>Orders</a>
         <a href="{% url 'admin_transactions' %}"{% if request.resolver_match.url_name == 'admin_transactions' %} aria-current="page" class="active-nav"{% endif %}><i class="bi bi-credit-card topbar-nav-icon" aria-hidden="true"></i>Transactions</a>
+        <a href="{% url 'admin_finance' %}"{% if request.resolver_match.url_name == 'admin_finance' %} aria-current="page" class="active-nav"{% endif %}><i class="bi bi-cash-stack topbar-nav-icon" aria-hidden="true"></i>Finance</a>
         <a href="{% url 'admin_analytics' %}"{% if request.resolver_match.url_name == 'admin_analytics' %} aria-current="page" class="active-nav"{% endif %}><i class="bi bi-bar-chart topbar-nav-icon" aria-hidden="true"></i>Analytics</a>
         <a href="#" data-broadcast-modal><i class="bi bi-megaphone topbar-nav-icon" aria-hidden="true"></i>Broadcast</a>
       {% elif is_shop_site and shop %}
@@ -262,6 +275,10 @@
     {% if user.is_authenticated and user.role == 'customer' %}
       <a href="{% url 'home' %}" onclick="toggleMobileMenu()"{% if request.resolver_match.url_name == 'home' %} class="active-nav" aria-current="page"{% endif %}><i class="bi bi-house" aria-hidden="true"></i> Home</a>
       <a href="{% url 'order_list' %}" onclick="toggleMobileMenu()"{% if request.resolver_match.url_name == 'order_list' %} class="active-nav" aria-current="page"{% endif %}><i class="bi bi-bag-check" aria-hidden="true"></i> My Orders</a>
+    {% elif user.is_authenticated and user.role == 'attendant' %}
+      <a href="{% url 'shop_dashboard' %}" onclick="toggleMobileMenu()"{% if request.resolver_match.url_name == 'shop_dashboard' %} class="active-nav"{% endif %}><i class="bi bi-speedometer2" aria-hidden="true"></i> My Shift</a>
+      <a href="{% url 'shop_dashboard_orders' %}" onclick="toggleMobileMenu()"{% if request.resolver_match.url_name == 'shop_dashboard_orders' %} class="active-nav"{% endif %}><i class="bi bi-clipboard-check" aria-hidden="true"></i> Orders</a>
+      <a href="{% url 'shop_pos' %}" onclick="toggleMobileMenu()"{% if request.resolver_match.url_name == 'shop_pos' %} class="active-nav"{% endif %}><i class="bi bi-shop-window" aria-hidden="true"></i> Counter</a>
     {% elif is_shop_owner_area or is_shop_owner_home %}
       <a href="{% url 'shop_dashboard' %}" onclick="toggleMobileMenu()"{% if request.resolver_match.url_name == 'shop_dashboard' %} class="active-nav"{% endif %}><i class="bi bi-speedometer2" aria-hidden="true"></i> Dashboard</a>
       <a href="{% url 'shop_dashboard_orders' %}" onclick="toggleMobileMenu()"{% if request.resolver_match.url_name == 'shop_dashboard_orders' %} class="active-nav"{% endif %}><i class="bi bi-clipboard-check" aria-hidden="true"></i> Orders</a>
@@ -270,6 +287,8 @@
       <a href="{% url 'shop_dashboard_promos' %}" onclick="toggleMobileMenu()"{% if request.resolver_match.url_name == 'shop_dashboard_promos' %} class="active-nav"{% endif %}><i class="bi bi-megaphone" aria-hidden="true"></i> Promos</a>
       <a href="{% url 'shop_dashboard_analytics' %}" onclick="toggleMobileMenu()"{% if request.resolver_match.url_name == 'shop_dashboard_analytics' %} class="active-nav"{% endif %}><i class="bi bi-bar-chart" aria-hidden="true"></i> Analytics</a>
       <a href="{% url 'shop_dashboard_payments' %}" onclick="toggleMobileMenu()"{% if request.resolver_match.url_name == 'shop_dashboard_payments' %} class="active-nav"{% endif %}><i class="bi bi-credit-card" aria-hidden="true"></i> Payments</a>
+      <a href="{% url 'shop_pos' %}" onclick="toggleMobileMenu()"{% if request.resolver_match.url_name == 'shop_pos' %} class="active-nav"{% endif %}><i class="bi bi-shop-window" aria-hidden="true"></i> Counter</a>
+      <a href="{% url 'shop_staff' %}" onclick="toggleMobileMenu()"{% if request.resolver_match.url_name == 'shop_staff' %} class="active-nav"{% endif %}><i class="bi bi-people" aria-hidden="true"></i> Staff</a>
     {% elif user.is_authenticated and user.role == 'rider' %}
     {% elif user.is_authenticated and user.role == 'admin' %}
       <a href="{% url 'admin_dashboard' %}" onclick="toggleMobileMenu()"{% if request.resolver_match.url_name == 'admin_dashboard' %} class="active-nav"{% endif %}><i class="bi bi-speedometer2" aria-hidden="true"></i> Dashboard</a>
@@ -277,6 +296,7 @@
       <a href="{% url 'admin_users' %}" onclick="toggleMobileMenu()"{% if request.resolver_match.url_name == 'admin_users' %} class="active-nav"{% endif %}><i class="bi bi-people" aria-hidden="true"></i> Users</a>
       <a href="{% url 'admin_orders' %}" onclick="toggleMobileMenu()"{% if request.resolver_match.url_name == 'admin_orders' %} class="active-nav"{% endif %}><i class="bi bi-clipboard-check" aria-hidden="true"></i> Orders</a>
       <a href="{% url 'admin_transactions' %}" onclick="toggleMobileMenu()"{% if request.resolver_match.url_name == 'admin_transactions' %} class="active-nav"{% endif %}><i class="bi bi-credit-card" aria-hidden="true"></i> Transactions</a>
+      <a href="{% url 'admin_finance' %}" onclick="toggleMobileMenu()"{% if request.resolver_match.url_name == 'admin_finance' %} class="active-nav"{% endif %}><i class="bi bi-cash-stack" aria-hidden="true"></i> Finance</a>
       <a href="{% url 'admin_analytics' %}" onclick="toggleMobileMenu()"{% if request.resolver_match.url_name == 'admin_analytics' %} class="active-nav"{% endif %}><i class="bi bi-bar-chart" aria-hidden="true"></i> Analytics</a>
       <a href="#" data-broadcast-modal onclick="toggleMobileMenu()"><i class="bi bi-megaphone" aria-hidden="true"></i> Broadcast</a>
     {% elif user.is_authenticated and user.is_superuser %}
@@ -285,6 +305,7 @@
       <a href="{% url 'admin_users' %}" onclick="toggleMobileMenu()"{% if request.resolver_match.url_name == 'admin_users' %} class="active-nav"{% endif %}><i class="bi bi-people" aria-hidden="true"></i> Users</a>
       <a href="{% url 'admin_orders' %}" onclick="toggleMobileMenu()"{% if request.resolver_match.url_name == 'admin_orders' %} class="active-nav"{% endif %}><i class="bi bi-clipboard-check" aria-hidden="true"></i> Orders</a>
       <a href="{% url 'admin_transactions' %}" onclick="toggleMobileMenu()"{% if request.resolver_match.url_name == 'admin_transactions' %} class="active-nav"{% endif %}><i class="bi bi-credit-card" aria-hidden="true"></i> Transactions</a>
+      <a href="{% url 'admin_finance' %}" onclick="toggleMobileMenu()"{% if request.resolver_match.url_name == 'admin_finance' %} class="active-nav"{% endif %}><i class="bi bi-cash-stack" aria-hidden="true"></i> Finance</a>
       <a href="{% url 'admin_analytics' %}" onclick="toggleMobileMenu()"{% if request.resolver_match.url_name == 'admin_analytics' %} class="active-nav"{% endif %}><i class="bi bi-bar-chart" aria-hidden="true"></i> Analytics</a>
       <a href="#" data-broadcast-modal onclick="toggleMobileMenu()"><i class="bi bi-megaphone" aria-hidden="true"></i> Broadcast</a>
     {% elif is_shop_site and shop %}
@@ -670,6 +691,12 @@
   @keyframes spin { to { transform: rotate(360deg); } }
   </style>
   <script src="{% static 'js/main.js' %}"></script>
+  <script>
+    // PWA: installable app + offline page. Only on secure origins (https or localhost).
+    if ('serviceWorker' in navigator && window.isSecureContext) {
+      window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(() => {}));
+    }
+  </script>
   {% if not user.is_authenticated %}
     <script src="{% static 'js/auth-validation.js' %}"></script>
   {% endif %}

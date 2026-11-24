@@ -20,7 +20,7 @@
     <div>
       <nav class="page-crumbs" aria-label="Breadcrumb"><a href="{% url 'shop_dashboard' %}">Shop dashboard</a><span class="page-crumbs-sep" aria-hidden="true">/</span><a href="{% url 'shop_dashboard_orders' %}">Orders</a><span class="page-crumbs-sep" aria-hidden="true">/</span><span aria-current="page">Order #{{ order.id }}</span></nav>
       <h2>Order #{{ order.id }}</h2>
-      <p>{{ order.customer.get_full_name|default:order.customer.email }} &bull; {{ order.created_at|date:"M d, Y g:i A" }}</p>
+      <p>{{ order.customer_label }}{% if order.is_walk_in %} <span class="badge badge-role-default">Walk-in</span>{% endif %} &bull; {{ order.created_at|date:"M d, Y g:i A" }}</p>
     </div>
     <span class="badge badge-status-{{ order.status }}">{{ order.get_status_display }}</span>
     <a href="{% url 'shop_dashboard_orders' %}" class="btn btn-outline">← Orders</a>
@@ -34,11 +34,11 @@
         <div class="info-grid">
           <div>
             <p class="info-label">Customer</p>
-            <p class="info-value">{{ order.customer.get_full_name|default:order.customer.email }}</p>
+            <p class="info-value">{{ order.customer_label }}{% if order.is_walk_in %} <span class="badge badge-role-default">Walk-in</span>{% endif %}</p>
           </div>
           <div>
             <p class="info-label">Contact</p>
-            <p class="info-value">{{ order.customer.contact_number|default:"—" }}</p>
+            <p class="info-value">{% if order.is_walk_in %}{{ order.walk_in_phone|default:"—" }}{% else %}{{ order.customer.contact_number|default:"—" }}{% endif %}</p>
           </div>
           <div>
             <p class="info-label">Pickup Address</p>
@@ -56,7 +56,7 @@
             <p class="info-label">Payment</p>
             <p class="info-value">{{ order.get_payment_method_display }}</p>
             <span class="badge badge-payment-{{ order.payment_status }}">{{ order.get_payment_status_display }}</span>
-            {% if order.payment_method == 'cod' and order.status == 'delivered' and order.payment_status != 'paid' %}
+            {% if order.payment_status != 'paid' and order.payment_method == 'cod' and order.status == 'delivered' or order.payment_status != 'paid' and order.payment_method == 'cop' and order.status != 'pending' and order.status != 'accepted' and order.status != 'cancelled' and order.status != 'declined' %}
               <form method="post" action="{% url 'confirm_cash_received' order.id %}" style="margin-top:8px;"
                     data-confirm="Only confirm once the rider has handed over the cash."
                     data-confirm-title="Cash received for order #{{ order.id }}?" data-confirm-action="Yes, cash received" data-confirm-cancel="Not yet">
@@ -65,7 +65,7 @@
               </form>
             {% endif %}
             {% if order.payment_due_at and order.awaiting_online_payment %}
-              <p class="form-hint" style="margin-top:6px;"><i class="bi bi-clock" aria-hidden="true"></i> Due {{ order.payment_due_at|date:"M d, g:i A" }} — switches to cash on delivery if unpaid.</p>
+              <p class="form-hint" style="margin-top:6px;"><i class="bi bi-clock" aria-hidden="true"></i> Due {{ order.payment_due_at|date:"M d, g:i A" }} — switches to a cash payment if unpaid.</p>
             {% endif %}
           </div>
           <div>
@@ -195,6 +195,19 @@
               <input id="od-note" type="text" name="note" placeholder="Add a note for this status update">
             </div>
             <button type="submit" class="btn btn-primary">Update Status</button>
+          </form>
+        </div>
+      {% endif %}
+
+      {% if order.is_walk_in and order.status == 'ready' %}
+        <div class="card">
+          <h3><i class="bi bi-bag-check glyph-icon"></i>Ready to claim</h3>
+          <p style="font-size:13px; color:var(--text-secondary);">Hand it over at the counter{% if order.payment_status != 'paid' %} and collect ₱{{ order.total_amount|floatformat:"2g" }}{% endif %}.</p>
+          <form method="post" action="{% url 'pos_claim' order.id %}" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+            {% csrf_token %}
+            {% if order.payment_status != 'paid' %}<label class="checkbox-label"><input type="checkbox" name="cash_collected" required style="width:auto;"> I collected ₱{{ order.total_amount|floatformat:"2g" }}</label>{% endif %}
+            <button type="submit" class="btn btn-success">Mark claimed</button>
+            <a href="{% url 'pos_receipt' order.id %}" class="btn btn-outline">Claim ticket</a>
           </form>
         </div>
       {% endif %}

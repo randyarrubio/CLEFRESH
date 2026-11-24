@@ -1,0 +1,56 @@
+{# Shared money summary: period tabs, stat cards and a daily gross/net chart. Needs summary, series, days, periods. #}
+<div class="fin-head">
+  <div class="sub-nav" role="tablist" aria-label="Period">
+    {% for d in periods %}
+      <a href="?days={{ d }}" class="sub-tab {% if d == days %}active{% endif %}"{% if d == days %} aria-current="page"{% endif %}>Last {{ d }} days</a>
+    {% endfor %}
+  </div>
+</div>
+
+<div class="fin-stats">
+  <div class="stat-card">
+    <div class="stat-icon"><i class="bi bi-cash-stack" aria-hidden="true"></i></div>
+    <div class="stat-info">
+      <h4>₱{{ summary.gross|floatformat:"2g" }}</h4>
+      <p>{{ gross_label|default:"Gross sales" }} · {{ summary.paid_count }} paid order{{ summary.paid_count|pluralize }}</p>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon"><i class="bi bi-percent" aria-hidden="true"></i></div>
+    <div class="stat-info">
+      <h4>₱{{ summary.commission|floatformat:"2g" }}</h4>
+      <p>{{ commission_label|default:"Platform commission" }}</p>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon"><i class="bi bi-wallet2" aria-hidden="true"></i></div>
+    <div class="stat-info">
+      <h4>₱{{ summary.net|floatformat:"2g" }}</h4>
+      <p>{{ net_label|default:"Net earnings" }}</p>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon"><i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i></div>
+    <div class="stat-info">
+      <h4>₱{{ summary.refunds|floatformat:"2g" }}</h4>
+      <p>Refunded (outgoing)</p>
+    </div>
+  </div>
+</div>
+
+<div class="fin-grid">
+  <div class="card fin-chart-card">
+    <h3><i class="bi bi-graph-up glyph-icon" aria-hidden="true"></i>Daily earnings</h3>
+    <div class="fin-legend"><span><i class="fin-dot" style="background:#1287d9"></i>Gross</span><span><i class="fin-dot" style="background:#18a463"></i>Net after commission</span></div>
+    <canvas id="finChart" height="120" aria-label="Daily gross and net earnings chart" role="img"></canvas>
+  </div>
+  <div class="card">
+    <h3><i class="bi bi-pie-chart glyph-icon" aria-hidden="true"></i>Money in</h3>
+    <dl class="fin-list">
+      <div><dt>Online (GCash, GrabPay, Maya)</dt><dd>₱{{ summary.online|floatformat:"2g" }}</dd></div>
+      <div><dt>Cash (on pickup / delivery)</dt><dd>₱{{ summary.cash|floatformat:"2g" }}</dd></div>
+      <div><dt>Still unpaid · {{ summary.outstanding_count }} open order{{ summary.outstanding_count|pluralize }}</dt><dd>₱{{ summary.outstanding|floatformat:"2g" }}</dd></div>
+    </dl>
+  </div>
+</div>
+{{ series|json_script:"fin-series" }}
