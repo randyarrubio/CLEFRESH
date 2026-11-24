@@ -166,6 +166,8 @@
       <h3>Services and Pricing</h3>
       <div class="choice-grid">
         <label class="choice-card"><input type="checkbox" name="services" value="wash_fold" {% if 'wash_fold' in selected_services %}checked{% endif %}>Wash &amp; Fold</label>
+        <label class="choice-card"><input type="checkbox" name="services" value="bedding" {% if 'bedding' in selected_services %}checked{% endif %}>Bedsheets, Towels &amp; Curtains</label>
+        <label class="choice-card"><input type="checkbox" name="services" value="comforter" {% if 'comforter' in selected_services %}checked{% endif %}>Comforters</label>
         <label class="choice-card"><input type="checkbox" name="services" value="dry" {% if 'dry' in selected_services %}checked{% endif %}>Dry</label>
         <label class="choice-card"><input type="checkbox" name="services" value="iron" {% if 'iron' in selected_services %}checked{% endif %}>Iron</label>
         <label class="choice-card"><input type="checkbox" name="services" value="dry_clean" {% if 'dry_clean' in selected_services %}checked{% endif %}>Dry Clean</label>
@@ -174,6 +176,14 @@
         <div class="price-row">
           <span class="choice-label">Wash &amp; Fold price per kg</span>
           <input type="number" name="price_wash_fold_kg" min="0" step="0.01" value="{{ service_prices.wash_fold }}">
+        </div>
+        <div class="price-row">
+          <span class="choice-label">Bedsheets, towels &amp; curtains per kg</span>
+          <input type="number" name="price_bedding_kg" min="0" step="0.01" value="{{ service_prices.bedding }}">
+        </div>
+        <div class="price-row">
+          <span class="choice-label">Comforters per kg</span>
+          <input type="number" name="price_comforter_kg" min="0" step="0.01" value="{{ service_prices.comforter }}">
         </div>
         <div class="price-row">
           <span class="choice-label">Dry price per kg</span>

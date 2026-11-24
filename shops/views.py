@@ -93,6 +93,8 @@ def _shop_edit_context(shop):
         'selected_services': set(services.keys()),
         'service_prices': {
             'wash_fold': services.get('wash_fold').price_per_kg if services.get('wash_fold') else '',
+            'bedding': services.get('bedding').price_per_kg if services.get('bedding') else '',
+            'comforter': services.get('comforter').price_per_kg if services.get('comforter') else '',
             'dry': services.get('dry').price_per_kg if services.get('dry') else '',
             'iron': services.get('iron').price_per_piece if services.get('iron') else '',
             'dry_clean': services.get('dry_clean').price_per_piece if services.get('dry_clean') else '',
@@ -163,6 +165,8 @@ def _save_shop_from_owner_form(request, shop, set_pending=False):
 
     service_prices = {
         'wash_fold': {'price_per_kg': request.POST.get('price_wash_fold_kg') or None, 'price_per_piece': None},
+        'bedding': {'price_per_kg': request.POST.get('price_bedding_kg') or None, 'price_per_piece': None},
+        'comforter': {'price_per_kg': request.POST.get('price_comforter_kg') or None, 'price_per_piece': None},
         'dry': {'price_per_kg': request.POST.get('price_dry_kg') or None, 'price_per_piece': None},
         'iron': {'price_per_kg': None, 'price_per_piece': request.POST.get('price_iron_piece') or None},
         'dry_clean': {'price_per_kg': None, 'price_per_piece': request.POST.get('price_dry_clean_piece') or None},

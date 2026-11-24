@@ -114,6 +114,9 @@ class Service(models.Model):
     # Wash & Fold is one service (panel feedback): shops price it per kg as a single step.
     OFFERED_SERVICE_CHOICES = [
         ('wash_fold', 'Wash & Fold'),
+        # Heavier items priced separately per kg, as Cantilan shops do (e.g. Lava'z: ₱45 / ₱65 per kg).
+        ('bedding', 'Bedsheets, Towels & Curtains'),
+        ('comforter', 'Comforters'),
         ('dry', 'Dry'),
         ('iron', 'Iron'),
         ('dry_clean', 'Dry Clean'),
