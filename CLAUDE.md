@@ -30,10 +30,10 @@ Laundry shop booking platform. Customers find nearby laundry shops, book pickup/
   - `User.cod_eligible` → ≥ `COD_TRUSTED_MIN_ORDERS` delivered + paid orders; `User.loyalty_points` → ledger balance
 - **Shop** → `status: pending|approved|rejected|suspended`, lat/lng auto-geocoded on save
   - `suspended` shops are invisible to customers; shop owner loses dashboard access; admin can reinstate
-- **Service** → offered types: `wash_fold|dry|iron|dry_clean` (`Service.OFFERED_SERVICE_CHOICES`); legacy `wash`/`fold` rows (with order history) stay for display but are hidden from booking/POS (`LEGACY_SERVICE_NAMES`)
+- **Service** → offered types: `wash_fold|bedding|comforter|dry|iron|dry_clean` (`Service.OFFERED_SERVICE_CHOICES`; bedding = bedsheets/towels/curtains, comforter = comforters, both per kg); legacy `wash`/`fold` rows (with order history) stay for display but are hidden from booking/POS (`LEGACY_SERVICE_NAMES`)
 - **Shop hours** → `Shop.within_hours(start, end=None)` / `hours_label`; pick-ups and delivery slots must fall inside `operating_hours_start–end` (booking, slots API, slot creation)
 - **DeliverySlot** → date+time window, max_capacity, current_bookings
-- **Order** → status flow: `pending→accepted→picked_up→washing→drying→folding→ready→out_for_delivery→delivered`; terminal states: `declined`, `cancelled`
+- **Order** → status flow: `pending→accepted→picked_up→wash_fold→ready→out_for_delivery→delivered` (`wash_fold` = one "Wash & Fold" processing step, skippable; old washing/drying/folding were merged in migration 0015 and only remain in status-log history); terminal states: `declined`, `cancelled`
 - **Order.payment_method** → `gcash|grab_pay|maya|card|online_banking|cod|cop|counter`; `Order.CASH_METHODS = cod, cop, counter`
   - **COD** only for trusted customers (`User.cod_eligible`); new customers pay online or **COP** (cash on pickup — rider ticks "cash collected" to confirm pickup; not allowed for weigh-at-shop orders). `Order.cash_due_on(status)` decides when the rider must collect
   - Overdue online payments fall back to COP before pickup for untrusted customers, else COD (`process_payment_reminders`)
@@ -76,7 +76,7 @@ Laundry shop booking platform. Customers find nearby laundry shops, book pickup/
 - **Google Maps API key** only injected into templates on `/`, `/orders/`, `/rider/`, `/shops/`, `/shop-dashboard/` — not global
 - **PayMongo public key** only injected on `/payment/` paths — not global
 - **Media on Railway:** uploads live on the `clefresh-volume` volume mounted at `/app/media`; with no nginx, Django serves public uploads (`SERVE_MEDIA`, default True — set False behind nginx). Private folders stay 404 (`clefresh/urls.py`)
-- Real Cantilan shops: `python manage.py seed_cantilan_shops` (photos in `shop data/`, demo owner logins written to git-ignored `shop data/demo_logins*.txt`)
+- Real Cantilan shops: `python manage.py seed_cantilan_shops` (photos in `shop data/`, demo owner logins written to git-ignored `shop data/demo_logins*.txt`). Lava'z prices/hours are real; the other 4 shops' prices/hours are placeholders in the command until survey data arrives
 - `COD_TRUSTED_MIN_ORDERS` (default 1), `LOYALTY_PESOS_PER_POINT` (default 20), `LOYALTY_MAX_REDEEM_PERCENT` (default 50) — `.env` overrides
 - **PWA service worker** never caches pages (personal data) — only static files, **network-first** (names aren't hashed, so cache-first would pin old CSS/JS); it bypasses `/payment/`, `/auth/`, `/api/`, admin, `/media/`. Bump `SW_VERSION` in `clefresh/pwa.py` when changing caching rules
 - `NOTIFICATIONS_SSE` (default True) — set False on PythonAnywhere; bell falls back to 30 s polling. Deploy guide: `deploy/PYTHONANYWHERE.md`

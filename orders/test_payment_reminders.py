@@ -45,7 +45,7 @@ class PaymentDeadlineTests(TestCase):
         """An unpaid online order whose 72 h deadline clock started N hours ago."""
         fields = dict(customer=self.customer, shop=self.shop, pickup_address='P', delivery_address='D',
                       pickup_datetime=timezone.now() + timedelta(days=1), payment_method='gcash',
-                      total_amount='200.00', status='washing',
+                      total_amount='200.00', status='wash_fold',
                       payment_due_at=timezone.now() + timedelta(hours=72 - hours_since_clock_start))
         fields.update(kw)
         return Order.objects.create(**fields)

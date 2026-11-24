@@ -144,7 +144,7 @@ class CashPaymentRulesTests(TestCase):
     def test_overdue_new_customer_falls_back_to_cop_then_cod(self):
         _r, before_pickup = self._book('gcash')
         _r, at_shop = self._book('gcash')
-        Order.objects.filter(pk=at_shop.pk).update(status='washing')
+        Order.objects.filter(pk=at_shop.pk).update(status='wash_fold')
         Order.objects.filter(pk__in=[before_pickup.pk, at_shop.pk]).update(
             payment_due_at=timezone.now() - timedelta(minutes=1))
         call_command('process_payment_reminders', stdout=io.StringIO())

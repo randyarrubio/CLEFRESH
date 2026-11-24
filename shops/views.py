@@ -25,20 +25,16 @@ logger = logging.getLogger(__name__)
 VALID_TRANSITIONS = {
     'pending': {'accepted', 'declined'},
     'accepted': {'picked_up', 'declined'},
-    # Processing steps are forward-only but skippable (e.g. an iron-only order goes straight to ready).
-    'picked_up': {'washing', 'drying', 'folding', 'ready'},
-    'washing': {'drying', 'folding', 'ready'},
-    'drying': {'folding', 'ready'},
-    'folding': {'ready'},
+    # One processing step; skippable (e.g. an iron-only order goes straight to ready).
+    'picked_up': {'wash_fold', 'ready'},
+    'wash_fold': {'ready'},
     'ready': {'out_for_delivery'},
     'out_for_delivery': {'delivered'},
 }
 # Walk-in (POS) orders are received at the counter and claimed there: no rider legs.
 WALK_IN_TRANSITIONS = {
-    'picked_up': {'washing', 'drying', 'folding', 'ready'},
-    'washing': {'drying', 'folding', 'ready'},
-    'drying': {'folding', 'ready'},
-    'folding': {'ready'},
+    'picked_up': {'wash_fold', 'ready'},
+    'wash_fold': {'ready'},
     'ready': set(),          # claiming is done from the counter (it records the cash)
 }
 
@@ -280,7 +276,7 @@ def home_view(request):
             owner_orders = Order.objects.filter(shop=owner_shop).select_related('customer', 'rider')
             pending_orders = owner_orders.filter(status='pending').count()
             active_orders = owner_orders.filter(
-                status__in=['accepted', 'picked_up', 'washing', 'drying', 'folding', 'ready', 'out_for_delivery']
+                status__in=['accepted', 'picked_up', 'wash_fold', 'ready', 'out_for_delivery']
             ).count()
             total_orders = owner_orders.count()
             today_revenue = (
@@ -337,7 +333,7 @@ INFO_PAGES = {
             {
                 'heading': 'Customers — tracking and managing orders',
                 'body': [
-                    'My Orders shows every order with its current status and payment state. The flow is pending → accepted → picked up → washing → drying → folding → ready → out for delivery → delivered; the shop may skip steps that do not apply to your services. Each change is logged with a timestamp in the order history.',
+                    'My Orders shows every order with its current status and payment state. The flow is pending → accepted → picked up → wash & fold → ready → out for delivery → delivered; the shop may skip the wash & fold step for services that do not need it (for example ironing only). Each change is logged with a timestamp in the order history.',
                     'When the order is out for delivery, the rider\'s live location appears on a map and refreshes every few seconds. Location is shared only during this status, for privacy.',
                     'You can cancel an order while it is still pending. Once the shop has accepted it, cancellation is no longer available from the customer side — contact the shop if you need changes. If a paid order is cancelled or declined by the shop, the payment is refunded automatically.',
                     'After an order is delivered, you can leave one rating (1–5 stars) and a written review for that order. Reviews appear on the shop\'s public page and cannot be edited after submitting.',
@@ -670,7 +666,7 @@ def dashboard_view(request):
     today = timezone.localdate()
     from orders.models import Order
     pending_orders = Order.objects.filter(shop=shop, status='pending').count()
-    active_orders = Order.objects.filter(shop=shop, status__in=['accepted', 'picked_up', 'washing', 'drying', 'folding', 'ready', 'out_for_delivery']).count()
+    active_orders = Order.objects.filter(shop=shop, status__in=['accepted', 'picked_up', 'wash_fold', 'ready', 'out_for_delivery']).count()
     todays_orders = Order.objects.filter(shop=shop, created_at__date=today)
     today_revenue = todays_orders.filter(payment_status='paid').aggregate(total=Sum('total_amount'))['total'] or 0
     recent_orders = Order.objects.filter(shop=shop).select_related('customer').order_by('-created_at')[:10]
@@ -788,9 +784,7 @@ def update_order_status_view(request, order_id):
         'accepted': f'Your order #{order.id} has been accepted by {order.shop.name}.',
         'declined': f'Your order #{order.id} was declined by {order.shop.name}.',
         'picked_up': f'Your laundry for order #{order.id} has been picked up.',
-        'washing': f'Your laundry (order #{order.id}) is now being washed.',
-        'drying': f'Your laundry (order #{order.id}) is now being dried.',
-        'folding': f'Your laundry (order #{order.id}) is being folded and prepared.',
+        'wash_fold': f'Your laundry (order #{order.id}) is now being washed, dried and folded.',
         'ready': f'Your laundry is ready! Order #{order.id} will be out for delivery soon.',
         'out_for_delivery': f'Your order #{order.id} is out for delivery — your rider is on the way!',
         'delivered': f'Your laundry has been delivered! Order #{order.id} is complete.',
@@ -823,7 +817,7 @@ def update_order_status_view(request, order_id):
     return redirect('shop_dashboard_order_detail', order_id=order_id)
 
 
-WEIGH_ALLOWED_STATUSES = ('picked_up', 'washing', 'drying', 'folding', 'ready')   # laundry is at the shop
+WEIGH_ALLOWED_STATUSES = ('picked_up', 'wash_fold', 'ready')   # laundry is at the shop
 MAX_LINE_WEIGHT_KG = Decimal('200')
 
 

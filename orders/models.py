@@ -18,9 +18,7 @@ class Order(models.Model):
         ('accepted', 'Accepted'),
         ('declined', 'Declined'),
         ('picked_up', 'Picked Up'),
-        ('washing', 'Washing'),
-        ('drying', 'Drying'),
-        ('folding', 'Folding'),
+        ('wash_fold', 'Wash & Fold'),     # one processing step, matching the single Wash & Fold service
         ('ready', 'Ready for Delivery'),
         ('out_for_delivery', 'Out for Delivery'),
         ('delivered', 'Delivered'),

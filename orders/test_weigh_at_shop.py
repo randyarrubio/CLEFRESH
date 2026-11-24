@@ -163,7 +163,7 @@ class WeighAtShopTests(TestCase):
 
     def test_reweigh_corrects_price_before_payment(self):
         _resp, order = self._book()
-        Order.objects.filter(id=order.id).update(status='washing')
+        Order.objects.filter(id=order.id).update(status='wash_fold')
         self._weigh(order, kg='2.00')
         self._weigh(order, kg='3.00')
         order.refresh_from_db()

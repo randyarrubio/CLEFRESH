@@ -31,7 +31,7 @@
       {% for order in orders %}
         {% with status=order.status %}
           <a href="{% url 'order_detail' order.id %}" class="order-row-link">
-            <div class="order-row {% if status == 'pending' %}pending{% elif status in 'washing,drying,folding,picked_up' %}processing{% elif status == 'ready' or status == 'out_for_delivery' %}ready{% elif status == 'delivered' %}delivered{% endif %}">
+            <div class="order-row {% if status == 'pending' %}pending{% elif status in 'wash_fold,picked_up' %}processing{% elif status == 'ready' or status == 'out_for_delivery' %}ready{% elif status == 'delivered' %}delivered{% endif %}">
               <div class="order-row-left">
                 <div class="order-avatar" style="background:{% if status == 'delivered' %}var(--success){% elif status == 'declined' or status == 'cancelled' %}var(--danger){% elif status == 'pending' %}var(--accent){% else %}var(--primary){% endif %};">
                   {{ order.shop.name|slice:":2"|upper }}

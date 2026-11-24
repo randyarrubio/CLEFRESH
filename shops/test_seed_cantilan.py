@@ -32,17 +32,24 @@ class SeedCantilanShopsTests(TestCase):
         self.addCleanup(patcher.stop)
         self.addCleanup(shutil.rmtree, self.tmp, True)
 
-    def test_creates_five_shops_with_lavaz_pricing_and_hours(self):
+    def test_creates_five_shops_lavaz_real_others_varied(self):
         call_command('seed_cantilan_shops', stdout=io.StringIO())
         shops = Shop.objects.filter(owner__email__endswith='@clefresh.test')
         self.assertEqual(shops.count(), 5)
+        price_lists, hours = set(), set()
         for shop in shops:
             self.assertEqual(shop.status, 'approved')
-            self.assertEqual(shop.hours_label, '8:00 AM – 6:00 PM')
             self.assertIsNotNone(shop.latitude)
             prices = dict(shop.services.values_list('name', 'price_per_kg'))
-            self.assertEqual(prices, {'wash_fold': Decimal('30.00'), 'bedding': Decimal('45.00'),
-                                      'comforter': Decimal('65.00')})
+            self.assertEqual(set(prices), {'wash_fold', 'bedding', 'comforter'})
+            price_lists.add(tuple(sorted(prices.items())))
+            hours.add(shop.hours_label)
+        self.assertEqual(len(price_lists), 5)          # no two shops look the same
+        self.assertGreater(len(hours), 1)
+        lavaz = shops.get(name="Lava'z Laundry Shop")
+        self.assertEqual(lavaz.hours_label, '8:00 AM – 6:00 PM')
+        self.assertEqual(dict(lavaz.services.values_list('name', 'price_per_kg')),
+                         {'wash_fold': Decimal('30.00'), 'bedding': Decimal('45.00'), 'comforter': Decimal('65.00')})
 
     def test_logins_work_and_rerun_keeps_passwords(self):
         call_command('seed_cantilan_shops', stdout=io.StringIO())

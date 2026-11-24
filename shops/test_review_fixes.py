@@ -143,10 +143,10 @@ class ReviewFixTests(TestCase):
         self.assertEqual(self.slot.current_bookings, 0)
 
     def test_status_dropdown_lists_only_valid_next_steps(self):
-        order = self._order(status='washing')
+        order = self._order(status='wash_fold')
         self.client.force_login(self.owner)
         resp = self.client.get(reverse('shop_dashboard_order_detail', args=[order.id]))
-        self.assertEqual([v for v, _ in resp.context['next_statuses']], ['drying', 'folding', 'ready'])
+        self.assertEqual([v for v, _ in resp.context['next_statuses']], ['ready'])
 
     def test_assign_rider_with_bad_id_does_not_500(self):
         order = self._order(status='accepted')

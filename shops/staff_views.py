@@ -171,8 +171,8 @@ def attendant_dashboard_view(request):
         'shop': shop, 'profile': profile, 'open_record': profile.open_record,
         'records': records, 'totals': _totals(records), 'days': days, 'periods': PERIODS,
         'pending_orders': Order.objects.filter(shop=shop, status='pending').count(),
-        'active_orders': Order.objects.filter(shop=shop, status__in=['accepted', 'picked_up', 'washing', 'drying',
-                                                                     'folding', 'ready']).count(),
+        'active_orders': Order.objects.filter(shop=shop, status__in=['accepted', 'picked_up', 'wash_fold',
+                                                                     'ready']).count(),
         'ready_walk_ins': Order.objects.filter(shop=shop, is_walk_in=True, status='ready').count(),
     })
 

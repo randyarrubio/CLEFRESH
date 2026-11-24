@@ -186,7 +186,7 @@
                   <option value="{{ value }}">{{ label }}</option>
                 {% endfor %}
               </select>
-              {% if order.status == 'picked_up' or order.status == 'washing' or order.status == 'drying' %}
+              {% if order.status == 'picked_up' or order.status == 'wash_fold' %}
                 <small class="form-hint">You can skip steps — choose <strong>Ready for Delivery</strong> when the laundry is done so the rider can deliver it.</small>
               {% endif %}
             </div>

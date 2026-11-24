@@ -1,7 +1,7 @@
 """Kiosk / POS: walk-in orders taken at the shop counter.
 
 The laundry is weighed on the spot, so the price is final when the ticket is printed. The order
-then follows the normal processing steps (washing → … → ready) and is claimed at the counter,
+then follows the normal processing steps (wash & fold → ready) and is claimed at the counter,
 where any unpaid balance is collected. Walk-ins carry no platform commission (CLEFRESH didn't
 bring the customer); linking a customer's CLEFRESH email lets them earn loyalty points.
 """
@@ -36,7 +36,7 @@ def _pos_context(shop, form=None):
         'pos_payments': POS_PAYMENTS,
         'form': form or {},
         'ready_orders': walk_ins.filter(status='ready').order_by('updated_at'),
-        'in_progress': walk_ins.filter(status__in=['picked_up', 'washing', 'drying', 'folding']).order_by('created_at'),
+        'in_progress': walk_ins.filter(status__in=['picked_up', 'wash_fold']).order_by('created_at'),
         'today_count': walk_ins.filter(created_at__date=today).count(),
     }
 

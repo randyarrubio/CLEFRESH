@@ -34,7 +34,7 @@ def _proof_type_for_current_step(order):
         return 'pickup'
     # Drop-off proof stays uploadable while the shop processes the order, otherwise
     # a shop advancing past picked_up first would block out_for_delivery forever.
-    if order.status in ('picked_up', 'washing', 'drying', 'folding', 'ready'):
+    if order.status in ('picked_up', 'wash_fold', 'ready'):
         return 'dropoff'
     if order.status == 'out_for_delivery':
         return 'delivery'
@@ -127,7 +127,7 @@ def rider_task_detail_view(request, order_id):
         'has_dropoff_proof': 'dropoff' in proof_types,
         'has_delivery_proof': 'delivery' in proof_types,
         'current_proof_type': _proof_type_for_current_step(order),
-        'processing_statuses': ('washing', 'drying', 'folding'),
+        'processing_statuses': ('wash_fold',),
         'delivery_block': order.delivery_block_reason() if order.status == 'ready' else None,
     })
 

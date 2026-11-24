@@ -675,6 +675,7 @@ textarea { resize: vertical; min-height: 80px; }
 .badge-status-declined,
 .badge-status-cancelled      { background: var(--danger-light); color: #7B1D1D; }
 .badge-status-picked_up,
+.badge-status-wash_fold,
 .badge-status-washing,
 .badge-status-drying,
 .badge-status-folding        { background: #EDE9FE; color: #5B21B6; }
@@ -937,7 +938,7 @@ textarea { resize: vertical; min-height: 80px; }
 }
 .order-row:hover { box-shadow: var(--shadow-lg); transform: translateX(2px); }
 .order-row.pending   { border-left-color: var(--accent); }
-.order-row.processing, .order-row.washing, .order-row.drying, .order-row.folding { border-left-color: var(--primary); }
+.order-row.processing, .order-row.wash_fold, .order-row.washing, .order-row.drying, .order-row.folding { border-left-color: var(--primary); }
 .order-row.ready     { border-left-color: var(--success); }
 .order-row.delivered { border-left-color: #7986CB; }
 .order-row.new-order { border-left-color: var(--accent); }

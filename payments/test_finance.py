@@ -65,7 +65,7 @@ class FinanceTests(TestCase):
     def test_summary_counts_paid_cash_online_outstanding_and_refunds(self):
         self._order('100.00', method='gcash')
         self._order('200.00', method='cod')
-        self._order('50.00', status='washing', pay='unpaid')
+        self._order('50.00', status='wash_fold', pay='unpaid')
         refunded = self._order('80.00', pay='refunded')
         Refund.objects.create(order=refunded, amount=8000, reason='others', status='succeeded')
         s = finance.summarize(Order.objects.filter(shop=self.shop))

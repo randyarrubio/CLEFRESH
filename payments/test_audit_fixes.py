@@ -144,7 +144,7 @@ class AuditFixTests(TestCase):
         self.assertEqual(PayMongoTransaction.objects.get(order=order).status, 'failed')
 
     def test_reweigh_blocked_by_payment_reservation(self):
-        order = self._order(status='washing', weigh_at_shop=True, price_confirmed_at=timezone.now())
+        order = self._order(status='wash_fold', weigh_at_shop=True, price_confirmed_at=timezone.now())
         line = order.order_services.create(service=self.wash, quantity=0, weight_kg='4', subtotal='200')
         PayMongoTransaction.objects.create(order=order, amount=20000, status='processing')
         self.client.force_login(self.owner)
@@ -154,7 +154,7 @@ class AuditFixTests(TestCase):
 
     # ── input validation ──
     def test_nan_weight_is_rejected_not_500(self):
-        order = self._order(status='washing', weigh_at_shop=True)
+        order = self._order(status='wash_fold', weigh_at_shop=True)
         line = order.order_services.create(service=self.wash, quantity=0, subtotal=0)
         self.client.force_login(self.owner)
         for bad in ('NaN', 'sNaN', 'Infinity'):
@@ -234,7 +234,7 @@ class AuditFixTests(TestCase):
         order = self._order(status='picked_up', payment_method='cod')
         self.client.force_login(self.owner)
         page = self.client.get(reverse('shop_dashboard_order_detail', args=[order.id]))
-        self.assertEqual([v for v, _ in page.context['next_statuses']], ['washing', 'drying', 'folding', 'ready'])
+        self.assertEqual([v for v, _ in page.context['next_statuses']], ['wash_fold', 'ready'])
         self.client.post(reverse('update_order_status', args=[order.id]), {'status': 'ready'})
         order.refresh_from_db()
         self.assertEqual(order.status, 'ready')

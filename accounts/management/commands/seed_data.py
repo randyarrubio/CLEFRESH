@@ -181,7 +181,7 @@ class Command(BaseCommand):
             OrderService.objects.create(order=order_delivered, service=wash_svc, quantity=1, weight_kg=3, subtotal=180)
             if dry_svc:
                 OrderService.objects.create(order=order_delivered, service=dry_svc, quantity=1, weight_kg=3, subtotal=90)
-            for status in ['pending', 'accepted', 'picked_up', 'washing', 'drying', 'folding', 'ready', 'out_for_delivery', 'delivered']:
+            for status in ['pending', 'accepted', 'picked_up', 'wash_fold', 'ready', 'out_for_delivery', 'delivered']:
                 OrderStatusLog.objects.create(order=order_delivered, status=status)
 
         if wash_svc and not Order.objects.filter(customer=customer2, shop=shop1, status='pending').exists():

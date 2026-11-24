@@ -51,7 +51,7 @@ class CodPayOnlineTests(TestCase):
         self.order = Order.objects.create(
             customer=self.customer, shop=self.shop, pickup_address='P', delivery_address='D',
             pickup_datetime=timezone.now() + timedelta(days=1), payment_method='cod',
-            status='washing', weigh_at_shop=True, price_confirmed_at=timezone.now(), total_amount='200.00')
+            status='wash_fold', weigh_at_shop=True, price_confirmed_at=timezone.now(), total_amount='200.00')
         self.client.force_login(self.customer)
 
     def _pay(self, method='gcash'):
