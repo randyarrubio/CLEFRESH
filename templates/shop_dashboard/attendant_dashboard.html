@@ -9,8 +9,8 @@
   .ad-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-bottom: 24px; }
   .ad-action { display: flex; gap: 14px; align-items: center; text-decoration: none; color: inherit; }
   .ad-action h4 { margin: 0; font-family: 'Outfit', sans-serif; font-size: 22px; }
-  .ad-action p { margin: 0; font-size: 13px; color: var(--text-secondary); }
-  .ad-late { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: #fff1e0; color: #a34d00; }
+  .ad-action p { margin: 0; font-size: 14px; color: var(--text-secondary); }
+  .ad-late { display: inline-block; font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: #fff1e0; color: #a34d00; }
   @media (max-width: 768px) { .ad-actions { grid-template-columns: 1fr; } }
 </style>
 {% endblock %}
@@ -27,10 +27,10 @@
   <div class="card ad-clock">
     <div>
       {% if open_record %}
-        <h3><i class="bi bi-circle-fill" style="color:#18a463; font-size:12px;" aria-hidden="true"></i> On shift since {{ open_record.time_in|time:"g:i A" }}</h3>
+        <h3><i class="bi bi-circle-fill" style="color:#18a463; font-size:13px;" aria-hidden="true"></i> On shift since {{ open_record.time_in|time:"g:i A" }}</h3>
         <p>{{ open_record.hours }} h so far · ₱{{ open_record.earnings|floatformat:"2g" }} at ₱{{ open_record.hourly_rate|floatformat:"2g" }}/h{% if open_record.is_late %} · <span class="ad-late">Late time-in</span>{% endif %}</p>
       {% else %}
-        <h3><i class="bi bi-circle" style="color:#9aaaba; font-size:12px;" aria-hidden="true"></i> Not timed in</h3>
+        <h3><i class="bi bi-circle" style="color:#56697d; font-size:13px;" aria-hidden="true"></i> Not timed in</h3>
         <p>Time in when you start your shift so your hours and pay are recorded.</p>
       {% endif %}
     </div>

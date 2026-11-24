@@ -28,7 +28,7 @@
                 {{ tx.get_status_display }}
               </span>
             </td>
-            <td><code style="font-size:11px; color:var(--text-secondary);">{{ tx.payment_intent_id|truncatechars:32 }}</code></td>
+            <td><code style="font-size:12px; color:var(--text-secondary);">{{ tx.payment_intent_id|truncatechars:32 }}</code></td>
             <td>{{ tx.created_at|date:"M d, Y" }}</td>
           </tr>
         {% empty %}

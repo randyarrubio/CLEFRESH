@@ -6,11 +6,11 @@
   .pos-svc { display: grid; grid-template-columns: minmax(0, 1fr) 120px 120px; gap: 10px; align-items: center; padding: 12px 0; border-bottom: 1px solid #edf2f5; }
   .pos-svc:last-child { border-bottom: 0; }
   .pos-svc strong { display: block; font-size: 16px; }
-  .pos-svc small { color: var(--text-secondary); font-size: 13px; }
+  .pos-svc small { color: var(--text-secondary); font-size: 14px; }
   .pos-svc input { font-size: 18px; padding: 10px; text-align: right; }
-  .pos-svc .pos-na { text-align: center; color: var(--text-light); font-size: 12px; }
+  .pos-svc .pos-na { text-align: center; color: var(--text-light); font-size: 13px; }
   .pos-total { display: flex; justify-content: space-between; align-items: baseline; font-family: 'Outfit', sans-serif; font-size: 28px; font-weight: 700; margin: 16px 0; color: var(--primary); }
-  .pos-total small { font-size: 13px; font-family: 'DM Sans', sans-serif; color: var(--text-secondary); font-weight: 400; }
+  .pos-total small { font-size: 14px; font-family: 'DM Sans', sans-serif; color: var(--text-secondary); font-weight: 400; }
   .pos-pay { display: grid; gap: 8px; margin-bottom: 14px; }
   .pos-pay label { display: flex; gap: 10px; align-items: center; border: 1px solid #d7e8f3; border-radius: 10px; padding: 12px; cursor: pointer; font-size: 15px; }
   .pos-pay label:has(input:checked) { border-color: var(--primary); background: #e6f4fb; }
@@ -20,7 +20,7 @@
   .pos-queue li:last-child { border-bottom: 0; }
   .pos-queue ul { list-style: none; margin: 0; padding: 0; }
   .pos-queue form { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
-  .pos-queue .checkbox-label { font-size: 12px; }
+  .pos-queue .checkbox-label { font-size: 13px; }
   @media (max-width: 1024px) { .pos-grid { grid-template-columns: 1fr; } }
   @media (max-width: 520px) { .pos-svc { grid-template-columns: 1fr 1fr; } .pos-svc > div:first-child { grid-column: 1 / -1; } }
 </style>
@@ -86,7 +86,7 @@
         <ul>
           {% for o in ready_orders %}
             <li>
-              <div><strong>#{{ o.id }} {{ o.customer_label }}</strong><br><span style="font-size:12px; color:var(--text-secondary);">₱{{ o.total_amount|floatformat:"2g" }} · {{ o.get_payment_status_display }}</span></div>
+              <div><strong>#{{ o.id }} {{ o.customer_label }}</strong><br><span style="font-size:13px; color:var(--text-secondary);">₱{{ o.total_amount|floatformat:"2g" }} · {{ o.get_payment_status_display }}</span></div>
               <form method="post" action="{% url 'pos_claim' o.id %}">
                 {% csrf_token %}
                 {% if o.payment_status != 'paid' %}<label class="checkbox-label"><input type="checkbox" name="cash_collected" required style="width:auto;"> Collected ₱{{ o.total_amount|floatformat:"2g" }}</label>{% endif %}
@@ -103,7 +103,7 @@
         <ul>
           {% for o in in_progress %}
             <li>
-              <div><strong>#{{ o.id }} {{ o.customer_label }}</strong><br><span style="font-size:12px; color:var(--text-secondary);">{{ o.get_status_display }} · since {{ o.created_at|time:"g:i A" }}</span></div>
+              <div><strong>#{{ o.id }} {{ o.customer_label }}</strong><br><span style="font-size:13px; color:var(--text-secondary);">{{ o.get_status_display }} · since {{ o.created_at|time:"g:i A" }}</span></div>
               <a href="{% url 'shop_dashboard_order_detail' o.id %}" class="btn btn-xs btn-outline">Update</a>
             </li>
           {% empty %}

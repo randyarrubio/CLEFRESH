@@ -1,6 +1,7 @@
 /* CLEFRESH service worker ({{ version }}).
  *
- * - Static files (CSS, JS, fonts, images): cache-first, filled as they're used.
+ * - Static files (CSS, JS, fonts, images): network-first so updates show at once (file names are not
+ *   versioned), with the cached copy as the offline fallback.
  * - Page navigations: always the network (pages show personal order and payment data, so they are
  *   never stored); when offline, show the cached /offline/ page instead.
  * - Never touched: non-GET requests, payments, sign-in, APIs, live updates, admin, private media.
@@ -41,13 +42,13 @@ self.addEventListener('fetch', (event) => {
 
   if (url.pathname.startsWith('/static/')) {
     event.respondWith(
-      caches.match(req).then((hit) => hit || fetch(req).then((res) => {
+      fetch(req).then((res) => {
         if (res.ok && res.type === 'basic') {
           const copy = res.clone();
           caches.open(STATIC_CACHE).then((cache) => cache.put(req, copy));
         }
         return res;
-      }))
+      }).catch(() => caches.match(req))
     );
   }
 });

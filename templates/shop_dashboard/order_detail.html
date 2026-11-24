@@ -202,7 +202,7 @@
       {% if order.is_walk_in and order.status == 'ready' %}
         <div class="card">
           <h3><i class="bi bi-bag-check glyph-icon"></i>Ready to claim</h3>
-          <p style="font-size:13px; color:var(--text-secondary);">Hand it over at the counter{% if order.payment_status != 'paid' %} and collect ₱{{ order.total_amount|floatformat:"2g" }}{% endif %}.</p>
+          <p style="font-size:14px; color:var(--text-secondary);">Hand it over at the counter{% if order.payment_status != 'paid' %} and collect ₱{{ order.total_amount|floatformat:"2g" }}{% endif %}.</p>
           <form method="post" action="{% url 'pos_claim' order.id %}" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
             {% csrf_token %}
             {% if order.payment_status != 'paid' %}<label class="checkbox-label"><input type="checkbox" name="cash_collected" required style="width:auto;"> I collected ₱{{ order.total_amount|floatformat:"2g" }}</label>{% endif %}
@@ -229,7 +229,7 @@
             <button type="submit" class="btn btn-primary">Assign Rider</button>
           </form>
           {% if not riders %}
-            <p style="color:var(--text-light); font-size:13px; margin-top:8px;">No approved riders are available yet. Approved riders can also claim this job from their dashboard.</p>
+            <p style="color:var(--text-light); font-size:14px; margin-top:8px;">No approved riders are available yet. Approved riders can also claim this job from their dashboard.</p>
           {% endif %}
         </div>
       {% endif %}
@@ -246,7 +246,7 @@
               <div class="tl-time">{{ log.timestamp|date:"M d, g:i A" }}</div>
             </div>
           {% empty %}
-            <p style="color:var(--text-light); font-size:13px;">No status updates yet.</p>
+            <p style="color:var(--text-light); font-size:14px;">No status updates yet.</p>
           {% endfor %}
         </div>
       </div>

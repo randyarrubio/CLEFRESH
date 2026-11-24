@@ -6,7 +6,7 @@
 <style>
   /* ── Browse shops page (.sl-*) ─────────────────────────────────────── */
   .sl-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; }
-  .sl-eyebrow { display: block; margin-bottom: 6px; color: #0b6fb5; font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
+  .sl-eyebrow { display: block; margin-bottom: 6px; color: #0b6fb5; font-size: 13px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
   .sl-head h1 { font-size: clamp(1.6rem, 3vw, 2.2rem); font-weight: 800; line-height: 1.15; color: var(--text); letter-spacing: -.02em; }
   .sl-head p { margin-top: 6px; color: var(--text-muted); font-size: 15px; max-width: 60ch; }
 
@@ -33,14 +33,14 @@
   .sl-chip {
     display: inline-flex; align-items: center; min-height: 34px; padding: 0 14px;
     border: 1px solid var(--border-strong); border-radius: 999px; background: #fff;
-    color: #385b78; font-size: 13px; font-weight: 600; white-space: nowrap;
+    color: #385b78; font-size: 14px; font-weight: 600; white-space: nowrap;
   }
-  .sl-chip:hover { border-color: #1287d9; color: #075c9a; }
-  .sl-chip.is-active { background: #1287d9; border-color: #1287d9; color: #fff; }
+  .sl-chip:hover { border-color: #0c70b8; color: #075c9a; }
+  .sl-chip.is-active { background: #0c70b8; border-color: #0c70b8; color: #fff; }
 
   .sl-summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
   .sl-summary h2 { font-size: 17px; font-weight: 700; color: var(--text); }
-  .sl-summary a { font-size: 13.5px; font-weight: 600; }
+  .sl-summary a { font-size: 14.5px; font-weight: 600; }
 
   .sl-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 18px; }
   .sl-card {
@@ -57,8 +57,8 @@
   .sl-initials { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: #fff; font: 800 34px 'Outfit', sans-serif; }
   .sl-status {
     position: absolute; top: 12px; left: 12px; display: inline-flex; align-items: center; gap: 6px;
-    padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 700;
-    background: #fff; color: #5d7187; box-shadow: 0 2px 6px rgba(16,42,67,.12);
+    padding: 4px 10px; border-radius: 999px; font-size: 13px; font-weight: 700;
+    background: #fff; color: #4f6378; box-shadow: 0 2px 6px rgba(16,42,67,.12);
   }
   .sl-status::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: #9fb3c4; }
   .sl-status.is-open { color: var(--success-fg); }
@@ -70,19 +70,19 @@
   .sl-title { font-size: 16.5px; font-weight: 700; line-height: 1.3; color: var(--text); }
   .sl-title a { color: inherit; }
   .sl-title a::after { content: ''; position: absolute; inset: 0; }   /* whole card is the link */
-  .sl-rating { flex-shrink: 0; display: inline-flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 700; color: #7a5200; }
+  .sl-rating { flex-shrink: 0; display: inline-flex; align-items: center; gap: 4px; font-size: 14px; font-weight: 700; color: #7a5200; }
   .sl-rating .bi { color: #f6b51e; }
   .sl-rating.is-new { color: #0b6fb5; font-weight: 600; }
-  .sl-meta { display: grid; gap: 4px; font-size: 13px; color: var(--text-muted); }
+  .sl-meta { display: grid; gap: 4px; font-size: 14px; color: var(--text-muted); }
   .sl-meta span { display: flex; gap: 7px; align-items: flex-start; }
   .sl-meta .bi { color: #8397a9; margin-top: 2px; flex-shrink: 0; }
   .sl-addr { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
   .sl-tags { display: flex; flex-wrap: wrap; gap: 6px; }
-  .sl-tags span { padding: 3px 9px; border-radius: 999px; background: #e8f4fc; color: #075c9a; font-size: 11.5px; font-weight: 600; }
+  .sl-tags span { padding: 3px 9px; border-radius: 999px; background: #e8f4fc; color: #075c9a; font-size: 12.5px; font-weight: 600; }
   .sl-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: auto; padding-top: 12px; border-top: 1px solid var(--border); }
-  .sl-price { font-size: 12px; color: var(--text-muted); }
+  .sl-price { font-size: 13px; color: var(--text-muted); }
   .sl-price strong { display: block; font-size: 15.5px; color: var(--text); }
-  .sl-cta { display: inline-flex; align-items: center; gap: 6px; font-size: 13.5px; font-weight: 700; color: #0b6fb5; }
+  .sl-cta { display: inline-flex; align-items: center; gap: 6px; font-size: 14.5px; font-weight: 700; color: #0b6fb5; }
   .sl-card:hover .sl-cta { color: #075c9a; }
 
   .sl-empty { padding: 48px 24px; text-align: center; background: var(--surface); border: 1px dashed var(--border-strong); border-radius: var(--card-radius); }
@@ -95,7 +95,7 @@
     min-width: 38px; min-height: 38px; padding: 0 10px; display: inline-flex; align-items: center; justify-content: center;
     border: 1px solid var(--border-strong); border-radius: var(--ctl-radius); background: #fff; font-size: 14px; font-weight: 600; color: #385b78;
   }
-  .sl-pages span.is-current { background: #1287d9; border-color: #1287d9; color: #fff; }
+  .sl-pages span.is-current { background: #0c70b8; border-color: #0c70b8; color: #fff; }
   .sl-pages span.is-disabled { opacity: .45; }
 
   .sl-map-section { margin-top: 36px; }
@@ -165,7 +165,7 @@
   {% if shops %}
     <div class="sl-grid">
       {% for shop in shops %}
-        {% cycle 'linear-gradient(135deg,#1287d9,#13b8c8)' 'linear-gradient(135deg,#0b6fb5,#38bdf8)' 'linear-gradient(135deg,#13b8c8,#0e8fa0)' as shop_grad silent %}
+        {% cycle 'linear-gradient(135deg,#0c70b8,#13b8c8)' 'linear-gradient(135deg,#0b6fb5,#38bdf8)' 'linear-gradient(135deg,#13b8c8,#0e8fa0)' as shop_grad silent %}
         <article class="sl-card">
           <div class="sl-media">
             {% if shop.banner %}

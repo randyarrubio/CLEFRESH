@@ -10,10 +10,10 @@
     <div class="checkout-box">
       {% include 'orders/_price_breakdown.html' %}
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-        <span style="font-size:13px; color:var(--text-secondary);">Order Total</span>
+        <span style="font-size:14px; color:var(--text-secondary);">Order Total</span>
         <span style="font-size:24px; font-weight:800; color:var(--primary); font-family:'Outfit',sans-serif;">₱{{ order.total_amount|floatformat:"2g" }}</span>
       </div>
-      <div style="font-size:12px; color:var(--text-light);">{{ order.order_services.count }} service{{ order.order_services.count|pluralize }} &bull; {{ order.get_payment_method_display }}</div>
+      <div style="font-size:13px; color:var(--text-light);">{{ order.order_services.count }} service{{ order.order_services.count|pluralize }} &bull; {{ order.get_payment_method_display }}</div>
     </div>
 
     <form method="post" action="{% url 'payment_process' order.id %}">
@@ -33,7 +33,7 @@
       <button type="submit" class="confirm-btn">Pay ₱{{ order.total_amount|floatformat:"2g" }} →</button>
     </form>
     <div style="text-align:center; margin-top:12px;">
-      <a href="{% url 'order_detail' order.id %}" style="font-size:13px; color:var(--text-secondary);">Pay later</a>
+      <a href="{% url 'order_detail' order.id %}" style="font-size:14px; color:var(--text-secondary);">Pay later</a>
     </div>
   </div>
 </div>

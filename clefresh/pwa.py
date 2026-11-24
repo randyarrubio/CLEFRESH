@@ -12,7 +12,7 @@ from django.views.decorators.cache import cache_control
 from django.views.decorators.http import require_GET
 
 # Bump when the precache list or caching rules change, so old caches are dropped on activate.
-SW_VERSION = 'clefresh-v1'
+SW_VERSION = 'clefresh-v2'
 
 
 @require_GET

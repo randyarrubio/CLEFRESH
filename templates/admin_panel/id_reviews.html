@@ -4,7 +4,7 @@
 {% block extra_head %}
 <style>
   .idr-photos { display: flex; gap: 8px; }
-  .idr-photos a { display: block; text-align: center; font-size: 11px; color: var(--text-secondary); text-decoration: none; }
+  .idr-photos a { display: block; text-align: center; font-size: 12px; color: var(--text-secondary); text-decoration: none; }
   .idr-photos img { display: block; width: 120px; height: 90px; object-fit: cover; border-radius: 8px; border: 1px solid #e3ecf2; background: #0b1f33; margin-bottom: 4px; }
   .idr-score { font-family: 'Outfit', sans-serif; font-weight: 700; font-size: 15px; }
   .idr-score-low { color: #b42318; }
@@ -39,7 +39,7 @@
           <tr>
             <td>
               <strong>{{ c.get_full_name|default:c.email }}</strong><br>
-              <span style="font-size:12px; color:var(--text-secondary);">{{ c.email }}{% if c.contact_number %} · {{ c.contact_number }}{% endif %}</span>
+              <span style="font-size:13px; color:var(--text-secondary);">{{ c.email }}{% if c.contact_number %} · {{ c.contact_number }}{% endif %}</span>
             </td>
             <td>
               <div class="idr-photos">
@@ -53,13 +53,13 @@
                 </a>
               </div>
             </td>
-            <td style="font-size:12px;">{{ c.get_id_type_display|default:"—" }}</td>
+            <td style="font-size:13px;">{{ c.get_id_type_display|default:"—" }}</td>
             <td>
               {% if c.id_match_score is not None %}
                 <span class="idr-score {% if c.id_match_score >= 0.363 %}idr-score-ok{% else %}idr-score-low{% endif %}">{{ c.id_match_score|floatformat:2 }}</span>
-                <div style="font-size:11px; color:var(--text-secondary);">0.36+ = same person</div>
+                <div style="font-size:12px; color:var(--text-secondary);">0.36+ = same person</div>
               {% else %}
-                <span style="font-size:12px; color:var(--text-secondary);">Not computed</span>
+                <span style="font-size:13px; color:var(--text-secondary);">Not computed</span>
               {% endif %}
             </td>
             <td>{{ c.id_submitted_at|date:"M d, Y H:i" }}</td>
@@ -80,12 +80,12 @@
                       {% csrf_token %}
                       <input type="hidden" name="action" value="reject">
                       <input type="hidden" name="return_status" value="{{ status_filter }}">
-                      <input type="text" name="reason" placeholder="Reason (shown to customer)" maxlength="500" required style="font-size:12px; padding:8px 10px;">
+                      <input type="text" name="reason" placeholder="Reason (shown to customer)" maxlength="500" required style="font-size:13px; padding:8px 10px;">
                       <button type="submit" class="btn btn-xs btn-danger">Confirm</button>
                     </form>
                   </details>
                 {% else %}
-                  {% if c.id_rejection_reason %}<span style="font-size:12px; color:var(--text-secondary);">{{ c.id_rejection_reason }}</span>{% endif %}
+                  {% if c.id_rejection_reason %}<span style="font-size:13px; color:var(--text-secondary);">{{ c.id_rejection_reason }}</span>{% endif %}
                 {% endif %}
               </div>
             </td>

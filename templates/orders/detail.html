@@ -11,7 +11,7 @@
   .pay-card.is-due .pay-card-icon { background: #e6f4fb; color: #075c9a; }
   .pay-card h3 { margin-bottom: 4px !important; font-size: 16.5px !important; }
   .pay-card p { font-size: 14px; color: var(--text-muted); line-height: 1.55; }
-  .pay-card-due { margin-top: 8px; font-size: 13.5px !important; color: #7a5200 !important; }
+  .pay-card-due { margin-top: 8px; font-size: 14.5px !important; color: #7a5200 !important; }
   .pay-card-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
   @media (max-width: 480px) { .pay-card { flex-direction: column; } .pay-card-actions > * { flex: 1; } .pay-card-actions .btn { width: 100%; } }
 </style>
@@ -206,7 +206,7 @@
           <div class="card review-cta">
             <div class="empty-icon" style="margin-bottom:10px;"><i class="bi bi-star"></i></div>
             <h3 style="border:none; justify-content:center;">How was your experience?</h3>
-            <p style="color:var(--text-secondary); font-size:13px; margin-bottom:16px;">Your feedback helps other customers find great shops.</p>
+            <p style="color:var(--text-secondary); font-size:14px; margin-bottom:16px;">Your feedback helps other customers find great shops.</p>
             <a href="{% url 'submit_review' order.id %}" class="btn btn-primary">Leave a Review</a>
           </div>
         {% endif %}
@@ -224,7 +224,7 @@
               <div class="tl-time">{{ log.timestamp|date:"M d, g:i A" }}</div>
             </div>
           {% empty %}
-            <p style="color:var(--text-light); font-size:13px;">No status updates yet.</p>
+            <p style="color:var(--text-light); font-size:14px;">No status updates yet.</p>
           {% endfor %}
         </div>
 

@@ -76,7 +76,7 @@ Laundry shop booking platform. Customers find nearby laundry shops, book pickup/
 - **Google Maps API key** only injected into templates on `/`, `/orders/`, `/rider/`, `/shops/`, `/shop-dashboard/` — not global
 - **PayMongo public key** only injected on `/payment/` paths — not global
 - `COD_TRUSTED_MIN_ORDERS` (default 1), `LOYALTY_PESOS_PER_POINT` (default 20), `LOYALTY_MAX_REDEEM_PERCENT` (default 50) — `.env` overrides
-- **PWA service worker** never caches pages (personal data) — only static files; it bypasses `/payment/`, `/auth/`, `/api/`, admin, `/media/`. Bump `SW_VERSION` in `clefresh/pwa.py` when changing caching rules
+- **PWA service worker** never caches pages (personal data) — only static files, **network-first** (names aren't hashed, so cache-first would pin old CSS/JS); it bypasses `/payment/`, `/auth/`, `/api/`, admin, `/media/`. Bump `SW_VERSION` in `clefresh/pwa.py` when changing caching rules
 - `NOTIFICATIONS_SSE` (default True) — set False on PythonAnywhere; bell falls back to 30 s polling. Deploy guide: `deploy/PYTHONANYWHERE.md`
 - **SMTP is required for transactional email** — password resets and verification codes are never sent through Formspree. Formspree is used only for non-sensitive notification fallback; configure SMTP in production (`utils/email_notifications.py`).
 
@@ -112,11 +112,15 @@ Laundry shop booking platform. Customers find nearby laundry shops, book pickup/
 ## Frontend / UI
 
 ### Design system
-- **Primary color:** `#1287d9` (CSS var `--primary`)
+- **Primary color:** `#0c70b8` (CSS var `--primary`) — darkened from `#1287d9` so text meets WCAG AA 4.5:1
 - **Accent/CTA color:** `#f9ca47` (CSS var `--accent`) — yellow, used for primary buttons
 - **Fonts:** Open Sans (headings, nav), DM Sans (body), Outfit (numbers/display) — all from Google Fonts
 - **Icons:** Bootstrap Icons (`bi bi-*` classes) — self-hosted, loaded in `base.html`
 - **Google SSO icon:** use inline SVG (real Google "G" logo), NOT `bi bi-google`
+
+### Readability conventions
+- Text ≥ 12px (labels/badges), body ≥ 14px; text colours ≥ 4.5:1 on white and the `#eef8fd` page tint (`--text-secondary #4f6378`, `--text-light #56697d`) — never the old light greys (`#9aaaba`, `#8a98a5`…)
+- Footer **Text size** control (A / A+ / A++) zooms the whole page (stored in `localStorage['clefresh-text-size']`, applied before first paint)
 
 ### Performance conventions
 - Static images are **WebP** sized ~2× their largest display size (PNG originals kept in `static/img/` but not served); favicon is `favicon-32.png` / `favicon-180.png`

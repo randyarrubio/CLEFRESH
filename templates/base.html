@@ -14,8 +14,12 @@
   <link rel="stylesheet" href="{% static 'vendor/bootstrap-icons-1.11.3/bootstrap-icons.min.css' %}">
   <link rel="icon" type="image/png" sizes="32x32" href="{% static 'img/favicon-32.png' %}">
   <link rel="apple-touch-icon" href="{% static 'img/favicon-180.png' %}">
+  <script>
+    // Apply the saved text size before first paint (no jump). Zoom scales every px size evenly.
+    try { const z = parseFloat(localStorage.getItem('clefresh-text-size')); if (z > 1 && z <= 1.3) document.documentElement.style.zoom = z; } catch (e) {}
+  </script>
   <link rel="manifest" href="/manifest.webmanifest">
-  <meta name="theme-color" content="#1287d9">
+  <meta name="theme-color" content="#0c70b8">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="CLEFRESH">
@@ -40,7 +44,7 @@
     .global-login-card {
       position: relative;
       z-index: 1;
-      width: min(560px, calc(100vw - 32px));
+      width: min(560px, calc(100% - 32px));
       max-height: calc(100vh - 44px);
       overflow: hidden;
       display: flex;
@@ -57,7 +61,7 @@
     .gl-form-content { padding: 28px 26px 28px; }
     .gl-logo { font-size: 19px; font-weight: 900; font-family: 'Open Sans', sans-serif; letter-spacing: -.03em; display: block; margin-bottom: 12px; }
     .gl-title { font-size: 22px; font-weight: 800; color: #0b1f33; margin: 0 0 4px; line-height: 1.2; }
-    .gl-subtitle { font-size: 12px; color: #7a96aa; margin: 0 0 18px; }
+    .gl-subtitle { font-size: 13px; color: #56697d; margin: 0 0 18px; }
     .global-login-close {
       position: absolute;
       top: 12px;
@@ -74,12 +78,12 @@
       align-items: center;
       justify-content: center;
       transition: background .2s, transform .2s;
-      font-size: 13px;
+      font-size: 14px;
     }
     .global-login-close:hover { background: rgba(0,0,0,.3); transform: rotate(90deg); }
     @media (max-width: 540px) {
       .global-login-modal { align-items: start; padding-top: 72px; }
-      .global-login-card { flex-direction: column; width: calc(100vw - 24px); }
+      .global-login-card { flex-direction: column; width: calc(100% - 24px); }
       .gl-image-side { display: none; }
       .global-login-close { background: rgba(0,0,0,.06); border-color: rgba(0,0,0,.1); color: #567083; }
     }
@@ -121,7 +125,7 @@
       justify-content: center;
       margin-bottom: 14px;
       background: #e6f4fb;
-      color: #1287d9;
+      color: #0c70b8;
       font-size: 26px;
     }
     .rider-message-icon.success { background: #eaf6e2; color: #2f6717; }
@@ -137,7 +141,7 @@
       display: grid;
       gap: 8px;
       margin: 0 0 20px;
-      color: #5d7187;
+      color: #4f6378;
       font-size: 14px;
       line-height: 1.55;
       list-style: none;
@@ -407,6 +411,12 @@
           <a href="/info/privacy/">Privacy Policy</a>
           <a href="/info/terms/">Terms of Service</a>
           <a href="/info/refunds/">Refund and Cancellation</a>
+          <div class="text-size-control" role="group" aria-label="Text size">
+            <span>Text size</span>
+            <button type="button" data-text-size="1" aria-pressed="true">A</button>
+            <button type="button" data-text-size="1.12" aria-pressed="false" style="font-size:17px;">A+</button>
+            <button type="button" data-text-size="1.25" aria-pressed="false" style="font-size:19px;">A++</button>
+          </div>
         </div>
       </div>
 
@@ -691,6 +701,44 @@
   @keyframes spin { to { transform: rotate(360deg); } }
   </style>
   <script src="{% static 'js/main.js' %}"></script>
+  <script>
+    // Top nav: fall back to the menu button when the links would overlap the right-hand controls
+    // (long owner/admin menus, narrow laptops, larger text size).
+    (function () {
+      const bar = document.querySelector('.topbar'), nav = document.getElementById('topbarNav'), right = document.querySelector('.topbar-right');
+      if (!bar || !nav || !right) return;
+      let queued = false;
+      function fit() {
+        queued = false;
+        bar.classList.remove('nav-collapsed');
+        if (getComputedStyle(nav).display === 'none' || !nav.lastElementChild) return;
+        const lastRight = nav.lastElementChild.getBoundingClientRect().right;
+        if (nav.scrollWidth > nav.clientWidth + 1 || lastRight > right.getBoundingClientRect().left - 8) bar.classList.add('nav-collapsed');
+      }
+      const schedule = () => { if (!queued) { queued = true; requestAnimationFrame(fit); } };
+      window.clefreshFitNav = schedule;
+      fit();
+      window.addEventListener('resize', schedule);
+      window.addEventListener('load', schedule);
+      if (document.fonts) document.fonts.ready.then(schedule);
+    })();
+
+    // Text size control (footer): saved per device.
+    (function () {
+      const buttons = document.querySelectorAll('[data-text-size]');
+      let current = 1;
+      try { current = parseFloat(localStorage.getItem('clefresh-text-size')) || 1; } catch (e) {}
+      const mark = () => buttons.forEach((b) => b.setAttribute('aria-pressed', String(parseFloat(b.dataset.textSize) === current)));
+      buttons.forEach((b) => b.addEventListener('click', () => {
+        current = parseFloat(b.dataset.textSize);
+        document.documentElement.style.zoom = current > 1 ? current : '';
+        if (window.clefreshFitNav) window.clefreshFitNav();
+        try { current > 1 ? localStorage.setItem('clefresh-text-size', current) : localStorage.removeItem('clefresh-text-size'); } catch (e) {}
+        mark();
+      }));
+      mark();
+    })();
+  </script>
   <script>
     // PWA: installable app + offline page. Only on secure origins (https or localhost).
     if ('serviceWorker' in navigator && window.isSecureContext) {

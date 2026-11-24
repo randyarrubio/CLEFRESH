@@ -10,66 +10,66 @@
   .booking-logo { width:44px; height:44px; border-radius:10px; background:#e6f4fb; color:#075c9a; display:flex; align-items:center; justify-content:center; font-weight:800; font-family:'Outfit',sans-serif; overflow:hidden; }
   .booking-logo img { width:100%; height:100%; object-fit:cover; }
   .booking-shop h2 { font-size:20px; margin-bottom:2px; }
-  .booking-shop p { color:#5d7187; font-size:13px; }
+  .booking-shop p { color:#4f6378; font-size:14px; }
   .book-steps { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
-  .book-step { color:#8ca0b4; font-size:12px; font-weight:800; text-align:center; }
+  .book-step { color:#8ca0b4; font-size:13px; font-weight:800; text-align:center; }
   .book-step::before { content:attr(data-num); display:flex; align-items:center; justify-content:center; width:30px; height:30px; margin:0 auto 6px; border-radius:50%; border:1px solid #d7e8f3; background:#f4fbff; color:#8ca0b4; }
   .book-step.done::before { content:'✓'; background:#eaf6e2; color:#2f6717; border-color:#b9ddb0; }
   .book-step.active { color:#075c9a; }
-  .book-step.active::before { background:#1287d9; color:#fff; border-color:#1287d9; }
+  .book-step.active::before { background:#0c70b8; color:#fff; border-color:#0c70b8; }
   .booking-card { padding:20px; margin-bottom:14px; }
   .booking-card h3 { display:flex; align-items:center; gap:8px; font-size:17px; margin-bottom:14px; }
   .book-screen { display:none; }
   .book-screen.active { display:block; }
   .booking-services { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
   .booking-service { border:1px solid #d7e8f3; border-radius:10px; padding:12px; background:#fff; cursor:pointer; transition:.18s; }
-  .booking-service.selected { border-color:#1287d9; background:#e6f4fb; box-shadow:0 0 0 4px rgba(18,135,217,.08); }
+  .booking-service.selected { border-color:#0c70b8; background:#e6f4fb; box-shadow:0 0 0 4px rgba(18,135,217,.08); }
   .booking-service h4 { font-size:14px; margin-bottom:4px; color:#172033; }
-  .booking-service p { font-size:12px; color:#5d7187; }
+  .booking-service p { font-size:13px; color:#4f6378; }
   .service-fields { display:none; margin-top:10px; padding-top:10px; border-top:1px solid #d7e8f3; }
   .service-fields.active { display:block; }
   .qty-row { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
   .book-grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
-  .book-note { background:#f4fbff; border:1px solid #d7e8f3; border-radius:8px; padding:10px 12px; color:#5d7187; font-size:13px; }
+  .book-note { background:#f4fbff; border:1px solid #d7e8f3; border-radius:8px; padding:10px 12px; color:#4f6378; font-size:14px; }
   .addon-list { display:grid; gap:10px; }
   .addon-row { display:flex; justify-content:space-between; gap:14px; align-items:center; padding:12px; border:1px solid #d7e8f3; border-radius:10px; background:#fff; }
   .addon-row strong { display:block; font-size:14px; color:#172033; }
-  .addon-row span { display:block; font-size:12px; color:#6b7c8f; margin-top:2px; }
+  .addon-row span { display:block; font-size:13px; color:#56697d; margin-top:2px; }
   .book-toggle { width:40px; height:22px; border-radius:999px; border:0; background:#cfe0ec; position:relative; cursor:pointer; flex-shrink:0; }
-  .book-toggle.on { background:#1287d9; }
+  .book-toggle.on { background:#0c70b8; }
   .book-toggle::after { content:''; position:absolute; width:16px; height:16px; left:3px; top:3px; border-radius:50%; background:#fff; transition:.15s; }
   .book-toggle.on::after { transform:translateX(18px); }
   .pay-options { display:grid; gap:10px; }
   .pay-option { display:flex; align-items:center; gap:10px; border:1px solid #d7e8f3; border-radius:10px; padding:12px; background:#fff; cursor:pointer; }
-  .pay-option:has(input:checked) { border-color:#1287d9; background:#e6f4fb; }
+  .pay-option:has(input:checked) { border-color:#0c70b8; background:#e6f4fb; }
   .pay-option input { width:auto; }
   .pay-option-text { display:flex; flex-direction:column; gap:2px; }
-  .pay-option-text small { font-size:12px; color:#6c7d8b; line-height:1.4; }
+  .pay-option-text small { font-size:13px; color:#56697d; line-height:1.4; }
   .pay-option.is-disabled { opacity:.6; cursor:not-allowed; background:#f7fafc; }
   .booking-actions { display:flex; gap:10px; margin-top:14px; }
   .booking-actions .btn { flex:1; }
-  .book-error { display:none; margin-top:12px; padding:10px 12px; border-radius:8px; background:#fff1f2; border:1px solid #fca5a5; color:#b91c1c; font-size:13px; font-weight:600; }
+  .book-error { display:none; margin-top:12px; padding:10px 12px; border-radius:8px; background:#fff1f2; border:1px solid #fca5a5; color:#b91c1c; font-size:14px; font-weight:600; }
   .book-error.show { display:block; }
-  .addon-included { font-size:12px; font-weight:800; color:#2f6717; background:#eaf6e2; border-radius:999px; padding:4px 10px; flex-shrink:0; }
+  .addon-included { font-size:13px; font-weight:800; color:#2f6717; background:#eaf6e2; border-radius:999px; padding:4px 10px; flex-shrink:0; }
   /* Per-kg services are always weighed by the shop */
   .weigh-info { display:flex; gap:10px; align-items:flex-start; margin-bottom:14px; padding:12px 14px; border-radius:10px;
-                background:#f4f9fd; border:1px solid #e3eef6; color:#385b78; font-size:13px; line-height:1.5; }
+                background:#f4f9fd; border:1px solid #e3eef6; color:#385b78; font-size:14px; line-height:1.5; }
   .weigh-info .bi { color:#d99a06; font-size:18px; line-height:1.2; }
-  .weigh-note { display:none; margin-top:8px; padding:8px 10px; border-radius:8px; background:#fff6dc; color:#7a5200; font-size:12px; font-weight:600; }
+  .weigh-note { display:none; margin-top:8px; padding:8px 10px; border-radius:8px; background:#fff6dc; color:#7a5200; font-size:13px; font-weight:600; }
   .weigh-mode .booking-service.selected .weigh-note { display:block; }
   /* .summary-line sets display:flex, which would otherwise override the [hidden] attribute */
   #bookingDiscountLine[hidden], #bookingWeighEstimate[hidden] { display:none; }
-  .summary-estimate { margin:-4px 0 10px; padding:10px 12px; border-radius:8px; background:#f4f9fd; border:1px solid #e3eef6; color:#385b78; font-size:12.5px; line-height:1.5; }
+  .summary-estimate { margin:-4px 0 10px; padding:10px 12px; border-radius:8px; background:#f4f9fd; border:1px solid #e3eef6; color:#385b78; font-size:13.5px; line-height:1.5; }
   .booking-summary { position:sticky; top:76px; padding:20px; }
   .summary-shop-box { margin-bottom:14px; }
-  .summary-lines { display:grid; gap:8px; margin:14px 0; color:#5d7187; font-size:13px; }
+  .summary-lines { display:grid; gap:8px; margin:14px 0; color:#4f6378; font-size:14px; }
   .summary-line { display:flex; justify-content:space-between; gap:12px; }
   .summary-total { display:flex; justify-content:space-between; gap:12px; padding-top:12px; border-top:1px solid #d7e8f3; font-size:18px; font-weight:800; color:#172033; }
   .summary-promos { margin:14px 0 4px; }
-  .summary-discount { color:#1c6b3c; font-size:13px; margin:-4px 0 10px; }
+  .summary-discount { color:#1c6b3c; font-size:14px; margin:-4px 0 10px; }
   .summary-discount .bi { color:#d99a06; }
-  .summary-promos-title { display:flex; align-items:center; gap:6px; margin-bottom:8px; font-size:13px; font-weight:800; color:#7a5200; }
-  .summary-note { color:#8ca0b4; font-size:12px; line-height:1.5; margin-top:10px; text-align:center; }
+  .summary-promos-title { display:flex; align-items:center; gap:6px; margin-bottom:8px; font-size:14px; font-weight:800; color:#7a5200; }
+  .summary-note { color:#8ca0b4; font-size:13px; line-height:1.5; margin-top:10px; text-align:center; }
   @media (max-width:900px){ .booking-flow{padding:20px 14px 42px}.booking-shell{grid-template-columns:1fr}.booking-summary{position:static}.booking-services,.book-grid-2,.qty-row{grid-template-columns:1fr}.book-steps{grid-template-columns:repeat(2,1fr)} }
 </style>
 

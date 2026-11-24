@@ -28,14 +28,14 @@
           <tr>
             <td>
               <strong>{{ p.user.get_full_name|default:p.user.email }}</strong><br>
-              <span style="font-size:12px; color:var(--text-secondary);">{{ p.user.email }}{% if p.user.contact_number %} · {{ p.user.contact_number }}{% endif %}</span>
+              <span style="font-size:13px; color:var(--text-secondary);">{{ p.user.email }}{% if p.user.contact_number %} · {{ p.user.contact_number }}{% endif %}</span>
               {% if not p.user.is_active %}<br><span class="badge badge-danger">Inactive account</span>{% endif %}
             </td>
-            <td style="font-size:12px;">
+            <td style="font-size:13px;">
               {{ p.get_vehicle_type_display|default:"—" }}{% if p.vehicle_make_model %} · {{ p.vehicle_make_model }}{% endif %}<br>
               {% if p.plate_number %}<span style="color:var(--text-secondary);">Plate {{ p.plate_number }}</span>{% endif %}
             </td>
-            <td style="font-size:12px;">
+            <td style="font-size:13px;">
               {% for label, filename in app.docs %}
                 <a href="{% url 'serve_rider_doc' filename %}" target="_blank" rel="noopener"><i class="bi bi-file-earmark-text"></i> {{ label }}</a><br>
               {% empty %}
@@ -45,7 +45,7 @@
             <td>
               <span class="badge badge-shop-{{ p.approval_status }}">{{ p.get_approval_status_display }}</span>
               {% if p.approval_status == 'rejected' and p.rejection_reason %}
-                <div style="font-size:12px; color:var(--text-secondary); margin-top:4px;">{{ p.rejection_reason }}</div>
+                <div style="font-size:13px; color:var(--text-secondary); margin-top:4px;">{{ p.rejection_reason }}</div>
               {% endif %}
             </td>
             <td>{{ p.submitted_at|date:"M d, Y" }}</td>
@@ -66,7 +66,7 @@
                       {% csrf_token %}
                       <input type="hidden" name="action" value="reject">
                       <input type="hidden" name="return_status" value="{{ status_filter }}">
-                      <input type="text" name="reason" placeholder="Reason (shown to rider)" maxlength="500" required style="font-size:12px; padding:8px 10px;">
+                      <input type="text" name="reason" placeholder="Reason (shown to rider)" maxlength="500" required style="font-size:13px; padding:8px 10px;">
                       <button type="submit" class="btn btn-xs btn-danger">Confirm</button>
                     </form>
                   </details>

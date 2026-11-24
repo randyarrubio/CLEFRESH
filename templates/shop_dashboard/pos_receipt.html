@@ -5,7 +5,7 @@
   .rc-wrap { max-width: 380px; margin: 0 auto; }
   .rc-ticket { background: #fff; border: 1px dashed #b9c9d6; border-radius: 12px; padding: 22px; font-size: 14px; }
   .rc-ticket h2 { text-align: center; margin: 0; font-size: 20px; }
-  .rc-ticket .rc-sub { text-align: center; color: #586b7a; font-size: 12px; margin: 2px 0 14px; }
+  .rc-ticket .rc-sub { text-align: center; color: #586b7a; font-size: 13px; margin: 2px 0 14px; }
   .rc-no { text-align: center; font-family: 'Outfit', sans-serif; font-size: 40px; font-weight: 800; letter-spacing: .04em; margin: 6px 0; }
   .rc-row { display: flex; justify-content: space-between; gap: 10px; padding: 4px 0; }
   .rc-hr { border: 0; border-top: 1px dashed #b9c9d6; margin: 12px 0; }
@@ -29,7 +29,7 @@
     <div class="rc-ticket">
       <h2>{{ shop.name }}</h2>
       <p class="rc-sub">{{ shop.address }}{% if shop.contact %} · {{ shop.contact }}{% endif %}</p>
-      <p style="text-align:center; margin:0; font-size:12px; color:#586b7a;">Claim ticket</p>
+      <p style="text-align:center; margin:0; font-size:13px; color:#586b7a;">Claim ticket</p>
       <p class="rc-no">#{{ order.id }}</p>
       <div class="rc-row"><span>Customer</span><strong>{{ order.customer_label }}</strong></div>
       {% if order.walk_in_phone %}<div class="rc-row"><span>Phone</span><span>{{ order.walk_in_phone }}</span></div>{% endif %}
@@ -50,7 +50,7 @@
       {% else %}
         <p class="rc-paid is-due">Pay ₱{{ order.total_amount|floatformat:"2g" }} when claiming</p>
       {% endif %}
-      <p style="text-align:center; font-size:12px; color:#586b7a; margin-top:12px;">Please present this ticket to claim your laundry.{% if shop.unclaimed_policy %} {{ shop.unclaimed_policy }}{% endif %}</p>
+      <p style="text-align:center; font-size:13px; color:#586b7a; margin-top:12px;">Please present this ticket to claim your laundry.{% if shop.unclaimed_policy %} {{ shop.unclaimed_policy }}{% endif %}</p>
     </div>
     <div class="rc-actions">
       <button type="button" class="btn btn-primary" onclick="window.print()"><i class="bi bi-printer glyph-icon" aria-hidden="true"></i>Print</button>

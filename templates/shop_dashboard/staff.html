@@ -4,10 +4,10 @@
 <style>
   .st-grid { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 24px; align-items: start; }
   .st-days { display: flex; flex-wrap: wrap; gap: 6px; }
-  .st-days label { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; border: 1px solid #d7e8f3; border-radius: 999px; padding: 4px 10px; cursor: pointer; }
+  .st-days label { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; border: 1px solid #d7e8f3; border-radius: 999px; padding: 4px 10px; cursor: pointer; }
   .st-days input { width: auto; margin: 0; }
   .st-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-  .st-pill { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; }
+  .st-pill { display: inline-block; font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 999px; }
   .st-pill-on { background: rgba(16,185,129,.14); color: #047857; }
   .st-pill-late { background: #fff1e0; color: #a34d00; }
   .st-edit summary { list-style: none; cursor: pointer; }
@@ -47,11 +47,11 @@
               <tr>
                 <td>
                   <strong>{{ a.user.get_full_name|default:a.user.email }}</strong><br>
-                  <span style="font-size:12px; color:var(--text-secondary);">{{ a.user.email }}</span><br>
+                  <span style="font-size:13px; color:var(--text-secondary);">{{ a.user.email }}</span><br>
                   {% if not a.is_active %}<span class="badge badge-danger">Inactive</span>
                   {% elif row.on_shift %}<span class="st-pill st-pill-on">On shift since {{ row.on_shift.time_in|time:"g:i A" }}</span>{% endif %}
                 </td>
-                <td style="font-size:12px;">{{ a.schedule_label }}</td>
+                <td style="font-size:13px;">{{ a.schedule_label }}</td>
                 <td>₱{{ a.hourly_rate|floatformat:"2g" }}/h</td>
                 <td>{{ row.totals.hours }} h{% if row.totals.late %}<br><span class="st-pill st-pill-late">{{ row.totals.late }} late</span>{% endif %}</td>
                 <td><strong>₱{{ row.totals.earnings|floatformat:"2g" }}</strong></td>
@@ -62,10 +62,10 @@
                       <form method="post" action="{% url 'update_attendant' a.id %}">
                         {% csrf_token %}
                         <input type="hidden" name="action" value="update">
-                        <label style="font-size:12px;">Hourly rate (₱)<input type="number" name="hourly_rate" min="0" step="0.01" value="{{ a.hourly_rate }}"></label>
+                        <label style="font-size:13px;">Hourly rate (₱)<input type="number" name="hourly_rate" min="0" step="0.01" value="{{ a.hourly_rate }}"></label>
                         <div class="st-row-2">
-                          <label style="font-size:12px;">Shift start<input type="time" name="shift_start" value="{{ a.shift_start|time:'H:i' }}"></label>
-                          <label style="font-size:12px;">Shift end<input type="time" name="shift_end" value="{{ a.shift_end|time:'H:i' }}"></label>
+                          <label style="font-size:13px;">Shift start<input type="time" name="shift_start" value="{{ a.shift_start|time:'H:i' }}"></label>
+                          <label style="font-size:13px;">Shift end<input type="time" name="shift_end" value="{{ a.shift_end|time:'H:i' }}"></label>
                         </div>
                         <div class="st-days">{% for key, label in weekdays %}<label><input type="checkbox" name="work_days" value="{{ key }}"{% if key in a.work_days %} checked{% endif %}>{{ label }}</label>{% endfor %}</div>
                         <button type="submit" class="btn btn-xs btn-primary">Save</button>
@@ -96,7 +96,7 @@
               <tr>
                 <td>{{ r.attendant.user.get_full_name|default:r.attendant.user.email }}</td>
                 <td>{{ r.time_in|date:"M d, g:i A" }}{% if r.is_late %} <span class="st-pill st-pill-late">Late</span>{% endif %}</td>
-                <td>{% if r.time_out %}{{ r.time_out|date:"M d, g:i A" }}{% else %}<span class="st-pill st-pill-on">On shift</span>{% endif %}{% if r.note %}<br><span style="font-size:11px; color:var(--text-light);">{{ r.note }}</span>{% endif %}</td>
+                <td>{% if r.time_out %}{{ r.time_out|date:"M d, g:i A" }}{% else %}<span class="st-pill st-pill-on">On shift</span>{% endif %}{% if r.note %}<br><span style="font-size:12px; color:var(--text-light);">{{ r.note }}</span>{% endif %}</td>
                 <td>{{ r.hours }} h</td>
                 <td>₱{{ r.earnings|floatformat:"2g" }}</td>
               </tr>
