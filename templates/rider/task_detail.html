@@ -28,7 +28,7 @@
           <div class="rw-pin rw-pickup"><span class="rw-dot"></span><span>Pickup</span></div>
           <div class="rw-pin rw-shop"><span class="rw-dot"></span><span>Shop</span></div>
           <div class="rw-pin rw-delivery"><span class="rw-dot"></span><span>Delivery</span></div>
-          {% if GOOGLE_MAPS_API_KEY and order.status != 'delivered' %}
+          {% if order.status != 'delivered' %}
             <div id="riderNavMap" class="rw-map-live" role="img" aria-label="Map of your route"
                  data-stage="{% if order.status == 'accepted' %}pickup{% elif order.status == 'ready' or order.status == 'out_for_delivery' %}delivery{% else %}shop{% endif %}"
                  data-pickup-lat="{{ order.pickup_lat|default:'' }}" data-pickup-lng="{{ order.pickup_lng|default:'' }}"

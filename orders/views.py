@@ -12,7 +12,7 @@ from django.urls import reverse
 from .models import Order, OrderService, OrderStatusLog, PhotoProof
 from shops.models import DeliverySlot, Promotion, Service, Shop
 from notifications.models import Notification
-from utils.geocode import geocode_address
+from utils.geocode import geocode_order_in_background
 from utils.email_notifications import send_email_notification
 from utils.finance import current_commission_rate
 from . import loyalty
@@ -226,9 +226,8 @@ def place_order_view(request, shop_id):
                                     'Please pay online or choose cash on pickup.')
             return render(request, 'orders/place_order.html', _place_order_context(shop, services, slots, request, error_step=4))
 
-        # Geocode addresses
-        pickup_lat, pickup_lng = geocode_address(pickup_address)
-        delivery_lat, delivery_lng = geocode_address(delivery_address)
+        # Map coordinates are looked up in the background after the order is saved (see below).
+        pickup_lat = pickup_lng = delivery_lat = delivery_lng = None
 
         # Parse pickup datetime
         from datetime import datetime
@@ -375,6 +374,7 @@ def place_order_view(request, shop_id):
             if slot:
                 DeliverySlot.objects.filter(id=slot.id).update(current_bookings=F('current_bookings') + 1)
 
+        transaction.on_commit(lambda oid=order.id: geocode_order_in_background(oid))
         # Notifications
         Notification.objects.create(
             user=request.user,

@@ -749,31 +749,37 @@
   {% if not user.is_authenticated %}
     <script src="{% static 'js/auth-validation.js' %}"></script>
   {% endif %}
-  {% if GOOGLE_MAPS_API_KEY %}
-    <script src="{% static 'js/maps.js' %}"></script>{# defines the callback before Google can call it #}
-    <script>
-      // Load Google Maps only on pages that have a map, and only once it's about to scroll
-      // into view (the API is several hundred KB and each load counts against the quota).
-      (function () {
-        var maps = document.querySelectorAll('#shopsMap, #trackingMap, #riderNavMap');
-        if (!maps.length) return;
-        var loaded = false;
-        function load() {
-          if (loaded) return;
-          loaded = true;
-          var s = document.createElement('script');
-          s.src = 'https://maps.googleapis.com/maps/api/js?key={{ GOOGLE_MAPS_API_KEY|urlencode }}&callback=initMapsIfNeeded&loading=async';
-          s.async = true;
-          document.head.appendChild(s);
-        }
-        if (!('IntersectionObserver' in window)) return load();
-        var io = new IntersectionObserver(function (entries) {
-          if (entries.some(function (e) { return e.isIntersecting; })) { io.disconnect(); load(); }
-        }, {rootMargin: '400px'});
-        maps.forEach(function (el) { io.observe(el); });
-      })();
-    </script>
-  {% endif %}
+  <script src="{% static 'js/maps.js' %}"></script>
+  <script>
+    // Maps use Leaflet + OpenStreetMap (free, no API key). Load Leaflet only on pages with a map,
+    // and only once a map is about to scroll into view.
+    (function () {
+      var maps = document.querySelectorAll('#shopsMap, #shopMap, #trackingMap, #riderNavMap');
+      if (!maps.length) return;
+      var loaded = false;
+      function load() {
+        if (loaded) return;
+        loaded = true;
+        var css = document.createElement('link');
+        css.rel = 'stylesheet';
+        css.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+        css.integrity = 'sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=';
+        css.crossOrigin = '';
+        document.head.appendChild(css);
+        var s = document.createElement('script');
+        s.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+        s.integrity = 'sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=';
+        s.crossOrigin = '';
+        s.onload = function () { initMapsIfNeeded(); };
+        document.head.appendChild(s);
+      }
+      if (!('IntersectionObserver' in window)) return load();
+      var io = new IntersectionObserver(function (entries) {
+        if (entries.some(function (e) { return e.isIntersecting; })) { io.disconnect(); load(); }
+      }, {rootMargin: '400px'});
+      maps.forEach(function (el) { io.observe(el); });
+    })();
+  </script>
   <script>
     (function () {
       const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';

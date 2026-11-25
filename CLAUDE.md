@@ -6,7 +6,7 @@ Laundry shop booking platform. Customers find nearby laundry shops, book pickup/
 ## Stack
 - Django 4.2.30, Python 3.13, SQLite (dev)
 - django-allauth 65.9.0 (email + Google SSO only — Facebook SSO removed)
-- PayMongo (payments), Google Maps API (geocoding + rider tracking)
+- PayMongo (payments); maps = **Leaflet 1.9.4 + OpenStreetMap tiles** (no API key); geocoding = Google if `GOOGLE_MAPS_API_KEY` works, else OpenStreetMap Nominatim; rider routes = public OSRM router
 - Formspree (email), vanilla JS + Django templates
 - Bootstrap Icons 1.11.3 (self-hosted in `static/vendor/bootstrap-icons-1.11.3/`, loaded in `base.html`)
 
@@ -73,7 +73,8 @@ Laundry shop booking platform. Customers find nearby laundry shops, book pickup/
 - `AUTH_USER_MODEL = 'accounts.User'`, `TIME_ZONE = 'Asia/Manila'`, `SITE_ID = 1`
 - All API keys via `.env` + python-decouple: `PAYMONGO_SECRET_KEY`, `PAYMONGO_PUBLIC_KEY`, `PAYMONGO_WEBHOOK_SECRET`, `GOOGLE_MAPS_API_KEY`, `FORMSPREE_ENDPOINT`, `GOOGLE_CLIENT_ID/SECRET`
 - `DJANGO_ADMIN_URL` env var controls the Django admin path (default: `django-admin/`) — change in production
-- **Google Maps API key** only injected into templates on `/`, `/orders/`, `/rider/`, `/shops/`, `/shop-dashboard/` — not global
+- **Maps need no key:** `static/js/maps.js` (Leaflet) draws `#shopsMap`, `#shopMap`, `#trackingMap`, `#riderNavMap`; `base.html` loads Leaflet from unpkg (SRI-pinned) only when one is near the viewport. `GOOGLE_MAPS_API_KEY` is optional and only used for geocoding
+- **Geocoding** (`utils/geocode.py`): Google first if the key works (REQUEST_DENIED → skipped for 1 h), else Nominatim (1 req/s, identifying User-Agent, strips "Brgy."/purok parts, falls back street → barangay → town); cached 30 days. Orders are geocoded in a background thread after booking (`geocode_order_in_background`). Backfill: `python manage.py geocode_missing [--all] [--dry-run]`. Skipped entirely under tests (`settings.TESTING`)
 - **PayMongo public key** only injected on `/payment/` paths — not global
 - **Media on Railway:** uploads live on the `clefresh-volume` volume mounted at `/app/media`; with no nginx, Django serves public uploads (`SERVE_MEDIA`, default True — set False behind nginx). Private folders stay 404 (`clefresh/urls.py`)
 - Real Cantilan shops: `python manage.py seed_cantilan_shops` (photos in `shop data/`, demo owner logins written to git-ignored `shop data/demo_logins*.txt`). Lava'z prices/hours are real; the other 4 shops' prices/hours are placeholders in the command until survey data arrives
@@ -128,7 +129,7 @@ Laundry shop booking platform. Customers find nearby laundry shops, book pickup/
 - Static images are **WebP** sized ~2× their largest display size (PNG originals kept in `static/img/` but not served); favicon is `favicon-32.png` / `favicon-180.png`
 - Below-the-fold `<img>`: add `loading="lazy" decoding="async"`; the LCP/hero image gets `fetchpriority="high"` (never lazy)
 - Uploads are shrunk on save (`utils/images.py`, hooked in `Shop.save`, `User.save`, `PhotoProof.save`): PNG → WebP, capped per field
-- Google Maps JS is injected only when `#shopsMap/#trackingMap/#riderNavMap` exists and is near the viewport (loader in `base.html`)
+- Leaflet (~40 KB) is injected only when a map element exists and is near the viewport (loader in `base.html`)
 - Google Fonts CSS loads non-blocking (`rel=preload` + `onload`); don't add `@import` fonts to `style.css`
 - DB indexes on `Order` (created_at, shop+created_at, status, payment intent, payment_due_at partial) and `Notification` (user+created_at, user+is_read) — check `EXPLAIN QUERY PLAN` before adding more
 
@@ -187,7 +188,7 @@ Role-based rendering in `home_view`:
 - Role guard decorator: `@role_required('shop_owner')` from `accounts/decorators.py`
 - Shop counter views (owner **or** attendant): `@shop_staff_required` from `shops/access.py` → shop in `request.staff_shop`; owner-only pages keep `@role_required('shop_owner')`
 - Email sending: always use `utils/email_notifications.py` + log with `EmailLog` model. SMTP is preferred and required for password resets and verification codes; Formspree is not transactional email.
-- Geocoding: `utils/geocode.py` — called automatically in `Shop.save()`
+- Geocoding: `utils/geocode.py` — called automatically in `Shop.save()`; orders via `geocode_order_in_background` (never block a request on it)
 - Status display for `OrderStatusLog`: use `{% load shop_extras %}` then `{{ log.status|humanize_status }}` — preferred over `get_status_display()` in templates
 - Rider doc URLs: use `{% url 'serve_rider_doc' filename %}` — never link to `/media/rider_docs/` directly
 - Seed data: `python manage.py seed_data`

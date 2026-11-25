@@ -3505,3 +3505,9 @@ p, li, dd, td { line-height: 1.6; }
 @media (max-width: 600px) {
   .notif-dropdown { position: fixed; top: 64px; left: 8px; right: 8px; width: auto; max-width: none; }
 }
+
+/* Map pins (Leaflet divIcons, see static/js/maps.js) */
+.cf-map-pin span { display:block; width:22px; height:22px; border-radius:50%; border:3px solid #fff; box-shadow:0 2px 6px rgba(0,0,0,.35); }
+.cf-map-rider { display:flex !important; align-items:center; justify-content:center; width:34px; height:34px;
+  border-radius:50%; background:#f9ca47; color:#3b2a00; font-size:18px; border:3px solid #fff; box-shadow:0 2px 8px rgba(0,0,0,.35); }
+.leaflet-container { font-family: 'DM Sans', sans-serif; z-index: 0; }

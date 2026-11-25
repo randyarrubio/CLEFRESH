@@ -191,6 +191,9 @@ DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024
 FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024
 
 SITE_URL = config('SITE_URL', default='http://localhost:8000')
+# True under `manage.py test`: geocoding and similar outbound calls are skipped.
+import sys as _sys
+TESTING = len(_sys.argv) > 1 and _sys.argv[1] == 'test'
 
 # Behind nginx, set CLIENT_IP_HEADER=HTTP_X_REAL_IP (and `proxy_set_header X-Real-IP $remote_addr;`)
 # so rate limits see each visitor, not the proxy. Leave empty when Django faces the internet directly.
