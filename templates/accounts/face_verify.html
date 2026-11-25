@@ -249,7 +249,9 @@
   async function createLandmarker() {
     const { mod, fileset, modelBytes } = await loadLibrary();
     let lastErr;
-    for (const delegate of ['GPU', 'CPU']) {         // some phones/laptops have no usable GPU in the browser
+    // CPU first: GPU start-up compiles shaders on the main thread, which froze the page (black camera)
+    // for seconds on weaker devices, and CPU was faster per frame in testing. GPU is only a fallback.
+    for (const delegate of ['CPU', 'GPU']) {
       try {
         return await mod.FaceLandmarker.createFromOptions(fileset, {
           baseOptions: { modelAssetBuffer: modelBytes.slice(), delegate },
@@ -259,8 +261,23 @@
     }
     throw lastErr;
   }
-  const preload = () => loadLibrary().catch(() => {});
-  if ('requestIdleCallback' in window) requestIdleCallback(preload, { timeout: 2000 }); else setTimeout(preload, 1000);
+  // Build the tracker in the background during Step 1 (download + set-up + one warm-up frame),
+  // so pressing Start only has to open the camera.
+  let trackerPromise = null;
+  function getTracker() {
+    if (!trackerPromise) {
+      trackerPromise = createLandmarker().then((lm) => {
+        const warm = document.createElement('canvas');
+        warm.width = 64; warm.height = 48;
+        try { lm.detectForVideo(warm, performance.now()); } catch (e) { /* warm-up only */ }
+        return lm;
+      });
+      trackerPromise.catch(() => { trackerPromise = null; });
+    }
+    return trackerPromise;
+  }
+  const preload = () => getTracker().catch(() => {});
+  if ('requestIdleCallback' in window) requestIdleCallback(preload, { timeout: 1500 }); else setTimeout(preload, 800);
 
   const video = document.getElementById('fvVideo');
   const oval = document.getElementById('fvOval');
@@ -374,11 +391,12 @@
     placeholder.hidden = true;
     await video.play();
 
-    setStatus('Loading face check… this can take up to a minute on mobile data.');
+    // Usually ready already (built during Step 1); otherwise the camera shows while it finishes.
+    setStatus('Getting the face check ready… this can take up to a minute on mobile data.');
     let landmarker;
     try {
       landmarker = await Promise.race([
-        createLandmarker(),
+        getTracker(),
         new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), LOAD_TIMEOUT_MS)),
       ]);
     } catch (err) {
