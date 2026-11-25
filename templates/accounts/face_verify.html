@@ -45,6 +45,7 @@
     object-fit: cover;
     transform: scaleX(-1);              /* mirror preview so head turns feel natural */
   }
+  .fv-card [hidden] { display: none !important; }
   .fv-oval {
     position: absolute;
     inset: 10% 24%;
@@ -212,10 +213,54 @@
   const STEP_CHIPS = { center: 'Face', blink: 'Blink', turn_left: 'Left', turn_right: 'Right', smile: 'Smile' };
   const TIME_LIMIT_MS = 150000;   // the server rejects anything older than 180 s
 
-  const nonce = '{{ challenge.nonce|escapejs }}';
+  let nonce = '{{ challenge.nonce|escapejs }}';
   const nextUrl = '{{ next|escapejs }}';
   const csrfToken = '{{ csrf_token }}';
-  const steps = ['center', ...JSON.parse(document.getElementById('fvChallengeSteps').textContent)];
+  let steps = ['center', ...JSON.parse(document.getElementById('fvChallengeSteps').textContent)];
+
+  // ── Face-tracking library (MediaPipe): ~6 MB on first use, so it starts downloading while the
+  // customer is still on Step 1, retries once, and falls back from GPU to CPU. ──
+  const MP_BASE = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14';
+  const MP_MODEL = 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task';
+  const LOAD_TIMEOUT_MS = 120000;
+  let libPromise = null;
+  function loadLibrary() {
+    if (!libPromise) {
+      libPromise = (async () => {
+        for (let attempt = 1; ; attempt++) {
+          try {
+            const [mod, modelBytes] = await Promise.all([
+              import(`${MP_BASE}/vision_bundle.mjs`),
+              fetch(MP_MODEL).then((r) => { if (!r.ok) throw new Error('model ' + r.status); return r.arrayBuffer(); }),
+              fetch(`${MP_BASE}/wasm/vision_wasm_internal.wasm`).then((r) => r.ok && r.arrayBuffer()).catch(() => null),  // warm the cache
+            ]);
+            const fileset = await mod.FilesetResolver.forVisionTasks(`${MP_BASE}/wasm`);
+            return { mod, fileset, modelBytes: new Uint8Array(modelBytes) };
+          } catch (err) {
+            if (attempt >= 2) throw err;
+            await new Promise((r) => setTimeout(r, 1500));
+          }
+        }
+      })();
+      libPromise.catch(() => { libPromise = null; });   // a later Start can try the download again
+    }
+    return libPromise;
+  }
+  async function createLandmarker() {
+    const { mod, fileset, modelBytes } = await loadLibrary();
+    let lastErr;
+    for (const delegate of ['GPU', 'CPU']) {         // some phones/laptops have no usable GPU in the browser
+      try {
+        return await mod.FaceLandmarker.createFromOptions(fileset, {
+          baseOptions: { modelAssetBuffer: modelBytes.slice(), delegate },
+          runningMode: 'VIDEO', numFaces: 2, outputFaceBlendshapes: true,
+        });
+      } catch (err) { lastErr = err; }
+    }
+    throw lastErr;
+  }
+  const preload = () => loadLibrary().catch(() => {});
+  if ('requestIdleCallback' in window) requestIdleCallback(preload, { timeout: 2000 }); else setTimeout(preload, 1000);
 
   const video = document.getElementById('fvVideo');
   const oval = document.getElementById('fvOval');
@@ -302,6 +347,18 @@
     consentRow.hidden = true;
     idSection.hidden = true;
 
+    try {
+      const fresh = await fetch(window.location.pathname + '?fresh=1', {
+        credentials: 'same-origin', headers: { Accept: 'application/json' },
+      }).then((r) => { if (!r.ok) throw new Error(String(r.status)); return r.json(); });
+      nonce = fresh.nonce;
+      steps = ['center', ...fresh.steps];
+      stepsEl.innerHTML = steps.map((s, i) => `<span class="fv-step" data-i="${i}">${STEP_CHIPS[s]}</span>`).join('');
+    } catch (err) {
+      showRetry('Could not reach CLEFRESH. Check your connection and try again.');
+      return;
+    }
+
     let stream;
     try {
       stream = await navigator.mediaDevices.getUserMedia({
@@ -317,25 +374,18 @@
     placeholder.hidden = true;
     await video.play();
 
-    setStatus('Loading face check…');
+    setStatus('Loading face check… this can take up to a minute on mobile data.');
     let landmarker;
     try {
-      const { FaceLandmarker, FilesetResolver } = await import(
-        'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs');
-      const fileset = await FilesetResolver.forVisionTasks(
-        'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm');
-      landmarker = await FaceLandmarker.createFromOptions(fileset, {
-        baseOptions: {
-          modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task',
-          delegate: 'GPU',
-        },
-        runningMode: 'VIDEO',
-        numFaces: 2,
-        outputFaceBlendshapes: true,
-      });
+      landmarker = await Promise.race([
+        createLandmarker(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), LOAD_TIMEOUT_MS)),
+      ]);
     } catch (err) {
       stream.getTracks().forEach((t) => t.stop());
-      showRetry('The face check could not load. Check your connection and try again.');
+      showRetry(err && err.message === 'timeout'
+        ? 'The face check is taking too long to load. Try again on a stronger connection (Wi-Fi helps).'
+        : 'The face check could not load. Check your connection and try again.');
       return;
     }
 

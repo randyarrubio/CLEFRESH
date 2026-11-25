@@ -66,6 +66,18 @@ class FaceVerificationTests(TestCase):
         with _match('matched', 0.7):
             self.assertEqual(self._submit(nonce).status_code, 400)
 
+    def test_fresh_challenge_at_start_replaces_page_challenge(self):
+        page_nonce = self._start()
+        fresh = self.client.get(reverse('face_verify') + '?fresh=1').json()
+        self.assertEqual(len(set(fresh['steps'])), 2)
+        self.assertNotEqual(fresh['nonce'], page_nonce)
+        with _match('matched', 0.7):
+            self.assertEqual(self._submit(page_nonce).status_code, 400)      # superseded
+        with _match('matched', 0.7):
+            self.client.get(reverse('face_verify') + '?fresh=1')
+            nonce = self.client.session['face_challenge']['nonce']
+            self.assertTrue(self._submit(nonce).json()['ok'])
+
     def test_wrong_nonce_rejected(self):
         self._start()
         self.assertEqual(self._submit('forged').status_code, 400)

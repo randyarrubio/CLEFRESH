@@ -685,7 +685,7 @@ def profile_view(request):
 
 
 _FACE_CHALLENGE_SESSION_KEY = 'face_challenge'
-_FACE_CHALLENGE_TTL = 180          # seconds to finish the liveness steps
+_FACE_CHALLENGE_TTL = 300          # seconds from pressing Start: library load (≤ 120 s) + steps (≤ 150 s)
 _FACE_ACTIONS = ('blink', 'turn_left', 'turn_right', 'smile')
 _FACE_MAX_ATTEMPTS = 10            # submissions per user per hour
 
@@ -705,13 +705,16 @@ def face_verify_view(request):
         return redirect(_safe_next(request))
 
     if request.method != 'POST':
-        if user.id_status == 'pending_review' and not request.GET.get('retry'):
+        if user.id_status == 'pending_review' and not request.GET.get('retry') and not request.GET.get('fresh'):
             return render(request, 'accounts/face_verify.html', {'pending_review': True})
         # A fresh, server-chosen challenge each visit: two distinct actions in random order.
         steps = list(_FACE_ACTIONS)
         secrets.SystemRandom().shuffle(steps)
         challenge = {'nonce': secrets.token_urlsafe(16), 'steps': steps[:2], 'issued': time.time()}
         request.session[_FACE_CHALLENGE_SESSION_KEY] = challenge
+        if request.GET.get('fresh') == '1':
+            # Issued again when the customer presses Start, so the time limit starts then.
+            return JsonResponse({'nonce': challenge['nonce'], 'steps': challenge['steps']})
         return render(request, 'accounts/face_verify.html', {
             'challenge': challenge,
             'next': _safe_next(request, ''),
