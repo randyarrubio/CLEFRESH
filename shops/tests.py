@@ -133,11 +133,9 @@ class SystemHardeningTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Laundry Shops Near You')
         self.assertContains(response, 'Our Laundry Services')
-        # Real photos only (panel: no AI images): team portraits in the hero, services on real photos.
-        for name in ('tejol', 'padilla', 'jamen', 'goso'):
-            self.assertContains(response, f'/static/img/team/dev-{name}.webp')
-        for img in ('wash-fold', 'bedding', 'comforter', 'dry', 'iron', 'dry-clean'):
-            self.assertContains(response, f'/static/img/team/svc-{img}.webp')
+        self.assertContains(response, '/static/img/order.webp')         # hero carousel
+        # Services use SVG line art, one per service.
+        self.assertContains(response, 'class="svc-illus"', count=6)     # one SVG illustration per service
         for title in ('Wash &amp; Fold', 'Bedsheets, Towels &amp; Curtains', 'Comforters', 'Dry Clean'):
             self.assertContains(response, title)
         self.assertNotContains(response, 'Shop owner workspace')

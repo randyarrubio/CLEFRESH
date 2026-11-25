@@ -153,37 +153,6 @@
     pointer-events: none;
   }
 
-  /* ── HERO: team photo + developer portrait carousel ─────── */
-  .hero-team-bg {
-    position: absolute; inset: 0; width: 100%; height: 100%;
-    object-fit: cover; object-position: center 35%;
-    filter: brightness(.5) saturate(.85) blur(1.5px);
-    transform: scale(1.04);            /* hide the blur's soft edge */
-  }
-  .hero-team {
-    position: relative; z-index: 3; flex-shrink: 0;
-    width: min(28vw, 330px); aspect-ratio: 330 / 470;
-    margin-left: 32px;
-  }
-  .hero-team .hero-carousel-slide {
-    position: absolute; inset: 0; margin: 0;
-    opacity: 0; transform: translateY(10px) scale(.98);
-    transition: opacity .8s ease, transform .8s ease;
-    display: flex; flex-direction: column;
-  }
-  .hero-team .hero-carousel-slide.active { opacity: 1; transform: none; }
-  .hero-team img {
-    width: 100%; aspect-ratio: 4 / 5; height: auto; object-fit: cover; display: block;
-    border-radius: 18px; border: 4px solid rgba(255,255,255,.9);
-    box-shadow: 0 24px 60px rgba(0,0,0,.35);
-  }
-  .hero-team figcaption {
-    margin-top: 12px; text-align: center; color: #fff; line-height: 1.35;
-    text-shadow: 0 1px 6px rgba(0,0,0,.45);
-  }
-  .hero-team figcaption strong { display: block; font-family: 'Open Sans', sans-serif; font-size: 17px; }
-  .hero-team figcaption span { font-size: 14px; opacity: .9; }
-
   /* ── HERO CAROUSEL ─────────────────────────────────────── */
   .hero-carousel {
     position: relative;
@@ -289,7 +258,6 @@
       object-position: center top;
     }
     .hero-carousel-label { display: none; }
-    .hero-team { display: none; }       /* phones: the team photo stays as the backdrop */
     .tlp-hero p { margin-left: auto; margin-right: auto; }
     .hero-actions { justify-content: center; }
     .hero-scroll { display: none; }
@@ -1235,6 +1203,19 @@
   .svc-card:hover .svc-photo {
     transform: scale(1.06);
   }
+
+  /* Line-art illustration per service (replaces photos) */
+  .svc-illus {
+    position: absolute; left: 0; right: 0; top: 0; bottom: 34%;
+    display: flex; align-items: center; justify-content: center;
+    color: rgba(255,255,255,.95); z-index: 2;
+  }
+  .svc-illus::before {                      /* soft halo behind the drawing */
+    content: ''; position: absolute; width: 190px; height: 190px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(255,255,255,.16) 0%, rgba(255,255,255,0) 70%);
+  }
+  .svc-illus svg { position: relative; width: clamp(96px, 34%, 132px); height: auto; aspect-ratio: 1; transition: transform .35s ease; }
+  .svc-card:hover .svc-illus svg { transform: translateY(-4px) scale(1.05); }
 
   /* Subtle grid texture on cards */
   .svc-bg::before {
@@ -2779,27 +2760,22 @@
     </div>
 
     <div class="tlp-hero-visual" aria-hidden="true">
-      <img src="{% static 'img/team/team-group.webp' %}" alt="" class="hero-team-bg" fetchpriority="high">
-    </div>
-
-    {# One CLEFRESH developer per carousel step, in the team photo's left-to-right order. #}
-    <div class="hero-team" id="heroCarousel" aria-hidden="true">
-      <figure class="hero-carousel-slide active">
-        <img src="{% static 'img/team/dev-tejol.webp' %}" alt="" width="330" height="412">
-        <figcaption><strong>Jessabel T. Tejol</strong><span>CLEFRESH developer</span></figcaption>
-      </figure>
-      <figure class="hero-carousel-slide">
-        <img src="{% static 'img/team/dev-padilla.webp' %}" alt="" width="330" height="412" loading="lazy">
-        <figcaption><strong>Rhealene Mae Padilla</strong><span>CLEFRESH developer</span></figcaption>
-      </figure>
-      <figure class="hero-carousel-slide">
-        <img src="{% static 'img/team/dev-jamen.webp' %}" alt="" width="330" height="412" loading="lazy">
-        <figcaption><strong>Grace Carole C. Jamen</strong><span>CLEFRESH developer</span></figcaption>
-      </figure>
-      <figure class="hero-carousel-slide">
-        <img src="{% static 'img/team/dev-goso.webp' %}" alt="" width="330" height="412" loading="lazy">
-        <figcaption><strong>Riza Mae C. Goso</strong><span>CLEFRESH developer</span></figcaption>
-      </figure>
+      <div class="hero-carousel" id="heroCarousel">
+        <div class="hero-carousel-track">
+          <div class="hero-carousel-slide active">
+            <img src="{% static 'img/order.webp' %}" alt="Order" fetchpriority="high">
+          </div>
+          <div class="hero-carousel-slide">
+            <img src="{% static 'img/pick-up.webp' %}" alt="Pick-up">
+          </div>
+          <div class="hero-carousel-slide">
+            <img src="{% static 'img/drop-off.webp' %}" alt="Drop-off">
+          </div>
+          <div class="hero-carousel-slide">
+            <img src="{% static 'img/delivery.webp' %}" alt="Delivery">
+          </div>
+        </div>
+      </div>
     </div>
 
     <div class="hero-carousel-label" id="heroCarouselLabel" role="tablist">
@@ -2935,7 +2911,7 @@
       <div class="services-grid">
         <article class="svc-card tlp-reveal">
           <div class="svc-bg svc-machine">
-            <img src="{% static 'img/team/svc-wash-fold.webp' %}" alt="Machines at Lava'z Laundry Shop, Cantilan" class="svc-photo" style="object-position:center;" loading="lazy" decoding="async">
+            <div class="svc-illus" aria-hidden="true"><svg viewBox="0 0 96 96" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" focusable="false"><rect x="18" y="10" width="60" height="76" rx="9"/><path d="M18 26h60"/><circle cx="29" cy="18" r="2.5"/><circle cx="38" cy="18" r="2.5"/><path d="M58 18h10"/><circle cx="48" cy="56" r="19"/><circle cx="48" cy="56" r="12.5" stroke-opacity=".55"/><path d="M36.5 59c4-4.5 7.5-4.5 11.5 0s7.5 4.5 11.5 0"/></svg></div>
             <div class="svc-overlay"></div>
             <span class="svc-badge">Most booked</span>
             <div class="svc-info">
@@ -2947,7 +2923,7 @@
 
         <article class="svc-card tlp-reveal">
           <div class="svc-bg svc-hand">
-            <img src="{% static 'img/team/svc-bedding.webp' %}" alt="The CLEFRESH team with the system on a laptop" class="svc-photo" style="object-position:center 30%;" loading="lazy" decoding="async">
+            <div class="svc-illus" aria-hidden="true"><svg viewBox="0 0 96 96" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" focusable="false"><rect x="14" y="62" width="68" height="16" rx="4"/><rect x="19" y="45" width="58" height="16" rx="4"/><rect x="24" y="28" width="48" height="16" rx="4"/><path d="M64 28v16M69 45v16M74 62v16" stroke-opacity=".55"/><path d="M44 16c2-3 5-3 7 0s5 3 7 0" stroke-opacity=".7"/></svg></div>
             <div class="svc-overlay"></div>
             <span class="svc-badge">Per kilo</span>
             <div class="svc-info">
@@ -2959,7 +2935,7 @@
 
         <article class="svc-card tlp-reveal">
           <div class="svc-bg svc-express">
-            <img src="{% static 'img/team/svc-comforter.webp' %}" alt="The CLEFRESH team at their capstone defense" class="svc-photo" style="object-position:center 40%;" loading="lazy" decoding="async">
+            <div class="svc-illus" aria-hidden="true"><svg viewBox="0 0 96 96" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M14 28c0-6 5-11 11-11h46c6 0 11 5 11 11v36c0 6-5 11-11 11H25c-6 0-11-5-11-11z"/><path d="M36 17v58M60 17v58M14 46h68" stroke-opacity=".55"/><path d="M82 60L68 75" stroke-opacity=".8"/><circle cx="25" cy="31" r="1.6" fill="currentColor"/><circle cx="48" cy="31" r="1.6" fill="currentColor"/><circle cx="71" cy="31" r="1.6" fill="currentColor"/><circle cx="25" cy="61" r="1.6" fill="currentColor"/><circle cx="48" cy="61" r="1.6" fill="currentColor"/></svg></div>
             <div class="svc-overlay"></div>
             <span class="svc-badge">Per kilo</span>
             <div class="svc-info">
@@ -2971,7 +2947,7 @@
 
         <article class="svc-card tlp-reveal">
           <div class="svc-bg svc-dry">
-            <img src="{% static 'img/team/svc-dry.webp' %}" alt="The CLEFRESH developers presenting the system" class="svc-photo" style="object-position:center 55%;" loading="lazy" decoding="async">
+            <div class="svc-illus" aria-hidden="true"><svg viewBox="0 0 96 96" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" focusable="false"><rect x="16" y="12" width="56" height="72" rx="9"/><path d="M16 28h56"/><circle cx="27" cy="20" r="2.5"/><path d="M52 20h12"/><circle cx="44" cy="57" r="17"/><path d="M36 51c3 2 3 5 0 7M44 49c3 2 3 5 0 7M52 51c3 2 3 5 0 7" stroke-opacity=".75"/><path d="M78 40c3 3 3 7 0 10M84 36c4 5 4 13 0 18" stroke-opacity=".6"/></svg></div>
             <div class="svc-overlay"></div>
             <span class="svc-badge">Per kilo</span>
             <div class="svc-info">
@@ -2983,7 +2959,7 @@
 
         <article class="svc-card tlp-reveal">
           <div class="svc-bg svc-iron">
-            <img src="{% static 'img/team/svc-iron.webp' %}" alt="The CLEFRESH team beside the project slide" class="svc-photo" style="object-position:center 40%;" loading="lazy" decoding="async">
+            <div class="svc-illus" aria-hidden="true"><svg viewBox="0 0 96 96" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M10 68l12-22c4-7 10-10 18-10h32c6 0 10 4 10 10v22z"/><path d="M40 36c0-9 5-14 13-14h14c5 0 8 3 8 8v6"/><path d="M10 68h72" stroke-width="4"/><circle cx="54" cy="56" r="2.2"/><circle cx="64" cy="56" r="2.2"/><circle cx="74" cy="56" r="2.2"/><path d="M18 30c-2-3 2-6 0-9M27 26c-2-3 2-6 0-9" stroke-opacity=".65"/></svg></div>
             <div class="svc-overlay"></div>
             <span class="svc-badge">Per piece</span>
             <div class="svc-info">
@@ -2995,7 +2971,7 @@
 
         <article class="svc-card tlp-reveal">
           <div class="svc-bg svc-shoe">
-            <img src="{% static 'img/team/svc-dry-clean.webp' %}" alt="The CLEFRESH developers with their project" class="svc-photo" style="object-position:center 55%;" loading="lazy" decoding="async">
+            <div class="svc-illus" aria-hidden="true"><svg viewBox="0 0 96 96" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M42 22a6 6 0 1 1 6 6v5"/><path d="M48 33L14 52c-3 2-2 6 2 6h64c4 0 5-4 2-6z"/><path d="M28 58l-4 26h48l-4-26" stroke-opacity=".7"/><path d="M48 58v26" stroke-opacity=".5"/><path d="M78 16v10M73 21h10" stroke-opacity=".8"/><path d="M20 26v6M17 29h6" stroke-opacity=".6"/></svg></div>
             <div class="svc-overlay"></div>
             <span class="svc-badge">Per piece</span>
             <div class="svc-info">
