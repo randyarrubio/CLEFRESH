@@ -106,6 +106,30 @@ def geocode_address(address):
     return lat, lng
 
 
+MAX_KM_FROM_SHOP = 50     # a customer is never this far from the laundry shop they booked
+
+
+def distance_km(lat1, lng1, lat2, lng2):
+    from math import asin, cos, radians, sin, sqrt
+    lat1, lng1, lat2, lng2 = map(radians, (lat1, lng1, lat2, lng2))
+    h = sin((lat2 - lat1) / 2) ** 2 + cos(lat1) * cos(lat2) * sin((lng2 - lng1) / 2) ** 2
+    return 6371 * 2 * asin(sqrt(h))
+
+
+def geocode_near(address, ref_lat, ref_lng, max_km=MAX_KM_FROM_SHOP):
+    """Geocode, but reject a match implausibly far from a reference point (the shop).
+
+    Vague addresses ("Purok 1") can match a same-named place hundreds of km away;
+    no pin is better than a wrong one."""
+    lat, lng = geocode_address(address)
+    if lat is None or ref_lat is None or ref_lng is None:
+        return lat, lng
+    if distance_km(lat, lng, ref_lat, ref_lng) > max_km:
+        logger.info('Discarded geocode for %r: over %s km from the shop', address, max_km)
+        return None, None
+    return lat, lng
+
+
 def geocode_order_in_background(order_id):
     """Fill an order's pickup/delivery coordinates without making the customer wait."""
     if getattr(settings, 'TESTING', False):
@@ -115,12 +139,13 @@ def geocode_order_in_background(order_id):
         from django.db import connection
         from orders.models import Order
         try:
-            order = Order.objects.filter(pk=order_id).only('pickup_address', 'delivery_address').first()
+            order = Order.objects.select_related('shop').filter(pk=order_id).first()
             if not order:
                 return
-            p_lat, p_lng = geocode_address(order.pickup_address)
+            ref = (order.shop.latitude, order.shop.longitude)
+            p_lat, p_lng = geocode_near(order.pickup_address, *ref)
             d_lat, d_lng = (p_lat, p_lng) if order.delivery_address == order.pickup_address \
-                else geocode_address(order.delivery_address)
+                else geocode_near(order.delivery_address, *ref)
             Order.objects.filter(pk=order_id).update(pickup_lat=p_lat, pickup_lng=p_lng,
                                                      delivery_lat=d_lat, delivery_lng=d_lng)
         except Exception:
