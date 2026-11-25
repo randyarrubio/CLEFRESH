@@ -2519,7 +2519,7 @@ html { scroll-behavior: smooth; }
 
 /* ── Notification dropdown overflow safety ─────────────── */
 .notif-dropdown {
-  max-width: min(320px, calc(100% - 20px));
+  max-width: min(320px, calc(100vw / var(--page-zoom, 1) - 20px));   /* screen width, not the bell's */
   right: 0;
 }
 @media (max-width: 360px) {
@@ -2788,7 +2788,7 @@ textarea:focus-visible {
 @media (max-width: 420px) {
   .notif-dropdown {
     right: -8px;
-    max-width: calc(100% - 16px);
+    max-width: calc(100vw / var(--page-zoom, 1) - 16px);
   }
 }
 
@@ -3499,3 +3499,9 @@ p, li, dd, td { line-height: 1.6; }
 /* Collapse the top nav into the menu button whenever its links don't fit (set by base.html). */
 .topbar.nav-collapsed .topbar-nav { display: none; }
 .topbar.nav-collapsed .hamburger-btn { display: flex; }
+
+/* Phones: pin the notification panel to the screen (below the top bar) instead of the bell,
+   whose position varies with the other topbar buttons; it never runs off either edge. */
+@media (max-width: 600px) {
+  .notif-dropdown { position: fixed; top: 64px; left: 8px; right: 8px; width: auto; max-width: none; }
+}

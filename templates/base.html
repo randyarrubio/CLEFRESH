@@ -16,7 +16,7 @@
   <link rel="apple-touch-icon" href="{% static 'img/favicon-180.png' %}">
   <script>
     // Apply the saved text size before first paint (no jump). Zoom scales every px size evenly.
-    try { const z = parseFloat(localStorage.getItem('clefresh-text-size')); if (z > 1 && z <= 1.3) document.documentElement.style.zoom = z; } catch (e) {}
+    try { const z = parseFloat(localStorage.getItem('clefresh-text-size')); if (z > 1 && z <= 1.3) { document.documentElement.style.zoom = z; document.documentElement.style.setProperty('--page-zoom', z); } } catch (e) {}
   </script>
   <link rel="manifest" href="/manifest.webmanifest">
   <meta name="theme-color" content="#0c70b8">
@@ -732,6 +732,7 @@
       buttons.forEach((b) => b.addEventListener('click', () => {
         current = parseFloat(b.dataset.textSize);
         document.documentElement.style.zoom = current > 1 ? current : '';
+        document.documentElement.style.setProperty('--page-zoom', current > 1 ? current : 1);   // keeps vw-sized popovers on screen
         if (window.clefreshFitNav) window.clefreshFitNav();
         try { current > 1 ? localStorage.setItem('clefresh-text-size', current) : localStorage.removeItem('clefresh-text-size'); } catch (e) {}
         mark();
