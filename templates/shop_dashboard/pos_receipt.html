@@ -38,7 +38,7 @@
       <hr class="rc-hr">
       {% for line in lines %}
         <div class="rc-row">
-          <span>{{ line.service.get_name_display }}{% if line.weight_kg %} · {{ line.weight_kg|floatformat:"-2" }} kg{% endif %}{% if line.quantity %} · {{ line.quantity }} pc{{ line.quantity|pluralize }}{% endif %}</span>
+          <span>{{ line.service.get_name_display }}{% if line.weight_kg %} · {{ line.weight_kg|floatformat:"-2" }} kg{% endif %}{% if line.loads %} ({{ line.loads }} load{{ line.loads|pluralize }}){% endif %}{% if line.quantity %} · {{ line.quantity }} pc{{ line.quantity|pluralize }}{% endif %}</span>
           <span>₱{{ line.subtotal|floatformat:"2g" }}</span>
         </div>
       {% endfor %}

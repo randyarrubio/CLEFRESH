@@ -45,7 +45,7 @@ def _parse_lines(request, services):
     lines, subtotal = [], Decimal('0.00')
     for svc in services:
         weight, qty = Decimal('0'), 0
-        if svc.price_per_kg:
+        if svc.is_weighed:
             raw = request.POST.get(f'weight_{svc.id}', '').strip()
             if raw:
                 try:
@@ -61,8 +61,8 @@ def _parse_lines(request, services):
                 raise ValueError(f'{svc.get_name_display()}: enter a valid piece count.')
             qty = int(raw)
         line_total = Decimal('0.00')
-        if svc.price_per_kg and weight:
-            line_total += (svc.price_per_kg * weight).quantize(Decimal('0.01'))
+        if svc.is_weighed and weight:
+            line_total += svc.weight_charge(weight)          # per load (rounded up) or per kg
         if svc.price_per_piece and qty:
             line_total += svc.price_per_piece * qty
         if line_total > 0:
@@ -124,7 +124,8 @@ def pos_view(request):
             commission_rate=Decimal('0'), notes=notes,
         )
         OrderService.objects.bulk_create([
-            OrderService(order=order, service=svc, weight_kg=weight, quantity=qty, subtotal=line_total)
+            OrderService(order=order, service=svc, weight_kg=weight, quantity=qty, subtotal=line_total,
+                         loads=svc.loads_for(weight) if weight else None)
             for svc, weight, qty, line_total in lines
         ])
         OrderStatusLog.objects.create(order=order, status='picked_up',

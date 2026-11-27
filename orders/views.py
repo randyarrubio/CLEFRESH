@@ -69,7 +69,7 @@ def _place_order_context(shop, services, slots, request=None, error_step=None, u
         'form_data': form_data,
         'error_step': error_step,
         'booking_addons': BOOKING_ADDONS,
-        'has_kg_services': any(s.price_per_kg for s in services),
+        'has_kg_services': any(s.is_weighed for s in services),
         'live_promos': live_promos,
         # Mirrors Promotion.discount_for() so the page can estimate; the server recomputes on submit.
         'promo_rules': [
@@ -274,15 +274,15 @@ def place_order_view(request, shop_id):
                 weight = _parse_non_negative_decimal(request.POST.get(weight_key, 0), f'{service.get_name_display()} weight')
                 # A per-kg service counts as chosen if ticked (or a weight was sent by an old form);
                 # any customer-supplied weight is ignored — the shop's scale decides.
-                to_be_weighed = bool(service.price_per_kg) and (service.id in selected_ids or weight > 0)
+                to_be_weighed = service.is_weighed and (service.id in selected_ids or weight > 0)
                 if to_be_weighed:
                     weight = Decimal('0')
                 if qty > 0 or weight > 0 or to_be_weighed:
                     subtotal = Decimal('0.00')
                     if service.price_per_piece and qty > 0:
                         subtotal += service.price_per_piece * qty
-                    if service.price_per_kg and weight > 0:
-                        subtotal += service.price_per_kg * weight
+                    if service.is_weighed and weight > 0:
+                        subtotal += service.weight_charge(weight)
                     if not to_be_weighed and subtotal <= 0:
                         continue                      # e.g. a weight typed for a per-piece-only service
                     has_unweighed_line = has_unweighed_line or to_be_weighed

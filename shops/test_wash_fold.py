@@ -62,5 +62,5 @@ class WashFoldTests(TestCase):
         self.client.force_login(self.owner)
         self.client.post(reverse('create_service'), {'name': 'wash', 'price_per_kg': '50'})
         self.assertFalse(self.shop.services.exists())
-        self.client.post(reverse('create_service'), {'name': 'wash_fold', 'price_per_kg': '65'})
+        self.client.post(reverse('create_service'), {'name': 'wash_fold', 'price_per_load': '150'})
         self.assertEqual(self.shop.services.get().get_name_display(), 'Wash & Fold')

@@ -439,10 +439,10 @@
             <div class="service-item">
               <div>
                 <strong>{{ svc.get_name_display }}</strong>
-                <span>{% if svc.price_per_kg %}Per kilogram{% elif svc.price_per_piece %}Per piece{% else %}Ask shop for pricing{% endif %}</span>
+                <span>{% if svc.per_load %}Per {{ svc.load_kg_label }} load{% elif svc.price_per_kg %}Per kilogram{% elif svc.price_per_piece %}Per piece{% else %}Ask shop for pricing{% endif %}</span>
               </div>
               <div class="service-price">
-                {% if svc.price_per_kg %}₱{{ svc.price_per_kg }}/kg{% elif svc.price_per_piece %}₱{{ svc.price_per_piece }}/pc{% else %}Available{% endif %}
+                {% if svc.per_load %}₱{{ svc.price_per_load }}/load{% elif svc.rate_label %}{{ svc.rate_label }}{% else %}Available{% endif %}
               </div>
             </div>
           {% empty %}
@@ -594,10 +594,10 @@
             <div class="service-item">
               <div>
                 <strong>{{ svc.get_name_display }}</strong>
-                <span>{% if svc.price_per_kg %}Per kilogram{% elif svc.price_per_piece %}Per piece{% else %}Pricing not listed{% endif %}</span>
+                <span>{% if svc.per_load %}Per {{ svc.load_kg_label }} load{% elif svc.price_per_kg %}Per kilogram{% elif svc.price_per_piece %}Per piece{% else %}Pricing not listed{% endif %}</span>
               </div>
               <div class="service-price">
-                {% if svc.price_per_kg %}₱{{ svc.price_per_kg }}/kg{% elif svc.price_per_piece %}₱{{ svc.price_per_piece }}/pc{% else %}Available{% endif %}
+                {% if svc.per_load %}₱{{ svc.price_per_load }}/load{% elif svc.rate_label %}{{ svc.rate_label }}{% else %}Available{% endif %}
               </div>
             </div>
           {% empty %}

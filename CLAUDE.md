@@ -30,7 +30,8 @@ Laundry shop booking platform. Customers find nearby laundry shops, book pickup/
   - `User.cod_eligible` → ≥ `COD_TRUSTED_MIN_ORDERS` delivered + paid orders; `User.loyalty_points` → ledger balance
 - **Shop** → `status: pending|approved|rejected|suspended`, lat/lng auto-geocoded on save
   - `suspended` shops are invisible to customers; shop owner loses dashboard access; admin can reinstate
-- **Service** → offered types: `wash_fold|bedding|comforter|dry|iron|dry_clean` (`Service.OFFERED_SERVICE_CHOICES`; bedding = bedsheets/towels/curtains, comforter = comforters, both per kg); legacy `wash`/`fold` rows (with order history) stay for display but are hidden from booking/POS (`LEGACY_SERVICE_NAMES`)
+- **Service** → offered types: `wash_fold|bedding|comforter|dry|iron|dry_clean` (`Service.OFFERED_SERVICE_CHOICES`; bedding = bedsheets/towels/curtains, comforter = comforters); legacy `wash`/`fold` rows (with order history) stay for display but are hidden from booking/POS (`LEGACY_SERVICE_NAMES`)
+  - **Per-load pricing** → `wash_fold` 5 kg, `bedding` 4 kg, `comforter` 4 kg per load (`Service.LOAD_KG`); shop sets `price_per_load`, load count = ⌈weight ÷ load_kg⌉ (partial load = full load). Use `svc.weight_charge(kg)` / `loads_for(kg)` / `rate_label` / `is_weighed` — never `weight × price_per_kg` directly. `dry` stays per kg. `OrderService.loads` stores the count when weighed
 - **Shop hours** → `Shop.within_hours(start, end=None)` / `hours_label`; pick-ups and delivery slots must fall inside `operating_hours_start–end` (booking, slots API, slot creation)
 - **DeliverySlot** → date+time window, max_capacity, current_bookings
 - **Order** → status flow: `pending→accepted→picked_up→wash_fold→ready→out_for_delivery→delivered` (`wash_fold` = one "Wash & Fold" processing step, skippable; old washing/drying/folding were merged in migration 0015 and only remain in status-log history); terminal states: `declined`, `cancelled`

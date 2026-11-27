@@ -1,7 +1,7 @@
 import uuid
 from pathlib import Path
 
-from decimal import Decimal
+from decimal import ROUND_CEILING, Decimal
 
 from django.core.validators import MinValueValidator
 from django.db import models
@@ -128,10 +128,19 @@ class Service(models.Model):
         ('fold', 'Fold'),
     ]
 
+    # Washing services are charged per machine load: weight / load size, rounded UP to whole
+    # loads (10 kg of clothes = 2 loads; 10.5 kg = 3). Shops set the price per load.
+    LOAD_KG = {'wash_fold': Decimal('5'), 'bedding': Decimal('4'), 'comforter': Decimal('4')}
+    PER_LOAD_SERVICES = tuple(LOAD_KG)
+
     shop = models.ForeignKey(Shop, on_delete=models.CASCADE, related_name='services')
     name = models.CharField(max_length=50, choices=SERVICE_CHOICES)
     price_per_kg = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True, validators=[MinValueValidator(0)])
     price_per_piece = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True, validators=[MinValueValidator(0)])
+    price_per_load = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True, validators=[MinValueValidator(0)])
+    load_kg = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True,
+                                  validators=[MinValueValidator(Decimal('0.5'))],
+                                  help_text='Kg per machine load (5 for clothes, 4 for bedding and comforters).')
 
     class Meta:
         constraints = [
@@ -140,6 +149,55 @@ class Service(models.Model):
 
     def __str__(self):
         return f'{self.shop.name} - {self.get_name_display()}'
+
+    @property
+    def per_load(self):
+        return bool(self.price_per_load and self.load_kg)
+
+    @property
+    def is_weighed(self):
+        """Priced from the weight the shop measures (per load or per kg)."""
+        return self.per_load or bool(self.price_per_kg)
+
+    def loads_for(self, weight_kg):
+        """Whole machine loads for a weight; partial loads round up. None if not priced per load."""
+        if not self.per_load:
+            return None
+        weight = Decimal(str(weight_kg or 0))
+        if weight <= 0:
+            return 0
+        return int((weight / Decimal(str(self.load_kg))).to_integral_value(rounding=ROUND_CEILING))
+
+    def weight_charge(self, weight_kg):
+        """Price for a measured weight: loads x price per load, or kg x price per kg."""
+        weight = Decimal(str(weight_kg or 0))
+        if weight <= 0:
+            return Decimal('0.00')
+        if self.per_load:
+            return (self.loads_for(weight) * Decimal(str(self.price_per_load))).quantize(Decimal('0.01'))
+        if self.price_per_kg:
+            return (Decimal(str(self.price_per_kg)) * weight).quantize(Decimal('0.01'))
+        return Decimal('0.00')
+
+    @property
+    def load_kg_label(self):
+        return f'{Decimal(str(self.load_kg)).normalize():f} kg' if self.load_kg else ''
+
+    @property
+    def rate_label(self):
+        """'₱150.00 per 5 kg load', '₱30.00/kg' or '₱15.00/pc' for price lists."""
+        if self.per_load:
+            return f'₱{Decimal(str(self.price_per_load)):,.2f} per {self.load_kg_label} load'
+        if self.price_per_kg:
+            return f'₱{Decimal(str(self.price_per_kg)):,.2f}/kg'
+        if self.price_per_piece:
+            return f'₱{Decimal(str(self.price_per_piece)):,.2f}/pc'
+        return ''
+
+    @property
+    def unit_rate(self):
+        """Price per load (per-load services) or per kg: used by the live price previews."""
+        return self.price_per_load if self.per_load else self.price_per_kg
 
 
 class DeliverySlot(models.Model):

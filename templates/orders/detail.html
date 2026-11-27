@@ -183,8 +183,8 @@
                 <tr>
                   <td><strong>{{ os.service.get_name_display }}</strong></td>
                   <td>{{ os.quantity }}</td>
-                  <td>{% if os.weight_kg %}{{ os.weight_kg }} kg{% elif order.price_pending and os.service.price_per_kg %}<span class="badge badge-warning">To be weighed</span>{% else %}—{% endif %}</td>
-                  <td style="color:var(--primary); font-weight:600;">{% if order.price_pending and os.service.price_per_kg %}₱{{ os.service.price_per_kg }}/kg{% else %}₱{{ os.subtotal }}{% endif %}</td>
+                  <td>{% if os.weight_kg %}{{ os.weight_kg }} kg{% if os.loads %} · {{ os.loads }} load{{ os.loads|pluralize }}{% endif %}{% elif order.price_pending and os.service.is_weighed %}<span class="badge badge-warning">To be weighed</span>{% else %}—{% endif %}</td>
+                  <td style="color:var(--primary); font-weight:600;">{% if order.price_pending and os.service.is_weighed %}{{ os.service.rate_label }}{% else %}₱{{ os.subtotal }}{% endif %}</td>
                 </tr>
               {% endfor %}
             </tbody>

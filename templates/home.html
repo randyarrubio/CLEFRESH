@@ -2668,7 +2668,7 @@
                 </div>
                 <div class="cd-price">
                   {% with shop.services.all.0 as svc %}
-                    {% if svc and svc.price_per_kg %}from <strong>₱{{ svc.price_per_kg }}/kg</strong>
+                    {% if svc and svc.is_weighed %}from <strong>{{ svc.rate_label }}</strong>
                     {% elif svc and svc.price_per_piece %}from <strong>₱{{ svc.price_per_piece }}/pc</strong>
                     {% else %}<strong>See pricing</strong>{% endif %}
                   {% endwith %}
@@ -2839,7 +2839,7 @@
                   <span class="shop-price">
                     Starting from
                     {% with shop.services.all.0 as svc %}
-                      {% if svc and svc.price_per_kg %}<strong>₱{{ svc.price_per_kg }}/kg</strong>
+                      {% if svc and svc.is_weighed %}<strong>{{ svc.rate_label }}</strong>
                       {% elif svc and svc.price_per_piece %}<strong>₱{{ svc.price_per_piece }}/pc</strong>
                       {% else %}<strong>See pricing</strong>{% endif %}
                     {% endwith %}

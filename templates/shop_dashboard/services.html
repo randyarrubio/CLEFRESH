@@ -29,6 +29,11 @@
             </select>
           </div>
           <div class="form-group">
+            <label for="svc-price-load">Price per load (₱)</label>
+            <input id="svc-price-load" type="number" name="price_per_load" step="0.01" min="0" placeholder="Wash &amp; Fold, Bedsheets, Comforters">
+            <small class="form-hint">Charged per machine load: 5 kg for Wash &amp; Fold, 4 kg for Bedsheets, Towels &amp; Curtains and for Comforters. Partial loads count as a full load.</small>
+          </div>
+          <div class="form-group">
             <label for="svc-price-kg">Price per KG (₱)</label>
             <input id="svc-price-kg" type="number" name="price_per_kg" step="0.01" min="0" placeholder="Leave blank if not applicable">
           </div>
@@ -45,13 +50,13 @@
       <div class="table-wrapper">
         <table class="table">
           <thead>
-            <tr><th>Service</th><th>Per KG</th><th>Per Piece</th><th></th></tr>
+            <tr><th>Service</th><th>By weight</th><th>Per piece</th><th></th></tr>
           </thead>
           <tbody>
             {% for svc in services %}
               <tr>
                 <td><strong>{{ svc.get_name_display }}</strong></td>
-                <td>{% if svc.price_per_kg %}₱{{ svc.price_per_kg }}{% else %}<span style="color:var(--text-light);">—</span>{% endif %}</td>
+                <td>{% if svc.is_weighed %}{{ svc.rate_label }}{% else %}<span style="color:var(--text-light);">—</span>{% endif %}</td>
                 <td>{% if svc.price_per_piece %}₱{{ svc.price_per_piece }}{% else %}<span style="color:var(--text-light);">—</span>{% endif %}</td>
                 <td>
                   <form method="post" action="{% url 'delete_service' svc.id %}" data-confirm="Customers will no longer be able to book {{ svc.get_name_display }}. Services with past orders can't be deleted." data-confirm-title="Delete this service?" data-confirm-action="Delete service">

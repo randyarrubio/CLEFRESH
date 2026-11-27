@@ -198,7 +198,8 @@
             </div>
             <div class="sl-foot">
               <span class="sl-price">
-                {% if shop.min_price_kg %}Starting from<strong>₱{{ shop.min_price_kg }}/kg</strong>
+                {% if shop.min_price_load %}Starting from<strong>₱{{ shop.min_price_load }}/load</strong>
+                {% elif shop.min_price_kg %}Starting from<strong>₱{{ shop.min_price_kg }}/kg</strong>
                 {% elif shop.min_price_piece %}Starting from<strong>₱{{ shop.min_price_piece }}/pc</strong>
                 {% else %}Pricing<strong>See shop</strong>{% endif %}
               </span>

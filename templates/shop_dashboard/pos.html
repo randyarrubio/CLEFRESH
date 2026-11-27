@@ -44,11 +44,11 @@
         <div class="pos-svc">
           <div>
             <strong>{{ svc.get_name_display }}</strong>
-            <small>{% if svc.price_per_kg %}₱{{ svc.price_per_kg }}/kg{% endif %}{% if svc.price_per_kg and svc.price_per_piece %} · {% endif %}{% if svc.price_per_piece %}₱{{ svc.price_per_piece }}/pc{% endif %}</small>
+            <small>{% if svc.is_weighed %}{{ svc.rate_label }}{% endif %}{% if svc.is_weighed and svc.price_per_piece %} · {% endif %}{% if svc.price_per_piece and not svc.per_load %}₱{{ svc.price_per_piece }}/pc{% endif %}</small>
           </div>
-          {% if svc.price_per_kg %}
+          {% if svc.is_weighed %}
             <label><span class="sr-only">{{ svc.get_name_display }} weight in kg</span>
-              <input type="number" name="weight_{{ svc.id }}" min="0" max="200" step="0.01" placeholder="kg" inputmode="decimal" data-price="{{ svc.price_per_kg }}">
+              <input type="number" name="weight_{{ svc.id }}" min="0" max="200" step="0.01" placeholder="kg" inputmode="decimal" data-price="{{ svc.unit_rate }}"{% if svc.per_load %} data-load-kg="{{ svc.load_kg }}"{% endif %}>
             </label>
           {% else %}<span class="pos-na">—</span>{% endif %}
           {% if svc.price_per_piece %}
@@ -126,7 +126,9 @@
     let total = 0;
     form.querySelectorAll('input[data-price]').forEach((el) => {
       const n = parseFloat(el.value);
-      if (n > 0) total += n * parseFloat(el.dataset.price);
+      if (!(n > 0)) return;
+      const units = el.dataset.loadKg ? Math.ceil(n / parseFloat(el.dataset.loadKg)) : n;   // whole loads, rounded up
+      total += units * parseFloat(el.dataset.price);
     });
     out.textContent = '₱' + total.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }

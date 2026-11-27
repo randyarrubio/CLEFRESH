@@ -220,6 +220,7 @@ class OrderService(models.Model):
     service = models.ForeignKey(Service, on_delete=models.RESTRICT)
     quantity = models.PositiveIntegerField(default=1)
     weight_kg = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)
+    loads = models.PositiveSmallIntegerField(null=True, blank=True)   # machine loads charged (per-load services)
     subtotal = models.DecimalField(max_digits=8, decimal_places=2, default=0)
 
     class Meta:

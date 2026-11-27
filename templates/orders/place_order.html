@@ -110,10 +110,10 @@
               <div class="booking-services">
                 {% for svc in services %}
                   <div class="booking-service" id="svc-opt-{{ svc.id }}" data-service-card="{{ svc.id }}" role="button" tabindex="0" aria-pressed="false">
-                    <input type="checkbox" name="svc_selected" value="{{ svc.id }}" id="svc-sel-{{ svc.id }}" hidden{% if svc.price_per_kg %} data-per-kg{% endif %}>
+                    <input type="checkbox" name="svc_selected" value="{{ svc.id }}" id="svc-sel-{{ svc.id }}" hidden{% if svc.is_weighed %} data-per-kg{% endif %}>
                     <h4>{{ svc.get_name_display }}</h4>
                     <p>
-                      {% if svc.price_per_kg %}₱{{ svc.price_per_kg }}/kg{% endif %}
+                      {% if svc.is_weighed %}{{ svc.rate_label }}{% endif %}
                       {% if svc.price_per_piece %}₱{{ svc.price_per_piece }}/pc{% endif %}
                     </p>
                     <div class="service-fields" id="svc-inputs-{{ svc.id }}">
@@ -126,13 +126,13 @@
                         {% else %}
                           <input type="hidden" name="qty_{{ svc.id }}" value="0">
                         {% endif %}
-                        {% if svc.price_per_kg %}
+                        {% if svc.is_weighed %}
                           {# weighed by the shop at drop-off: no customer weight #}
                         {% else %}
                           <input type="hidden" name="weight_{{ svc.id }}" value="0">
                         {% endif %}
                       </div>
-                      {% if svc.price_per_kg %}<div class="weigh-note"><i class="bi bi-speedometer" aria-hidden="true"></i> Weighed at the shop — ₱{{ svc.price_per_kg }}/kg</div>{% endif %}
+                      {% if svc.is_weighed %}<div class="weigh-note"><i class="bi bi-speedometer" aria-hidden="true"></i> Weighed at the shop — {{ svc.rate_label }}{% if svc.per_load %} (partial loads count as a full load){% endif %}</div>{% endif %}
                     </div>
                   </div>
                 {% empty %}
@@ -344,7 +344,7 @@
 </script>
 <script>
 const bookingServices = [
-  {% for svc in services %}{id:{{ svc.id }},name:"{{ svc.get_name_display|escapejs }}",ppkg:{{ svc.price_per_kg|default:"null" }},ppiece:{{ svc.price_per_piece|default:"null" }}},{% endfor %}
+  {% for svc in services %}{id:{{ svc.id }},name:"{{ svc.get_name_display|escapejs }}",ppkg:{{ svc.unit_rate|default:"null" }},loadKg:{{ svc.load_kg|default:"null" }},label:"{{ svc.rate_label|escapejs }}",ppiece:{{ svc.price_per_piece|default:"null" }}},{% endfor %}
 ];
 
 const stepNames = ['', 'Services', 'Details', 'Schedule', 'Payment'];
@@ -391,7 +391,8 @@ function bookingRecalcTotal() {
   document.querySelector('.booking-services').classList.toggle('weigh-mode', weighMode);
   document.getElementById('orderForm').classList.toggle('weigh-mode', weighMode);
   let total = 0;
-  let kgRate = 0;          // sum of per-kg rates of selected services (weigh mode)
+  let kgRate = 0;          // > 0 when a weighed service is selected (weigh mode)
+  let estLow = 0, estHigh = 0;   // typical price range for the weighed services
   const lines = [];
   bookingServices.forEach((svc) => {
     const selected = document.getElementById('svc-sel-' + svc.id).checked;
@@ -402,7 +403,10 @@ function bookingRecalcTotal() {
     if (svc.ppkg && weight > 0) subtotal += svc.ppkg * weight;
     if (weighMode && svc.ppkg && selected) {
       kgRate += svc.ppkg;
-      lines.push(`<div class="summary-line"><span>${svc.name}</span><strong>₱${svc.ppkg.toFixed(2)}/kg</strong></div>`);
+      // Per-load services: a typical order is 1-2 loads; per-kg services: 3-7 kg.
+      if (svc.loadKg) { estLow += svc.ppkg; estHigh += svc.ppkg * 2; }
+      else { estLow += svc.ppkg * TYPICAL_KG[0]; estHigh += svc.ppkg * TYPICAL_KG[1]; }
+      lines.push(`<div class="summary-line"><span>${svc.name}</span><strong>${svc.label}</strong></div>`);
     }
     if (subtotal > 0) {
       total += subtotal;
@@ -414,10 +418,10 @@ function bookingRecalcTotal() {
   const estimate = document.getElementById('bookingWeighEstimate');
   if (weighMode && kgRate > 0) {
     // Price isn't final: show a range for a typical load; promos are applied when the shop confirms.
-    const low = total + kgRate * TYPICAL_KG[0], high = total + kgRate * TYPICAL_KG[1];
+    const low = total + estLow, high = total + estHigh;
     estimate.hidden = false;
-    estimate.textContent = `A typical ${TYPICAL_KG[0]}–${TYPICAL_KG[1]} kg load comes to about ₱${low.toFixed(0)}–₱${high.toFixed(0)}. ` +
-      'The shop weighs your laundry at drop-off and any promo is applied then.';
+    estimate.textContent = `A typical order (1–2 loads) comes to about ₱${low.toFixed(0)}–₱${high.toFixed(0)}. ` +
+      'The shop weighs your laundry at drop-off, counts the loads, and applies any promo then.';
     document.getElementById('bookingDiscountLine').hidden = true;
     document.getElementById('bookingTotalLabel').textContent = 'Final price';
     document.getElementById('bookingGrandTotal').textContent = 'After weighing';

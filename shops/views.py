@@ -12,6 +12,7 @@ from django.utils import timezone
 from django.db import IntegrityError, transaction
 from django.db.models import Count, Min, RestrictedError
 from django.db.models import F, Q, Sum
+from django.db.models.functions import Coalesce
 from .models import Shop, Service, DeliverySlot
 from accounts.decorators import role_required
 from accounts.forms import RegisterForm
@@ -88,9 +89,10 @@ def _shop_edit_context(shop):
         'shop_meta': meta,
         'selected_services': set(services.keys()),
         'service_prices': {
-            'wash_fold': services.get('wash_fold').price_per_kg if services.get('wash_fold') else '',
-            'bedding': services.get('bedding').price_per_kg if services.get('bedding') else '',
-            'comforter': services.get('comforter').price_per_kg if services.get('comforter') else '',
+            # washing services are priced per machine load (Service.LOAD_KG)
+            'wash_fold': services['wash_fold'].price_per_load if services.get('wash_fold') else '',
+            'bedding': services['bedding'].price_per_load if services.get('bedding') else '',
+            'comforter': services['comforter'].price_per_load if services.get('comforter') else '',
             'dry': services.get('dry').price_per_kg if services.get('dry') else '',
             'iron': services.get('iron').price_per_piece if services.get('iron') else '',
             'dry_clean': services.get('dry_clean').price_per_piece if services.get('dry_clean') else '',
@@ -160,9 +162,9 @@ def _save_shop_from_owner_form(request, shop, set_pending=False):
     shop.save()
 
     service_prices = {
-        'wash_fold': {'price_per_kg': request.POST.get('price_wash_fold_kg') or None, 'price_per_piece': None},
-        'bedding': {'price_per_kg': request.POST.get('price_bedding_kg') or None, 'price_per_piece': None},
-        'comforter': {'price_per_kg': request.POST.get('price_comforter_kg') or None, 'price_per_piece': None},
+        'wash_fold': {'price_per_load': request.POST.get('price_wash_fold_load') or None},
+        'bedding': {'price_per_load': request.POST.get('price_bedding_load') or None},
+        'comforter': {'price_per_load': request.POST.get('price_comforter_load') or None},
         'dry': {'price_per_kg': request.POST.get('price_dry_kg') or None, 'price_per_piece': None},
         'iron': {'price_per_kg': None, 'price_per_piece': request.POST.get('price_iron_piece') or None},
         'dry_clean': {'price_per_kg': None, 'price_per_piece': request.POST.get('price_dry_clean_piece') or None},
@@ -180,8 +182,14 @@ def _save_shop_from_owner_form(request, shop, set_pending=False):
             continue
         existing_services = list(shop.services.filter(name=service_name).order_by('id'))
         service = existing_services[0] if existing_services else Service(shop=shop, name=service_name)
-        service.price_per_kg = service_prices[service_name]['price_per_kg']
-        service.price_per_piece = service_prices[service_name]['price_per_piece']
+        prices = service_prices[service_name]
+        if service_name in Service.PER_LOAD_SERVICES:
+            service.price_per_load = prices['price_per_load']
+            service.load_kg = Service.LOAD_KG[service_name]
+            service.price_per_kg = service.price_per_piece = None
+        else:
+            service.price_per_kg = prices['price_per_kg']
+            service.price_per_piece = prices['price_per_piece']
         service.full_clean()
         service.save()
         if len(existing_services) > 1:
@@ -245,7 +253,7 @@ def home_view(request):
         if sort_filter == 'price':
             # Annotate instead of ordering across the services join, which duplicated shop cards.
             customer_shops = customer_shops.distinct().annotate(
-                min_price=Min('services__price_per_kg')
+                min_price=Coalesce(Min('services__price_per_load'), Min('services__price_per_kg'))
             ).order_by(F('min_price').asc(nulls_last=True), 'name')
         elif sort_filter == 'rated':
             customer_shops = customer_shops.distinct().order_by(F('avg_rating').desc(nulls_last=True), 'name')
@@ -568,6 +576,7 @@ def shop_list_view(request):
             avg_rating=Avg('reviews__rating'),  # join repeats each review equally; mean unaffected
             review_count=Count('reviews', distinct=True),
             min_price_kg=Min('services__price_per_kg'),
+            min_price_load=Min('services__price_per_load'),
             min_price_piece=Min('services__price_per_piece'),
         )
         .prefetch_related('services', _live_promos_prefetch())
@@ -860,7 +869,7 @@ def confirm_order_weight_view(request, order_id):
             svc = line.service
             weight = line.weight_kg
             qty = line.quantity
-            if svc.price_per_kg:
+            if svc.is_weighed:
                 raw = request.POST.get(f'weight_{line.id}', '').strip()
                 try:
                     weight = Decimal(raw)
@@ -879,11 +888,11 @@ def confirm_order_weight_view(request, order_id):
             line_total = Decimal('0.00')
             if svc.price_per_piece and qty:
                 line_total += svc.price_per_piece * qty
-            if svc.price_per_kg and weight:
-                line_total += (svc.price_per_kg * weight).quantize(Decimal('0.01'))
+            if svc.is_weighed and weight:
+                line_total += svc.weight_charge(weight)          # per load (rounded up) or per kg
             if line_total <= 0:
                 raise ValidationError(f'{svc.get_name_display()} needs a weight or piece count.')
-            updates.append((line, weight if svc.price_per_kg else line.weight_kg, qty, line_total))
+            updates.append((line, weight if svc.is_weighed else line.weight_kg, qty, line_total))
             subtotal += line_total
         if subtotal > Decimal('50000.00'):
             raise ValidationError('Order total exceeds the maximum allowed amount (₱50,000).')
@@ -907,7 +916,8 @@ def confirm_order_weight_view(request, order_id):
             return back
         for line, weight, qty, line_total in updates:
             line.weight_kg, line.quantity, line.subtotal = weight, qty, line_total
-            line.save(update_fields=['weight_kg', 'quantity', 'subtotal'])
+            line.loads = line.service.loads_for(weight) if weight else None
+            line.save(update_fields=['weight_kg', 'quantity', 'subtotal', 'loads'])
         order.subtotal_amount, order.discount_amount, order.total_amount = subtotal, discount, total
         order.promotion, order.promotion_title = promotion, (promotion.title if promotion else '')
         order.price_confirmed_at, order.price_confirmed_by = timezone.now(), request.user
@@ -1060,11 +1070,18 @@ def create_service_view(request):
     if request.POST.get('name') not in dict(Service.OFFERED_SERVICE_CHOICES):
         messages.error(request, 'Choose a valid service type.')
         return redirect('shop_dashboard_services')
+    name = request.POST.get('name')
+    per_load = name in Service.PER_LOAD_SERVICES
+    if per_load and not request.POST.get('price_per_load'):
+        messages.error(request, f'Enter a price per {Service.LOAD_KG[name].normalize():f} kg load for this service.')
+        return redirect('shop_dashboard_services')
     service = Service(
         shop=shop,
-        name=request.POST.get('name'),
-        price_per_kg=request.POST.get('price_per_kg') or None,
-        price_per_piece=request.POST.get('price_per_piece') or None,
+        name=name,
+        price_per_kg=None if per_load else (request.POST.get('price_per_kg') or None),
+        price_per_piece=None if per_load else (request.POST.get('price_per_piece') or None),
+        price_per_load=(request.POST.get('price_per_load') or None) if per_load else None,
+        load_kg=Service.LOAD_KG.get(name),
     )
     try:
         service.full_clean()

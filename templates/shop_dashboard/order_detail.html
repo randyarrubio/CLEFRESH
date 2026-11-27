@@ -97,12 +97,12 @@
               {% csrf_token %}
               <div class="weigh-lines">
                 {% for line in order_lines %}
-                  {% if line.service.price_per_kg %}
+                  {% if line.service.is_weighed %}
                     <div class="form-group">
-                      <label for="weigh-kg-{{ line.id }}">{{ line.service.get_name_display }} — kg <span class="weigh-rate">₱{{ line.service.price_per_kg }}/kg</span></label>
+                      <label for="weigh-kg-{{ line.id }}">{{ line.service.get_name_display }} — kg <span class="weigh-rate">{{ line.service.rate_label }}</span></label>
                       <input id="weigh-kg-{{ line.id }}" type="number" name="weight_{{ line.id }}" step="0.01" min="0.01" max="200" required
                              value="{{ line.weight_kg|default_if_none:'' }}" inputmode="decimal" placeholder="e.g. 4.25"
-                             data-rate="{{ line.service.price_per_kg }}">
+                             data-rate="{{ line.service.unit_rate }}"{% if line.service.per_load %} data-load-kg="{{ line.service.load_kg }}"{% endif %}>
                     </div>
                   {% endif %}
                   {% if line.service.price_per_piece %}
@@ -140,7 +140,7 @@
                 <tr>
                   <td><strong>{{ os.service.get_name_display }}</strong></td>
                   <td>{{ os.quantity }}</td>
-                  <td>{% if os.weight_kg %}{{ os.weight_kg }} kg{% elif order.price_pending and os.service.price_per_kg %}<span class="badge badge-warning">To be weighed</span>{% else %}—{% endif %}</td>
+                  <td>{% if os.weight_kg %}{{ os.weight_kg }} kg{% if os.loads %} · {{ os.loads }} load{{ os.loads|pluralize }}{% endif %}{% elif order.price_pending and os.service.is_weighed %}<span class="badge badge-warning">To be weighed</span>{% else %}—{% endif %}</td>
                   <td style="color:var(--primary); font-weight:600;">₱{{ os.subtotal }}</td>
                 </tr>
               {% endfor %}
@@ -266,7 +266,10 @@
       let total = 0;
       form.querySelectorAll('input[data-rate]').forEach((input) => {
         const n = parseFloat(input.value);
-        if (n > 0) total += n * parseFloat(input.dataset.rate);
+        if (!(n > 0)) return;
+        // Per-load services: whole loads, rounded up (same rule as the server).
+        const units = input.dataset.loadKg ? Math.ceil(n / parseFloat(input.dataset.loadKg)) : n;
+        total += units * parseFloat(input.dataset.rate);
       });
       out.textContent = total > 0 ? '₱' + total.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—';
     };

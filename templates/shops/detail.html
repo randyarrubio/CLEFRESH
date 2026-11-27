@@ -45,12 +45,12 @@
         <h2><i class="bi bi-basket glyph-icon"></i>Services &amp; Pricing</h2>
         <div class="table-wrapper">
           <table class="table">
-            <thead><tr><th>Service</th><th>Per KG</th><th>Per Piece</th></tr></thead>
+            <thead><tr><th>Service</th><th>By weight</th><th>Per piece</th></tr></thead>
             <tbody>
               {% for svc in services %}
                 <tr>
                   <td><strong>{{ svc.get_name_display }}</strong></td>
-                  <td>{% if svc.price_per_kg %}<span style="color:var(--primary); font-weight:600;">₱{{ svc.price_per_kg }}</span>{% else %}<span style="color:var(--text-light);">—</span>{% endif %}</td>
+                  <td>{% if svc.is_weighed %}<span style="color:var(--primary); font-weight:600;">{{ svc.rate_label }}</span>{% else %}<span style="color:var(--text-light);">—</span>{% endif %}</td>
                   <td>{% if svc.price_per_piece %}<span style="color:var(--primary); font-weight:600;">₱{{ svc.price_per_piece }}</span>{% else %}<span style="color:var(--text-light);">—</span>{% endif %}</td>
                 </tr>
               {% empty %}

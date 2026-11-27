@@ -4,7 +4,8 @@
     python manage.py seed_cantilan_shops --reset-passwords
 
 Shop names, addresses and photos come from the owner survey in `shop data/`. Lava'z Laundry Shop
-uses its real price list (₱30 / ₱45 / ₱65 per kg) and 8:00 AM – 6:00 PM; the other four shops use
+uses its real price list (₱30 / ₱45 / ₱65 per kg, charged per load: ₱150 per 5 kg load of clothes,
+₱180 per 4 kg load of bedsheets/towels/curtains, ₱260 per 4 kg load of comforters) and 8:00 AM – 6:00 PM; the other four shops use
 PLACEHOLDER prices and hours near Lava'z (replace them with each shop's survey answers). Map pins
 are OpenStreetMap geocodes of each address (street-level where the street is mapped, otherwise
 the barangay centre). Owners get demo emails on the reserved `.test` domain, so no real inbox is
@@ -31,8 +32,13 @@ SERVICE_ORDER = ('wash_fold', 'bedding', 'comforter')   # regular clothes; bedsh
 
 
 def prices(wash_fold, bedding, comforter):
-    """Per-kg full-service (wash, dry, fold) prices in the order of SERVICE_ORDER."""
-    return list(zip(SERVICE_ORDER, (Decimal(wash_fold), Decimal(bedding), Decimal(comforter))))
+    """Per-load prices from per-kg full-service (wash, dry, fold) rates, in the order of SERVICE_ORDER.
+
+    Each washing service is charged per machine load (Service.LOAD_KG: 5 kg clothes, 4 kg bedding
+    and comforters), so the load price is the per-kg rate times the load size.
+    """
+    per_kg = (Decimal(wash_fold), Decimal(bedding), Decimal(comforter))
+    return [(name, rate * Service.LOAD_KG[name]) for name, rate in zip(SERVICE_ORDER, per_kg)]
 
 SHOPS = [
     {
@@ -124,7 +130,8 @@ class Command(BaseCommand):
 
                 for name, price in spec['prices']:
                     Service.objects.update_or_create(shop=shop, name=name,
-                                                     defaults={'price_per_kg': price, 'price_per_piece': None})
+                                                     defaults={'price_per_load': price, 'load_kg': Service.LOAD_KG[name],
+                                                               'price_per_kg': None, 'price_per_piece': None})
             note = 'pin: street' if spec['pin'] == 'street' else 'pin: barangay centre (approximate)'
             self.stdout.write(f"{'Created' if created_user else 'Updated'} {spec['name']} ({email}, {note})")
             if password:
